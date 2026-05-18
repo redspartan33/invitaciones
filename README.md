@@ -1,48 +1,40 @@
-# Digital Invitation Builder - MVP (FASE 1)
+# Digital Invitation Builder
 
-## Setup Rápido (5 minutos)
+App full-stack para crear invitaciones digitales por secciones (editor estilo Elementor), con confirmación de asistencia vía WhatsApp y panel de administración.
+
+## Estado actual
+
+- **Admin** (`/admin`): lista de invitaciones — crear, editar, ver, copiar link, eliminar.
+- **Editor estilo Elementor** (`/editor/:id`): lienzo vivo, selección de elemento + panel lateral, paleta de widgets, drag & drop. UI plana (sin sombras).
+- **Bloques**: Título, Texto, Imagen, Video. Por bloque: color de fondo, color de texto, espaciado interno, espacio entre secciones y animación de entrada (aparecer / deslizar / zoom).
+- **Media**: upload real de imágenes/videos al backend (multer).
+- **Vista pública** (`/invitations/:id`): invitación renderizada + confirmación por WhatsApp.
+- **Invitados** (`/invitations/:id/guests`): lista de confirmados.
+
+## Stack
+
+React 18 + TypeScript + Tailwind + Vite · Node.js + Express + Prisma · PostgreSQL · @dnd-kit
+
+## Setup local
 
 ### 1. Requisitos
 - Node.js 18+
-- PostgreSQL 14+ (local o Docker)
-- npm o yarn
+- PostgreSQL 14+
 
-### 2. PostgreSQL Local Setup
-
-**Opción A: Usando Homebrew (macOS)**
+### 2. Base de datos
 ```bash
-brew install postgresql
-brew services start postgresql
 createdb invitation_builder_dev
 ```
 
-**Opción B: Docker**
-```bash
-docker run --name pg-invitation \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=invitation_builder_dev \
-  -p 5432:5432 \
-  -d postgres:15
+### 3. Variables de entorno
+
+`backend/.env` (ajusta usuario/clave a tu Postgres):
 ```
-
-**Opción C: Windows/Instalador**
-- Descarga PostgreSQL desde postgresql.org
-- Durante la instalación, crea DB `invitation_builder_dev`
-- Default: user=postgres, password=postgres, host=localhost:5432
-
-### 3. Variables de Entorno
-
-**Backend** `.env`
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/invitation_builder_dev"
-PORT=5000
+DATABASE_URL="postgresql://<usuario>@localhost:5432/invitation_builder_dev"
+PORT=5050
 NODE_ENV=development
 ```
-
-**Frontend** `.env.local`
-```
-VITE_API_URL=http://localhost:5000
-```
+> Nota: el puerto del backend es **5050** (en macOS el 5000 lo ocupa AirPlay/ControlCenter). El proxy del frontend (`vite.config.ts`) apunta a `:5050`.
 
 ### 4. Instalación
 
@@ -50,11 +42,11 @@ VITE_API_URL=http://localhost:5000
 ```bash
 cd backend
 npm install
-npx prisma migrate dev --name init
+npx prisma db push   # aplica el esquema (db push, no migrate dev)
 npm run dev
 ```
 
-**Frontend** (nueva terminal):
+**Frontend** (otra terminal):
 ```bash
 cd frontend
 npm install
@@ -62,95 +54,55 @@ npm run dev
 ```
 
 ### 5. URLs
+- Frontend: http://localhost:5173 (redirige a `/admin`)
+- Backend API: http://localhost:5050
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
-- Database: postgresql://localhost:5432
+## API
 
----
+```
+GET    /api/health
+GET    /api/invitations
+GET    /api/invitations/:id
+POST   /api/invitations
+PUT    /api/invitations/:id
+DELETE /api/invitations/:id
+POST   /api/invitations/:id/publish
+GET    /api/invitations/:id/guests
+POST   /api/invitations/:id/guests
+POST   /api/upload                  # multipart, devuelve { url }
+GET    /uploads/:file               # archivos subidos (disco local)
+```
 
-## Estructura del Proyecto
+## Estructura
 
 ```
 invitation-builder/
 ├── backend/
-│   ├── src/
-│   │   ├── routes/
-│   │   │   └── invitations.ts
-│   │   ├── controllers/
-│   │   │   └── invitationController.ts
-│   │   ├── db.ts
-│   │   └── server.ts
-│   ├── prisma/
-│   │   └── schema.prisma
-│   ├── .env
-│   ├── package.json
-│   └── tsconfig.json
+│   ├── src/server.ts          # Express: invitaciones, guests, upload
+│   ├── prisma/schema.prisma
+│   └── uploads/               # archivos subidos (gitignored)
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Editor.tsx
-│   │   │   ├── Preview.tsx
-│   │   │   └── InvitationLanding.tsx
-│   │   ├── pages/
-│   │   │   ├── /editor
-│   │   │   ├── /invitations/:id
-│   │   │   └── /invitations/:id/guests
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── .env.local
-│   ├── vite.config.ts
-│   └── package.json
-└── README.md (este archivo)
+│   └── src/
+│       ├── blocks.ts          # modelo de bloques + generación de HTML
+│       ├── components/
+│       │   ├── Admin.tsx
+│       │   ├── Editor.tsx     # builder estilo Elementor
+│       │   ├── InvitationLanding.tsx
+│       │   └── GuestsPage.tsx
+│       └── App.tsx
+└── docs/
+    └── DEPLOY_HOSTINGER.md    # guía de despliegue
 ```
 
----
+## Despliegue
 
-## Flujo de Desarrollo FASE 1
+Ver [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md). Resumen: opción recomendada es Hostinger "Node.js Web App" (Business/Cloud) + Postgres gestionada; antes de producción hay que mover los uploads de disco local a object storage (R2/S3).
 
-### Sprint 1: Estructura Base
-- [x] Setup React + Vite
-- [x] Setup Express + TypeScript
-- [x] Schema Prisma
-- [ ] API CRUD básica
-- [ ] Formulario de entrada de texto
-- [ ] Preview estático
+## Comandos útiles
 
-### Sprint 2: Landing Page + Confirmación
-- [ ] Landing page de invitación
-- [ ] Formulario de confirmación
-- [ ] Guardar en BD
-- [ ] Página de invitados
+**Backend:** `npm run dev` · `npm run build` · `npm run type-check` · `npx prisma studio`
+**Frontend:** `npm run dev` · `npm run build` · `npx tsc --noEmit`
 
 ---
 
-## Comandos Útiles
-
-**Backend:**
-```bash
-npm run dev              # Iniciar servidor
-npx prisma studio      # Ver BD visualmente
-npx prisma generate    # Regenerar tipos
-npx prisma migrate dev # Crear migración
-```
-
-**Frontend:**
-```bash
-npm run dev             # Vite dev server
-npm run build           # Build para producción
-```
-
----
-
-## Próximos Pasos (FASE 2+)
-
-- Editor visual WYSIWYG
-- Upload de medios
-- Cloudflare R2 integration
-- Animaciones
-- Audio de fondo
-
----
-
-**Creado**: Mayo 2026
-**Stack**: React 18 + TypeScript + Tailwind | Node.js + Express + Prisma | PostgreSQL
+**Stack**: React 18 + TS + Tailwind | Express + Prisma | PostgreSQL

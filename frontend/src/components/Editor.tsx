@@ -19,9 +19,12 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   type Block,
   type BlockType,
+  type AnimationType,
   BLOCK_LABELS,
+  ANIMATION_LABELS,
   makeBlock,
   generateHtmlContent,
+  blockWrapStyle,
 } from '../blocks';
 
 function CanvasBlock({
@@ -63,43 +66,43 @@ function CanvasBlock({
           ⠿
         </button>
       )}
-      {block.type === 'heading' && (
-        <h2 style={{ fontSize: '2em', lineHeight: 1.2, margin: '28px 0 12px' }}>
-          {block.text || <span className="text-gray-300">Título…</span>}
-        </h2>
-      )}
-      {block.type === 'text' && (
-        <p style={{ fontSize: '1.05em', lineHeight: 1.7, margin: '14px 0', whiteSpace: 'pre-wrap' }}>
-          {block.text || <span className="text-gray-300">Texto…</span>}
-        </p>
-      )}
-      {block.type === 'image' && (
-        <figure style={{ margin: '22px 0' }}>
-          {block.url ? (
-            <img src={block.url} alt={block.caption} style={{ width: '100%', display: 'block' }} />
+      <div style={blockWrapStyle(block)}>
+        {block.type === 'heading' && (
+          <h2 style={{ fontSize: '2em', lineHeight: 1.2 }}>
+            {block.text || <span className="text-gray-300">Título…</span>}
+          </h2>
+        )}
+        {block.type === 'text' && (
+          <p style={{ fontSize: '1.05em', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+            {block.text || <span className="text-gray-300">Texto…</span>}
+          </p>
+        )}
+        {block.type === 'image' &&
+          (block.url ? (
+            <figure>
+              <img src={block.url} alt={block.caption} style={{ width: '100%', display: 'block' }} />
+              {block.caption && (
+                <figcaption
+                  style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.9em', marginTop: 8 }}
+                >
+                  {block.caption}
+                </figcaption>
+              )}
+            </figure>
           ) : (
             <div className="bg-gray-50 border border-dashed border-gray-300 text-gray-400 text-sm py-10 text-center">
               Imagen sin subir
             </div>
-          )}
-          {block.caption && (
-            <figcaption style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.9em', marginTop: 8 }}>
-              {block.caption}
-            </figcaption>
-          )}
-        </figure>
-      )}
-      {block.type === 'video' && (
-        <div style={{ margin: '22px 0' }}>
-          {block.url ? (
+          ))}
+        {block.type === 'video' &&
+          (block.url ? (
             <video src={block.url} controls style={{ width: '100%', display: 'block' }} />
           ) : (
             <div className="bg-gray-50 border border-dashed border-gray-300 text-gray-400 text-sm py-10 text-center">
               Video sin subir
             </div>
-          )}
-        </div>
-      )}
+          ))}
+      </div>
     </div>
   );
 }
@@ -124,7 +127,11 @@ function Editor() {
       .get(`/api/invitations/${id}`)
       .then((res) => {
         setTitle(res.data.title);
-        setBlocks(res.data.config?.blocks ?? []);
+        const loaded: Block[] = (res.data.config?.blocks ?? []).map((b: Block) => ({
+          ...makeBlock(b.type),
+          ...b,
+        }));
+        setBlocks(loaded);
         setStatus('ready');
       })
       .catch(() => setStatus('notfound'));
@@ -311,6 +318,95 @@ function Editor() {
                   )}
                 </div>
               )}
+
+              <div className="mt-6 pt-5 border-t border-gray-200 space-y-4">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Estilo</p>
+
+                <div>
+                  <span className="block text-xs text-gray-600 mb-1">Color de fondo</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={selected.bgColor || '#ffffff'}
+                      onChange={(e) => updateSelected({ bgColor: e.target.value })}
+                      className="h-8 w-12 border border-gray-300 rounded cursor-pointer"
+                    />
+                    {selected.bgColor && (
+                      <button
+                        onClick={() => updateSelected({ bgColor: '' })}
+                        className="text-xs text-gray-500 hover:text-gray-800"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="block text-xs text-gray-600 mb-1">Color de texto</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={selected.textColor || '#1f2330'}
+                      onChange={(e) => updateSelected({ textColor: e.target.value })}
+                      className="h-8 w-12 border border-gray-300 rounded cursor-pointer"
+                    />
+                    {selected.textColor && (
+                      <button
+                        onClick={() => updateSelected({ textColor: '' })}
+                        className="text-xs text-gray-500 hover:text-gray-800"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="block text-xs text-gray-600 mb-1">
+                    Espaciado interno: {selected.padding}px
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={80}
+                    value={selected.padding}
+                    onChange={(e) => updateSelected({ padding: Number(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <span className="block text-xs text-gray-600 mb-1">
+                    Espacio entre secciones: {selected.margin}px
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={80}
+                    value={selected.margin}
+                    onChange={(e) => updateSelected({ margin: Number(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <span className="block text-xs text-gray-600 mb-1">Animación de entrada</span>
+                  <select
+                    value={selected.animation}
+                    onChange={(e) =>
+                      updateSelected({ animation: e.target.value as AnimationType })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-gray-900"
+                  >
+                    {(Object.keys(ANIMATION_LABELS) as AnimationType[]).map((a) => (
+                      <option key={a} value={a}>
+                        {ANIMATION_LABELS[a]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               <button
                 onClick={deleteSelected}
