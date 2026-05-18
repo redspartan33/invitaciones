@@ -63,7 +63,7 @@ function InvitationLanding() {
     setConfirmMessage('');
 
     try {
-      const response = await axios.post(`/api/invitations/${id}/guests`, {
+      await axios.post(`/api/invitations/${id}/guests`, {
         name,
         message: message || null
       });
@@ -93,14 +93,14 @@ function InvitationLanding() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">❌ {error}</h1>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="border border-gray-200 rounded-md p-8 text-center max-w-md">
+          <h1 className="text-xl font-semibold text-red-600 mb-4">{error}</h1>
           <button
-            onClick={() => navigate('/editor')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+            onClick={() => navigate('/admin')}
+            className="bg-gray-900 text-white px-5 py-2 rounded-md hover:bg-gray-800 text-sm"
           >
-            Crear Nueva Invitación
+            Ir a mis invitaciones
           </button>
         </div>
       </div>
@@ -109,117 +109,88 @@ function InvitationLanding() {
 
   if (!invitation) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Cargando invitación...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">
+        Cargando invitación…
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header con contador */}
-      <div className="sticky top-0 bg-white shadow-sm border-b border-gray-200 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h2 className="text-gray-700 font-semibold">
-            👥 {guestCount} confirmado{guestCount !== 1 ? 's' : ''}
-          </h2>
-          <div className="space-x-2">
-            <button
-              onClick={() => navigate(`/invitations/${id}/guests`)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-            >
-              Ver Invitados
-            </button>
-            <button
-              onClick={() => navigate('/editor')}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition text-sm"
-            >
-              Atrás
-            </button>
-          </div>
+    <div className="min-h-screen bg-white">
+      <div className="border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
+          <span className="text-sm text-gray-600">
+            {guestCount} confirmado{guestCount !== 1 ? 's' : ''}
+          </span>
+          <button
+            onClick={() => navigate(`/invitations/${id}/guests`)}
+            className="text-sm text-gray-700 hover:text-gray-900"
+          >
+            Ver invitados
+          </button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        {/* Invitation Preview */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 text-center">
-            <h1 className="text-4xl font-bold mb-2">✨ {invitation.title}</h1>
-            <p className="text-blue-100">Tienes una invitación especial</p>
-          </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <iframe
+          srcDoc={invitation.htmlContent}
+          style={{ width: '100%', height: '620px', border: 'none' }}
+          title="Invitación"
+        />
 
-          <div className="p-8">
-            {/* HTML Content Display */}
-            <div className="mb-8 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-              <iframe
-                srcDoc={invitation.htmlContent}
-                style={{
-                  width: '100%',
-                  height: '600px',
-                  border: 'none',
-                  borderRadius: '8px'
-                }}
-                title="Invitation Preview"
+        <div className="border border-gray-200 rounded-md p-6 mt-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-5">Confirmar asistencia</h2>
+
+          {confirmMessage && (
+            <div
+              className={`p-3 rounded-md mb-5 text-sm ${
+                confirmMessage.includes('✅')
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+              }`}
+            >
+              {confirmMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleConfirm} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre completo *</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Tu nombre"
+                required
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-900 disabled:bg-gray-100"
               />
             </div>
 
-            {/* Confirmation Form */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-8 rounded-lg border border-blue-200">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">✓ Confirmar Asistencia</h2>
-              
-              {confirmMessage && (
-                <div className={`p-4 rounded-lg mb-6 ${confirmMessage.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {confirmMessage}
-                </div>
-              )}
-
-              <form onSubmit={handleConfirm} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre"
-                    required
-                    disabled={loading}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mensaje (opcional)
-                  </label>
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Comparte tu mensaje de felicidades..."
-                    rows={3}
-                    disabled={loading}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? '⏳ Confirmando...' : '📱 Confirmar y Enviar por WhatsApp'}
-                </button>
-              </form>
-
-              <p className="text-xs text-gray-600 mt-4 text-center">
-                Al confirmar, se abrirá WhatsApp para notificar al organizador
-              </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mensaje (opcional)</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Comparte tu mensaje…"
+                rows={3}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-900 disabled:bg-gray-100"
+              />
             </div>
-          </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gray-900 text-white font-medium py-2.5 rounded-md hover:bg-gray-800 disabled:opacity-50"
+            >
+              {loading ? 'Confirmando…' : 'Confirmar y enviar por WhatsApp'}
+            </button>
+          </form>
+
+          <p className="text-xs text-gray-500 mt-4 text-center">
+            Al confirmar, se abrirá WhatsApp para notificar al organizador
+          </p>
         </div>
       </div>
     </div>

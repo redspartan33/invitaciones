@@ -1,261 +1,355 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  type Block,
+  type BlockType,
+  BLOCK_LABELS,
+  makeBlock,
+  generateHtmlContent,
+} from '../blocks';
 
-interface InvitationData {
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  message: string;
-}
-
-function Editor() {
-  const [formData, setFormData] = useState<InvitationData>({
-    title: '',
-    description: '',
-    date: '',
-    time: '',
-    location: '',
-    message: ''
+function CanvasBlock({
+  block,
+  selected,
+  onSelect,
+}: {
+  block: Block;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
   });
-  
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [invitationId, setInvitationId] = useState<string | null>(null);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const generateHtmlContent = (data: InvitationData): string => {
-    return `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${data.title}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-          .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 600px; width: 100%; padding: 40px; overflow: hidden; }
-          .header { text-align: center; margin-bottom: 30px; }
-          h1 { font-size: 2.5em; color: #667eea; margin-bottom: 10px; }
-          .subtitle { color: #666; font-size: 1.1em; margin-bottom: 30px; }
-          .details { background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 30px 0; }
-          .detail-row { display: flex; align-items: center; margin: 15px 0; font-size: 1.05em; }
-          .detail-row strong { color: #667eea; margin-right: 10px; min-width: 80px; }
-          .message-box { background: #f0f4ff; padding: 20px; border-left: 4px solid #667eea; border-radius: 5px; margin: 30px 0; color: #333; line-height: 1.6; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>✨ ${data.title}</h1>
-            <p class="subtitle">${data.description}</p>
-          </div>
-          
-          <div class="details">
-            <div class="detail-row">
-              <strong>📅 Fecha:</strong>
-              <span>${data.date}</span>
-            </div>
-            <div class="detail-row">
-              <strong>🕐 Hora:</strong>
-              <span>${data.time}</span>
-            </div>
-            <div class="detail-row">
-              <strong>📍 Lugar:</strong>
-              <span>${data.location}</span>
-            </div>
-          </div>
-          
-          ${data.message ? `<div class="message-box">${data.message}</div>` : ''}
-        </div>
-      </body>
-      </html>
-    `;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const htmlContent = generateHtmlContent(formData);
-      
-      const response = await axios.post('/api/invitations', {
-        title: formData.title,
-        htmlContent: htmlContent,
-        config: {
-          description: formData.description,
-          date: formData.date,
-          time: formData.time,
-          location: formData.location
-        }
-      });
-
-      setInvitationId(response.data.id);
-      setMessage(`✅ Invitación creada! ID: ${response.data.id}`);
-      setFormData({ title: '', description: '', date: '', time: '', location: '', message: '' });
-    } catch (error) {
-      setMessage('❌ Error al crear la invitación');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            🎉 Crea tu Invitación Digital
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Llena los datos básicos y genera tu invitación hermosa al instante
-          </p>
-
-          {message && (
-            <div className={`p-4 rounded-lg mb-6 ${message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {message}
-              {invitationId && (
-                <div className="mt-3">
-                  <a 
-                    href={`/invitations/${invitationId}`}
-                    className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition mr-2"
-                  >
-                    Ver Invitación
-                  </a>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/invitations/${invitationId}`);
-                      alert('Link copiado al portapapeles!');
-                    }}
-                    className="inline-block bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
-                  >
-                    Copiar Link
-                  </button>
-                </div>
-              )}
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onSelect}
+      className={`relative cursor-pointer ${
+        selected ? 'outline outline-2 outline-blue-500' : 'hover:outline hover:outline-1 hover:outline-blue-300'
+      }`}
+    >
+      {(selected || isDragging) && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute -left-7 top-0 text-gray-400 hover:text-gray-700 cursor-grab active:cursor-grabbing select-none"
+          aria-label="Reordenar"
+        >
+          ⠿
+        </button>
+      )}
+      {block.type === 'heading' && (
+        <h2 style={{ fontSize: '2em', lineHeight: 1.2, margin: '28px 0 12px' }}>
+          {block.text || <span className="text-gray-300">Título…</span>}
+        </h2>
+      )}
+      {block.type === 'text' && (
+        <p style={{ fontSize: '1.05em', lineHeight: 1.7, margin: '14px 0', whiteSpace: 'pre-wrap' }}>
+          {block.text || <span className="text-gray-300">Texto…</span>}
+        </p>
+      )}
+      {block.type === 'image' && (
+        <figure style={{ margin: '22px 0' }}>
+          {block.url ? (
+            <img src={block.url} alt={block.caption} style={{ width: '100%', display: 'block' }} />
+          ) : (
+            <div className="bg-gray-50 border border-dashed border-gray-300 text-gray-400 text-sm py-10 text-center">
+              Imagen sin subir
             </div>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Título de la Invitación *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Ej: Cumpleaños de María"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          {block.caption && (
+            <figcaption style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.9em', marginTop: 8 }}>
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      )}
+      {block.type === 'video' && (
+        <div style={{ margin: '22px 0' }}>
+          {block.url ? (
+            <video src={block.url} controls style={{ width: '100%', display: 'block' }} />
+          ) : (
+            <div className="bg-gray-50 border border-dashed border-gray-300 text-gray-400 text-sm py-10 text-center">
+              Video sin subir
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descripción *
-              </label>
-              <input
-                type="text"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Ej: 25 años celebrando momentos felices"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha *
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hora *
-                </label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lugar *
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="Ej: Jardín del Centro, Veracruz"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mensaje Adicional (opcional)
-              </label>
-              <textarea
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                placeholder="Agrega un mensaje especial para los invitados..."
-                rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Creando...' : '✨ Crear Invitación'}
-            </button>
-          </form>
-
-          <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="font-bold text-blue-900 mb-2">💡 Próximos pasos:</h3>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>✓ En FASE 2 podrás subir fotos y videos</li>
-              <li>✓ Personalizar fondos y colores en el editor visual</li>
-              <li>✓ Agregar animaciones y audio de fondo</li>
-            </ul>
-          </div>
+          )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function Editor() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [title, setTitle] = useState('');
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'notfound'>('loading');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  useEffect(() => {
+    axios
+      .get(`/api/invitations/${id}`)
+      .then((res) => {
+        setTitle(res.data.title);
+        setBlocks(res.data.config?.blocks ?? []);
+        setStatus('ready');
+      })
+      .catch(() => setStatus('notfound'));
+  }, [id]);
+
+  const selected = blocks.find((b) => b.id === selectedId) || null;
+
+  const addBlock = (type: BlockType) => {
+    const b = makeBlock(type);
+    setBlocks((prev) => [...prev, b]);
+    setSelectedId(b.id);
+  };
+
+  const updateSelected = (patch: Partial<Block>) =>
+    setBlocks((prev) => prev.map((b) => (b.id === selectedId ? { ...b, ...patch } : b)));
+
+  const deleteSelected = () => {
+    setBlocks((prev) => prev.filter((b) => b.id !== selectedId));
+    setSelectedId(null);
+  };
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (over && active.id !== over.id) {
+      setBlocks((prev) => {
+        const from = prev.findIndex((x) => x.id === active.id);
+        const to = prev.findIndex((x) => x.id === over.id);
+        return arrayMove(prev, from, to);
+      });
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const data = new FormData();
+      data.append('file', file);
+      const res = await axios.post('/api/upload', data);
+      updateSelected({ url: res.data.url });
+    } catch {
+      alert('Error al subir el archivo');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await axios.put(`/api/invitations/${id}`, {
+        title,
+        htmlContent: generateHtmlContent(title, blocks),
+        config: { blocks },
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      alert('Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (status === 'loading')
+    return <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">Cargando…</div>;
+  if (status === 'notfound')
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+        <p className="text-gray-700">Invitación no encontrada</p>
+        <button onClick={() => navigate('/admin')} className="text-blue-600 text-sm">
+          ← Volver a mis invitaciones
+        </button>
       </div>
+    );
+
+  return (
+    <div className="h-screen flex bg-white text-gray-900">
+      {/* Left panel */}
+      <aside className="w-80 shrink-0 border-r border-gray-200 flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <button onClick={() => navigate('/admin')} className="text-sm text-gray-500 hover:text-gray-800">
+            ← Mis invitaciones
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="bg-gray-900 text-white text-sm px-3 py-1.5 rounded-md hover:bg-gray-800 disabled:opacity-50"
+          >
+            {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar'}
+          </button>
+        </div>
+
+        <div className="p-4 overflow-y-auto flex-1">
+          {!selected ? (
+            <>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                Título de la invitación
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-6 focus:outline-none focus:border-gray-900"
+              />
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                Agregar widget
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(BLOCK_LABELS) as BlockType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => addBlock(t)}
+                    className="border border-gray-200 rounded-md py-3 text-sm text-gray-700 hover:border-gray-900 hover:text-gray-900"
+                  >
+                    ＋ {BLOCK_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-6">
+                Haz clic en un elemento del lienzo para editarlo. Arrástralo con ⠿ para reordenarlo.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  {BLOCK_LABELS[selected.type]}
+                </span>
+                <button onClick={() => setSelectedId(null)} className="text-xs text-gray-500 hover:text-gray-800">
+                  ← Atrás
+                </button>
+              </div>
+
+              {selected.type === 'heading' && (
+                <input
+                  type="text"
+                  autoFocus
+                  value={selected.text}
+                  onChange={(e) => updateSelected({ text: e.target.value })}
+                  placeholder="Escribe el título…"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-gray-900"
+                />
+              )}
+              {selected.type === 'text' && (
+                <textarea
+                  autoFocus
+                  value={selected.text}
+                  onChange={(e) => updateSelected({ text: e.target.value })}
+                  placeholder="Escribe el texto…"
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-gray-900"
+                />
+              )}
+              {(selected.type === 'image' || selected.type === 'video') && (
+                <div className="space-y-3">
+                  <label className="block">
+                    <span className="inline-block bg-gray-900 text-white text-sm px-3 py-2 rounded-md cursor-pointer hover:bg-gray-800">
+                      {uploading
+                        ? 'Subiendo…'
+                        : selected.url
+                        ? 'Reemplazar archivo'
+                        : `Subir ${selected.type === 'image' ? 'imagen' : 'video'}`}
+                    </span>
+                    <input
+                      type="file"
+                      accept={selected.type === 'image' ? 'image/*' : 'video/*'}
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUpload(f);
+                      }}
+                    />
+                  </label>
+                  {selected.type === 'image' && (
+                    <input
+                      type="text"
+                      value={selected.caption}
+                      onChange={(e) => updateSelected({ caption: e.target.value })}
+                      placeholder="Pie de foto (opcional)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-gray-900"
+                    />
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={deleteSelected}
+                className="mt-6 text-sm text-red-600 hover:text-red-700"
+              >
+                Eliminar elemento
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Canvas */}
+      <main className="flex-1 overflow-y-auto bg-gray-50" onClick={() => setSelectedId(null)}>
+        <div
+          className="bg-white max-w-[640px] mx-auto my-10 px-10 py-8 min-h-[70vh]"
+          onClick={(e) => e.stopPropagation()}
+          style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+        >
+          {blocks.length === 0 ? (
+            <div className="text-center text-gray-400 py-20 text-sm">
+              Lienzo vacío. Agrega un widget desde el panel izquierdo.
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                {blocks.map((b) => (
+                  <CanvasBlock
+                    key={b.id}
+                    block={b}
+                    selected={b.id === selectedId}
+                    onSelect={() => setSelectedId(b.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

@@ -53,23 +53,20 @@ function GuestsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Cargando invitados...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">
+        Cargando invitados…
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">❌ {error}</h1>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="border border-gray-200 rounded-md p-8 text-center max-w-md">
+          <h1 className="text-xl font-semibold text-red-600 mb-4">{error}</h1>
           <button
-            onClick={() => navigate('/editor')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+            onClick={() => navigate('/admin')}
+            className="bg-gray-900 text-white px-5 py-2 rounded-md hover:bg-gray-800 text-sm"
           >
             Volver
           </button>
@@ -79,89 +76,48 @@ function GuestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center mb-2">
-            <h1 className="text-3xl font-bold text-gray-800">👥 Invitados Confirmados</h1>
-            <button
-              onClick={() => navigate(`/invitations/${id}`)}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition text-sm"
-            >
-              ← Atrás
-            </button>
+    <div className="min-h-screen bg-white text-gray-900">
+      <div className="max-w-2xl mx-auto px-6 py-10">
+        <div className="flex justify-between items-center border-b border-gray-200 pb-5 mb-8">
+          <div>
+            <h1 className="text-2xl font-semibold">Invitados confirmados</h1>
+            <p className="text-sm text-gray-500 mt-1">{title}</p>
           </div>
-          <p className="text-gray-600">{title}</p>
+          <button
+            onClick={() => navigate(`/invitations/${id}`)}
+            className="text-sm text-gray-700 hover:text-gray-900"
+          >
+            ← Atrás
+          </button>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto py-12 px-4">
         {guests.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-            <p className="text-gray-600 text-lg">
-              Aún no hay confirmaciones. 👀
-            </p>
-            <p className="text-gray-500 mt-2">
-              Los invitados aparecerán aquí cuando confirmen asistencia
-            </p>
-            <button
-              onClick={() => navigate(`/invitations/${id}`)}
-              className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              Volver a la Invitación
-            </button>
+          <div className="border border-dashed border-gray-200 rounded-md p-10 text-center text-gray-500">
+            Aún no hay confirmaciones. Aparecerán aquí cuando los invitados confirmen.
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Summary Card */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-2">
-                {guests.length} Confirmado{guests.length !== 1 ? 's' : ''}
-              </h2>
-              <p className="text-blue-100">
-                Últimas confirmaciones
-              </p>
-            </div>
-
-            {/* Guests List */}
-            <div className="grid gap-4">
+          <>
+            <p className="text-sm text-gray-500 mb-4">
+              {guests.length} confirmado{guests.length !== 1 ? 's' : ''}
+            </p>
+            <div className="border border-gray-200 rounded-md divide-y divide-gray-200">
               {guests.map((guest) => (
-                <div
-                  key={guest.id}
-                  className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500 hover:shadow-lg transition"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-800 mb-1">
-                        ✓ {guest.name}
-                      </h3>
+                <div key={guest.id} className="px-4 py-3">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="min-w-0">
+                      <h3 className="font-medium">{guest.name}</h3>
                       {guest.message && (
-                        <p className="text-gray-600 italic mb-2">
-                          "{guest.message}"
-                        </p>
+                        <p className="text-gray-600 italic text-sm mt-1">"{guest.message}"</p>
                       )}
-                      <p className="text-sm text-gray-500">
-                        Confirmó el: {formatTime(guest.confirmedAt)}
-                      </p>
                     </div>
-                    <div className="text-right">
-                      <span className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        Confirmado
-                      </span>
-                    </div>
+                    <span className="text-xs text-gray-500 shrink-0">
+                      {formatTime(guest.confirmedAt)}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Export Info */}
-            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                💡 Tip: Esta página se actualiza en tiempo real. Comparte el link con los invitados para que confirmen.
-              </p>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </div>
