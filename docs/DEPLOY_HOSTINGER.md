@@ -4,6 +4,23 @@ La app es full-stack (Express + PostgreSQL + uploads de archivos), **no es un si
 
 ---
 
+## Opción 0 — Hostinger **Shared / Premium** (NO corre Node)
+
+El plan Shared/Premium es Apache sin Node ni PostgreSQL: **no puede correr el backend**. Clonar el repo en `public_html` da **403** (no hay `index.html` en la raíz). Para usar este plan hay que partir el deploy:
+
+1. **Backend** → host Node gratuito (Render / Railway / Fly). **BD** → Postgres gestionada (Neon / Supabase). Aplicar esquema: `DATABASE_URL="<prod>" npx prisma db push`.
+2. **Frontend** → build apuntando al backend:
+   ```
+   cd frontend
+   VITE_API_URL="https://tu-backend.onrender.com" npm run build
+   ```
+3. Subir el **contenido de `frontend/dist/`** (no el repo) a `public_html`. El build ya incluye `.htaccess` (viene de `frontend/public/.htaccess`) para el routing SPA.
+4. Uploads: el disco de los free tiers es efímero → mover media a object storage (R2/S3) cuando dependas de fotos/videos.
+
+> El frontend usa `axios.defaults.baseURL = VITE_API_URL`. Si no defines `VITE_API_URL` en el build, las llamadas a `/api` pegan contra el hosting estático y fallan.
+
+---
+
 ## Opción A — Hostinger "Node.js Web Apps" (planes Business / Cloud) — recomendada
 
 Hosting gestionado: conectas el repo, Hostinger hace build, deploy y SSL.

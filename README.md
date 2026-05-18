@@ -96,7 +96,11 @@ invitation-builder/
 
 ## Despliegue
 
-Ver [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md). Resumen: opción recomendada es Hostinger "Node.js Web App" (Business/Cloud) + Postgres gestionada; antes de producción hay que mover los uploads de disco local a object storage (R2/S3).
+Ver [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md).
+
+- El frontend usa `axios.defaults.baseURL = import.meta.env.VITE_API_URL`. En dev queda vacío (proxy de Vite); en producción hay que buildear con `VITE_API_URL=https://tu-backend`.
+- `frontend/public/.htaccess` se incluye en `dist/` al buildear → routing SPA en Apache.
+- Hosting **Shared/Premium NO corre Node**: ahí solo va el frontend estático; backend (Node) + Postgres deben ir en otro host. Opción gestionada recomendada: Hostinger "Node.js Web App" (Business/Cloud) + Postgres gestionada. Mover uploads a object storage (R2/S3) antes de producción.
 
 ## Comandos útiles
 
