@@ -21,6 +21,7 @@ export interface BlockStyle {
   backgroundColor?: string
   textColor?: string
   paddingY?: 'sm' | 'md' | 'lg' | 'xl'
+  textSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export interface HeroData {

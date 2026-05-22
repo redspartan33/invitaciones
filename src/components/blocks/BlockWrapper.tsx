@@ -18,13 +18,14 @@ export function BlockWrapper({
   align?: 'left' | 'center' | 'right'
 }) {
   const padding = padMap[style?.paddingY ?? 'lg']
+  const textSize = style?.textSize ?? 'md'
   const css: CSSProperties = {
     backgroundColor: style?.backgroundColor || undefined,
     color: style?.textColor || undefined,
     textAlign: align,
   }
   return (
-    <div className={`${padding} px-8`} style={css}>
+    <div className={`block-scale-active block-text-${textSize} ${padding} px-8`} style={css}>
       <div className="mx-auto max-w-2xl">{children}</div>
     </div>
   )

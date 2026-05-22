@@ -17,15 +17,43 @@ export interface BackendConfig {
   token: string
 }
 
+const DEFAULT_BACKEND_URL = '/api/index.php'
+const LEGACY_BACKEND_URLS = ['https://api.lamartinasma.com', 'https://api.lamartinasma.com/']
+
 function loadBackend(): BackendConfig {
-  if (typeof window === 'undefined') return { baseUrl: 'https://api.lamartinasma.com', token: '' }
+  if (typeof window === 'undefined') return { baseUrl: DEFAULT_BACKEND_URL, token: '' }
   try {
     const raw = window.localStorage.getItem(BACKEND_KEY)
-    if (raw) return { baseUrl: 'https://api.lamartinasma.com', token: '', ...(JSON.parse(raw) as Partial<BackendConfig>) }
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<BackendConfig>
+      const merged: BackendConfig = { baseUrl: DEFAULT_BACKEND_URL, token: '', ...parsed }
+      // Auto-migrate legacy Node subdomain URL to the new PHP endpoint.
+      if (LEGACY_BACKEND_URLS.includes((merged.baseUrl || '').trim())) {
+        merged.baseUrl = DEFAULT_BACKEND_URL
+        try { window.localStorage.setItem(BACKEND_KEY, JSON.stringify(merged)) } catch { /* ignore */ }
+      }
+      return merged
+    }
   } catch {
     /* ignore */
   }
-  return { baseUrl: 'https://api.lamartinasma.com', token: '' }
+  return { baseUrl: DEFAULT_BACKEND_URL, token: '' }
+}
+
+// Build the URL for a given invitation id, supporting both the PHP entry point
+// (`/api/index.php` → adds `?id=<slug>`) and traditional REST backends
+// (`https://host` → appends `/invitations/<slug>`). Used for GET/PUT/DELETE.
+export function getBackendUrl(baseUrl: string, idOrAction: { id?: string; action?: string }): string {
+  const base = baseUrl.replace(/\/$/, '')
+  const isPhp = /\.php($|\?)/.test(base)
+  if (isPhp) {
+    const params = new URLSearchParams()
+    if (idOrAction.id) params.set('id', idOrAction.id)
+    if (idOrAction.action) params.set('action', idOrAction.action)
+    return `${base}?${params.toString()}`
+  }
+  if (idOrAction.action === 'health') return `${base}/health`
+  return `${base}/invitations/${idOrAction.id}`
 }
 
 function persistBackend(b: BackendConfig) {
@@ -252,7 +280,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (backend.baseUrl) {
       set({ publishMode: 'pushing', publishError: null })
       try {
-        const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${slug}`, {
+        const res = await fetch(getBackendUrl(backend.baseUrl, { id: slug }), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -282,7 +310,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     if (backend.baseUrl) {
       try {
-        await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${key}`, {
+        await fetch(getBackendUrl(backend.baseUrl, { id: key }), {
           method: 'DELETE',
           headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
         })
@@ -309,7 +337,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { backend } = get()
     if (!backend.baseUrl) return { ok: false, message: 'Falta la URL base' }
     try {
-      const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/health`, {
+      const res = await fetch(getBackendUrl(backend.baseUrl, { action: 'health' }), {
         headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
       })
       if (res.ok) return { ok: true, message: `Conexión OK (${res.status})` }
@@ -323,7 +351,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 export async function fetchPublishedFromBackend(id: string, backend: BackendConfig): Promise<Invitation | null> {
   if (!backend.baseUrl) return null
   try {
-    const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${id}`, {
+    const res = await fetch(getBackendUrl(backend.baseUrl, { id }), {
       headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
     })
     if (!res.ok) return null

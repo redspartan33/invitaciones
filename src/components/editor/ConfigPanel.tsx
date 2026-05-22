@@ -104,6 +104,41 @@ function EmptyPanel() {
   )
 }
 
+const SAVED_COLORS_KEY = 'invitation-builder:saved-colors'
+
+const SUGGESTED_COLORS: { name: string; hex: string }[] = [
+  { name: 'Sage', hex: '#9caf88' },
+  { name: 'Terracotta', hex: '#c87f5a' },
+  { name: 'Dusty Rose', hex: '#dcae96' },
+  { name: 'Burgundy', hex: '#6e1f2c' },
+  { name: 'Gold', hex: '#c9a96e' },
+  { name: 'Champagne', hex: '#f1e3c8' },
+  { name: 'Olive', hex: '#6b7a3a' },
+  { name: 'Navy', hex: '#1f3a5f' },
+  { name: 'Slate', hex: '#475569' },
+  { name: 'Lavender', hex: '#b8a5cc' },
+  { name: 'Cream', hex: '#f5efe6' },
+  { name: 'Charcoal', hex: '#2a2a2a' },
+]
+
+function loadSavedColors(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(SAVED_COLORS_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw) as unknown
+      if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string')
+    }
+  } catch { /* ignore */ }
+  return []
+}
+
+function persistSavedColors(colors: string[]) {
+  try { window.localStorage.setItem(SAVED_COLORS_KEY, JSON.stringify(colors)) } catch { /* ignore */ }
+}
+
+type ColorKey = 'colorPrimary' | 'colorSecondary' | 'colorAccent'
+
 function ColorsPanel({
   settings,
   update,
@@ -111,57 +146,132 @@ function ColorsPanel({
   settings: { colorPrimary: string; colorSecondary: string; colorAccent: string }
   update: (p: Partial<{ colorPrimary: string; colorSecondary: string; colorAccent: string }>) => void
 }) {
+  const [activeKey, setActiveKey] = useState<ColorKey>('colorAccent')
+  const [savedColors, setSavedColors] = useState<string[]>(() => loadSavedColors())
+
+  const activeValue = settings[activeKey]
+  const setActiveValue = (hex: string) => update({ [activeKey]: hex })
+
+  const addSavedColor = () => {
+    const hex = activeValue.toLowerCase()
+    if (savedColors.includes(hex)) return
+    const next = [hex, ...savedColors].slice(0, 24)
+    setSavedColors(next)
+    persistSavedColors(next)
+  }
+
+  const removeSavedColor = (hex: string) => {
+    const next = savedColors.filter((c) => c !== hex)
+    setSavedColors(next)
+    persistSavedColors(next)
+  }
+
+  const targets: { key: ColorKey; label: string }[] = [
+    { key: 'colorPrimary', label: 'Primario' },
+    { key: 'colorSecondary', label: 'Secundario' },
+    { key: 'colorAccent', label: 'Acento' },
+  ]
+
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-ink-500">Estos colores se aplican a toda la invitación.</p>
-      {[
-        { key: 'colorPrimary' as const, label: 'Primario' },
-        { key: 'colorSecondary' as const, label: 'Secundario' },
-        { key: 'colorAccent' as const, label: 'Acento' },
-      ].map(({ key, label }) => (
-        <div key={key}>
-          <label className="label-flat">{label}</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={settings[key]}
-              onChange={(e) => update({ [key]: e.target.value })}
-              className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
-            />
-            <input
-              type="text"
-              value={settings[key]}
-              onChange={(e) => update({ [key]: e.target.value })}
-              className="input-flat"
-            />
-          </div>
-        </div>
-      ))}
+    <div className="space-y-5">
+      <p className="text-xs text-ink-500">Elige qué color editar y aplica desde la paleta o tus guardados.</p>
+
       <div>
-        <label className="label-flat">Paletas sugeridas</label>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { name: 'Tierra', p: '#3c2f2f', s: '#f5efe6', a: '#b08968' },
-            { name: 'Rosa', p: '#7a1f3d', s: '#fff0f5', a: '#e11d48' },
-            { name: 'Bosque', p: '#1f3a2a', s: '#eef3ed', a: '#4a7c59' },
-            { name: 'Marino', p: '#0f2a44', s: '#eaf0f6', a: '#3b82f6' },
-          ].map((pal) => (
+        <label className="label-flat">Color activo a editar</label>
+        <div className="grid grid-cols-3 gap-2">
+          {targets.map((t) => {
+            const isActive = activeKey === t.key
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setActiveKey(t.key)}
+                className={`flex flex-col items-center gap-1.5 rounded border px-2 py-2 text-xs transition-colors ${
+                  isActive ? 'border-ink-900 bg-ink-50' : 'border-ink-200 bg-white hover:border-ink-400'
+                }`}
+              >
+                <span
+                  className="h-5 w-full rounded border border-ink-200"
+                  style={{ background: settings[t.key] }}
+                />
+                <span className={`uppercase tracking-widest ${isActive ? 'text-ink-900 font-medium' : 'text-ink-500'}`}>{t.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="label-flat">Valor actual</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={activeValue}
+            onChange={(e) => setActiveValue(e.target.value)}
+            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
+          />
+          <input
+            type="text"
+            value={activeValue}
+            onChange={(e) => setActiveValue(e.target.value)}
+            className="input-flat"
+          />
+          <button
+            type="button"
+            onClick={addSavedColor}
+            title="Guardar este color"
+            className="btn-flat h-9 w-9 p-0 text-base"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="label-flat">Colores sugeridos</label>
+        <div className="grid grid-cols-6 gap-2">
+          {SUGGESTED_COLORS.map((c) => (
             <button
-              key={pal.name}
-              onClick={() =>
-                update({ colorPrimary: pal.p, colorSecondary: pal.s, colorAccent: pal.a })
-              }
-              className="flex items-center gap-2 rounded border border-ink-200 bg-white p-2 text-left text-xs hover:border-ink-900"
-            >
-              <span className="flex">
-                <span className="h-5 w-3" style={{ background: pal.p }} />
-                <span className="h-5 w-3" style={{ background: pal.s }} />
-                <span className="h-5 w-3" style={{ background: pal.a }} />
-              </span>
-              {pal.name}
-            </button>
+              key={c.hex}
+              type="button"
+              title={`${c.name} · ${c.hex}`}
+              onClick={() => setActiveValue(c.hex)}
+              className="h-9 w-full rounded border border-ink-200 transition-transform hover:scale-105 hover:border-ink-900"
+              style={{ background: c.hex }}
+            />
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="label-flat">Mis colores guardados</label>
+        {savedColors.length === 0 ? (
+          <p className="text-[11px] text-ink-400">
+            Aún no tienes colores guardados. Usa el botón <span className="font-medium">+</span> para guardar el color activo.
+          </p>
+        ) : (
+          <div className="grid grid-cols-6 gap-2">
+            {savedColors.map((hex) => (
+              <div key={hex} className="group relative">
+                <button
+                  type="button"
+                  title={hex}
+                  onClick={() => setActiveValue(hex)}
+                  className="h-9 w-full rounded border border-ink-200 transition-transform hover:scale-105 hover:border-ink-900"
+                  style={{ background: hex }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSavedColor(hex)}
+                  aria-label="Eliminar color"
+                  className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-ink-200 bg-white text-[10px] leading-none text-ink-600 opacity-0 transition-opacity group-hover:opacity-100 hover:border-rose-400 hover:text-rose-600"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

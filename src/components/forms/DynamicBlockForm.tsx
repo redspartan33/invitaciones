@@ -46,6 +46,26 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'gallery' && <GalleryImagesForm block={block as InvitationBlock<'gallery'>} />}
 
       <section className="space-y-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Tamaño de texto</h3>
+        <div className="grid grid-cols-5 gap-2">
+          {(['xs', 'sm', 'md', 'lg', 'xl'] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => updateBlockStyle(block.id, { textSize: s })}
+              className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
+                (block.style?.textSize ?? 'md') === s
+                  ? 'border-ink-900 bg-ink-900 text-white'
+                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Espaciado</h3>
         <div className="grid grid-cols-4 gap-2">
           {(['sm', 'md', 'lg', 'xl'] as const).map((p) => (

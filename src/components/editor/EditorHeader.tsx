@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { encodeInvitationCompressed, useEditorStore } from '../../store/editorStore'
+import { useState } from 'react'
+import { useEditorStore } from '../../store/editorStore'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { CopyIcon, ShareIcon } from '../blocks/icons'
 import { ADMIN_TOKEN } from '../../admin/adminAuth'
@@ -20,18 +20,9 @@ export function EditorHeader() {
   const isPublished = status === 'published'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareLink = invitation.sharedLink || (invitation.publicSlug ? `${origin}/?inv=${invitation.publicSlug}` : '')
-  const [portableLink, setPortableLink] = useState('')
-
-  useEffect(() => {
-    if (!shareOpen || !isPublished) return
-    let cancelled = false
-    encodeInvitationCompressed(invitation).then((c) => {
-      if (!cancelled) setPortableLink(`${origin}/?inv=${invitation.publicSlug || invitation.id}#d=${c}`)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [shareOpen, isPublished, invitation, origin])
+  const qrSrc = shareLink
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=${encodeURIComponent(shareLink)}`
+    : ''
 
   const onPublish = async () => {
     await publishInvitation()
@@ -160,12 +151,11 @@ export function EditorHeader() {
               </p>
             )}
             <p className="mb-3 text-xs text-ink-500">
-              El <b>link corto</b> funciona si tienes backend conectado. El <b>link portable</b>
-              lleva la invitación embebida (comprimida) y abre desde cualquier dispositivo aunque
-              no haya backend.
+              Comparte este <b>enlace único</b> con tus invitados. Funciona en cualquier dispositivo
+              porque la invitación se guarda en tu propio dominio.
             </p>
 
-            <label className="label-flat">Link corto</label>
+            <label className="label-flat">Enlace de la invitación</label>
             <div className="mb-3 flex items-center gap-2">
               <input type="text" readOnly value={shareLink} className="input-flat flex-1 text-xs font-mono" />
               <button onClick={() => onCopy(shareLink, 'simple')} className="btn-flat" title="Copiar">
@@ -174,17 +164,35 @@ export function EditorHeader() {
             </div>
             {copiedField === 'simple' && <p className="mb-3 text-xs text-emerald-600">¡Copiado!</p>}
 
-            <label className="label-flat">Link portable (cross-device)</label>
-            <div className="flex items-center gap-2">
-              <input type="text" readOnly value={portableLink} className="input-flat flex-1 text-xs font-mono" />
-              <button onClick={() => onCopy(portableLink, 'portable')} className="btn-flat" disabled={!portableLink} title="Copiar">
-                <CopyIcon className="h-4 w-4" />
-              </button>
-            </div>
-            {copiedField === 'portable' && <p className="mt-2 text-xs text-emerald-600">¡Copiado!</p>}
+            {qrSrc && (
+              <div className="mt-4 rounded border border-ink-200 bg-ink-50 p-4">
+                <label className="label-flat">Código QR</label>
+                <div className="flex items-center gap-4">
+                  <img
+                    src={qrSrc}
+                    alt="Código QR de la invitación"
+                    width={160}
+                    height={160}
+                    className="rounded border border-ink-200 bg-white"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <p className="text-[11px] text-ink-500">
+                      Escanea para abrir la invitación, o descarga el QR para imprimirlo.
+                    </p>
+                    <a
+                      href={qrSrc}
+                      download={`qr-${invitation.publicSlug || invitation.id}.png`}
+                      className="btn-flat w-full justify-center text-xs"
+                    >
+                      Descargar QR
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-4 flex items-center gap-2">
-              <a href={portableLink || shareLink} target="_blank" rel="noreferrer" className="btn-flat flex-1 justify-center">
+              <a href={shareLink} target="_blank" rel="noreferrer" className="btn-flat flex-1 justify-center">
                 Abrir vista pública ↗
               </a>
             </div>
