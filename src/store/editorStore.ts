@@ -18,14 +18,14 @@ export interface BackendConfig {
 }
 
 function loadBackend(): BackendConfig {
-  if (typeof window === 'undefined') return { baseUrl: '', token: '' }
+  if (typeof window === 'undefined') return { baseUrl: 'https://api.lamartinasma.com', token: '' }
   try {
     const raw = window.localStorage.getItem(BACKEND_KEY)
-    if (raw) return { baseUrl: '', token: '', ...(JSON.parse(raw) as Partial<BackendConfig>) }
+    if (raw) return { baseUrl: 'https://api.lamartinasma.com', token: '', ...(JSON.parse(raw) as Partial<BackendConfig>) }
   } catch {
     /* ignore */
   }
-  return { baseUrl: '', token: '' }
+  return { baseUrl: 'https://api.lamartinasma.com', token: '' }
 }
 
 function persistBackend(b: BackendConfig) {
