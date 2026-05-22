@@ -32,7 +32,7 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
     if (!confirm(`¿Eliminar la invitación "${inv.title}"?`)) return
     loadInvitation(inv)
     await unpublish()
-    window.localStorage.removeItem(PUBLISHED_PREFIX + inv.id)
+    window.localStorage.removeItem(PUBLISHED_PREFIX + (inv.publicSlug || inv.id))
     refresh()
   }
 
@@ -64,7 +64,7 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
         ) : (
           <ul className="space-y-3">
             {items.map((inv) => {
-              const link = `${window.location.origin}/?inv=${inv.id}`
+              const link = `${window.location.origin}/?inv=${inv.publicSlug || inv.id}`
               return (
                 <li key={inv.id} className="flex items-center justify-between rounded border border-ink-200 bg-white px-5 py-4">
                   <div className="min-w-0">

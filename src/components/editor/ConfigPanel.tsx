@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { useSelectedBlock } from '../../hooks/useSelectedBlock'
 import { DynamicBlockForm } from '../forms/DynamicBlockForm'
@@ -198,24 +198,64 @@ function MusicPanel({ value, update }: { value: string; update: (v: string) => v
     { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', label: 'Jazz suave' },
     { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', label: 'Romántica' },
   ]
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [previewing, setPreviewing] = useState<string | null>(null)
+
+  const togglePreview = (url: string) => {
+    if (!audioRef.current) audioRef.current = new Audio()
+    const audio = audioRef.current
+    if (previewing === url) {
+      audio.pause()
+      setPreviewing(null)
+      return
+    }
+    audio.src = url
+    audio.volume = 0.5
+    audio.play().then(() => setPreviewing(url)).catch(() => setPreviewing(null))
+    audio.onended = () => setPreviewing(null)
+  }
+
+  useEffect(() => () => {
+    audioRef.current?.pause()
+    audioRef.current = null
+  }, [])
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-ink-500">
-        Música de fondo para la vista pública. Los invitados verán un botón para activarla
-        (los navegadores bloquean el autoplay sin interacción).
+        Música de fondo para la vista pública. Toca <span className="font-medium">▶</span> para escuchar un preview.
       </p>
-      {tracks.map((t) => (
-        <button
-          key={t.url || 'none'}
-          onClick={() => update(t.url)}
-          className={`flex w-full items-center justify-between rounded border px-4 py-3 text-left text-sm transition-colors ${
-            value === t.url ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white hover:border-ink-400'
-          }`}
-        >
-          {t.label}
-          {value === t.url && <span className="text-xs">✓</span>}
-        </button>
-      ))}
+      {tracks.map((t) => {
+        const selected = value === t.url
+        const isPlaying = previewing === t.url
+        return (
+          <div
+            key={t.url || 'none'}
+            className={`flex w-full items-center justify-between rounded border px-3 py-2 text-sm transition-colors ${
+              selected ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white'
+            }`}
+          >
+            <button onClick={() => update(t.url)} className="flex-1 text-left">
+              {t.label} {selected && <span className="ml-1 text-xs">✓</span>}
+            </button>
+            {t.url && (
+              <button
+                onClick={() => togglePreview(t.url)}
+                aria-label={isPlaying ? 'Pausar preview' : 'Reproducir preview'}
+                className={`ml-2 flex h-7 w-7 items-center justify-center rounded-full border ${
+                  selected ? 'border-white/40 hover:border-white' : 'border-ink-200 hover:border-ink-400'
+                }`}
+              >
+                {isPlaying ? (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" /><rect x="14" y="5" width="4" height="14" /></svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                )}
+              </button>
+            )}
+          </div>
+        )
+      })}
       <div>
         <label className="label-flat">O pega una URL de audio (.mp3)</label>
         <input

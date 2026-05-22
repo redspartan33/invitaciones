@@ -5,16 +5,8 @@ export type ValidationResult = {
   errors: Record<string, string>
 }
 
-const REQUIRED: Partial<Record<BlockType, string[]>> = {
-  hero: ['title'],
-  'event-details': ['date', 'location'],
-  timeline: [],
-  'dress-code': ['code'],
-  'gift-registry': [],
-  'rsvp-info': ['instructions', 'deadline'],
-  footer: ['message'],
-  gallery: [],
-}
+// Todos los campos son opcionales — si están vacíos simplemente no se renderizan.
+const REQUIRED: Partial<Record<BlockType, string[]>> = {}
 
 export function validateBlock(block: InvitationBlock): ValidationResult {
   const errors: Record<string, string> = {}
@@ -30,7 +22,10 @@ export function validateBlock(block: InvitationBlock): ValidationResult {
 
 export function formatDate(value: string, format: string): string {
   if (!value) return ''
-  const d = new Date(value)
+  // Si viene en formato YYYY-MM-DD (input type="date") lo parseamos como
+  // fecha local para evitar el offset UTC que muestra el día anterior.
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  const d = ymd ? new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])) : new Date(value)
   if (isNaN(d.getTime())) return value
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')

@@ -6,7 +6,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
   const data = block.data as HeroData
   const align = data.alignment ?? 'center'
   const usingImage = !!data.backgroundImage
-  const bg = usingImage
+  const bgStyle = usingImage
     ? {
         backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(${data.backgroundImage})`,
         backgroundSize: 'cover',
@@ -15,14 +15,11 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
       }
     : data.backgroundColor
     ? { backgroundColor: data.backgroundColor }
-    : {}
+    : undefined
 
   return (
-    <div
-      className="px-8 py-32"
-      style={{ ...bg, textAlign: align }}
-    >
-      <div className="mx-auto max-w-2xl">
+    <div style={bgStyle}>
+      <BlockWrapper style={block.style} align={align}>
         {data.showSubtitle && data.subtitle && (
           <p className={`mb-6 text-sm uppercase tracking-[0.3em] ${usingImage ? 'opacity-90' : 'accent'}`}>{data.subtitle}</p>
         )}
@@ -34,7 +31,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
             {formatDate(data.eventDate, data.dateFormat)}
           </p>
         )}
-      </div>
+      </BlockWrapper>
     </div>
   )
 }

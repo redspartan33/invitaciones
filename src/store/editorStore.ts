@@ -83,6 +83,17 @@ interface EditorState {
 
 export const PUBLISHED_PREFIX = 'invitation-builder:published:'
 
+// Slug corto (~9 chars base62, ≈ 53 bits) — no enumerable y mucho más corto
+// que el UUID original. Suficiente para links privados.
+function generateShortSlug(): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const bytes = new Uint8Array(9)
+  crypto.getRandomValues(bytes)
+  let out = ''
+  for (const b of bytes) out += alphabet[b % alphabet.length]
+  return out
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   invitation: loadInitial(),
   selectedBlockId: null,
@@ -221,11 +232,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   publishInvitation: async () => {
     const { invitation: inv, backend } = get()
     const now = new Date().toISOString()
-    const sharedLink = `${window.location.origin}/?inv=${inv.id}`
-    const published: Invitation = { ...inv, status: 'published', updatedAt: now, sharedLink }
+    const slug = inv.publicSlug || generateShortSlug()
+    const sharedLink = `${window.location.origin}/?inv=${slug}`
+    const published: Invitation = { ...inv, publicSlug: slug, status: 'published', updatedAt: now, sharedLink }
 
     try {
-      window.localStorage.setItem(PUBLISHED_PREFIX + inv.id, JSON.stringify(published))
+      window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
     } catch {
       /* ignore quota errors */
     }
@@ -233,7 +245,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (backend.baseUrl) {
       set({ publishMode: 'pushing', publishError: null })
       try {
-        const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${inv.id}`, {
+        const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${slug}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -255,14 +267,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   unpublishInvitation: async () => {
     const { invitation: inv, backend } = get()
+    const key = inv.publicSlug || inv.id
     try {
-      window.localStorage.removeItem(PUBLISHED_PREFIX + inv.id)
+      window.localStorage.removeItem(PUBLISHED_PREFIX + key)
     } catch {
       /* ignore */
     }
     if (backend.baseUrl) {
       try {
-        await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${inv.id}`, {
+        await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${key}`, {
           method: 'DELETE',
           headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
         })

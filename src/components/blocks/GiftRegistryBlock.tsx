@@ -6,7 +6,7 @@ export function GiftRegistryBlock({ block }: { block: InvitationBlock<'gift-regi
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
-        <h2 className="font-serif text-3xl">{data.title}</h2>
+        {data.title && <h2 className="font-serif text-3xl">{data.title}</h2>}
         {data.message && <p className="mx-auto mt-3 max-w-md text-sm opacity-80">{data.message}</p>}
       </div>
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">

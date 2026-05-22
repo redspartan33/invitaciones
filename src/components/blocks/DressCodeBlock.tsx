@@ -6,8 +6,8 @@ export function DressCodeBlock({ block }: { block: InvitationBlock<'dress-code'>
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
-        <p className="accent mb-2 text-xs uppercase tracking-[0.3em]">Código de vestimenta</p>
-        <h2 className="font-serif text-4xl">{data.code}</h2>
+        {data.code && <p className="accent mb-2 text-xs uppercase tracking-[0.3em]">Código de vestimenta</p>}
+        {data.code && <h2 className="font-serif text-4xl">{data.code}</h2>}
         {data.notes && <p className="mx-auto mt-4 max-w-md text-sm opacity-80">{data.notes}</p>}
         {data.inspirationImage && (
           <div className="mx-auto mt-8 w-full max-w-sm overflow-hidden border accent-border">

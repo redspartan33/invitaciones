@@ -97,7 +97,22 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
   },
   timeline: {
     sections: [
-      { title: 'Encabezado', fields: [{ name: 'title', label: 'Título de la sección', kind: 'text' }] },
+      {
+        title: 'Encabezado',
+        fields: [
+          { name: 'title', label: 'Título de la sección', kind: 'text' },
+          {
+            name: 'alignment',
+            label: 'Alineación',
+            kind: 'select',
+            options: [
+              { value: 'left', label: 'Izquierda (con línea)' },
+              { value: 'center', label: 'Centro' },
+              { value: 'right', label: 'Derecha' },
+            ],
+          },
+        ],
+      },
     ],
   },
   'dress-code': {

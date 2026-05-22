@@ -56,6 +56,7 @@ export interface TimelineItem {
 export interface TimelineData {
   title: string
   items: TimelineItem[]
+  alignment?: Alignment
 }
 
 export interface DressCodeData {
@@ -149,6 +150,7 @@ export interface Invitation {
   createdAt: string
   updatedAt: string
   sharedLink?: string
+  publicSlug?: string
 }
 
 export type ViewportMode = 'mobile' | 'tablet' | 'desktop'

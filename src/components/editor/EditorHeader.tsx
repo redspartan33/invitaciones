@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { encodeInvitation, useEditorStore } from '../../store/editorStore'
+import { useEditorStore } from '../../store/editorStore'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { CopyIcon, ShareIcon } from '../blocks/icons'
 
@@ -18,8 +18,7 @@ export function EditorHeader() {
 
   const isPublished = status === 'published'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const simpleLink = `${origin}/?inv=${invitation.id}`
-  const portableLink = `${origin}/?inv=${invitation.id}#data=${encodeInvitation(invitation)}`
+  const shareLink = invitation.sharedLink || (invitation.publicSlug ? `${origin}/?inv=${invitation.publicSlug}` : '')
 
   const onPublish = async () => {
     await publishInvitation()
@@ -97,30 +96,21 @@ export function EditorHeader() {
               </p>
             )}
             <p className="mb-3 text-xs text-ink-500">
-              El primer link sólo funciona en este navegador. El segundo lleva toda la invitación
-              embebida y funciona en cualquier dispositivo.
+              Link corto con un slug aleatorio (no enumerable). Necesita estar conectada a un backend
+              para que abra desde otros dispositivos.
             </p>
 
-            <label className="label-flat">Link privado</label>
+            <label className="label-flat">Link de la invitación</label>
             <div className="mb-3 flex items-center gap-2">
-              <input type="text" readOnly value={simpleLink} className="input-flat flex-1 text-xs font-mono" />
-              <button onClick={() => onCopy(simpleLink, 'simple')} className="btn-flat" title="Copiar">
+              <input type="text" readOnly value={shareLink} className="input-flat flex-1 text-xs font-mono" />
+              <button onClick={() => onCopy(shareLink, 'simple')} className="btn-flat" title="Copiar">
                 <CopyIcon className="h-4 w-4" />
               </button>
             </div>
             {copiedField === 'simple' && <p className="mb-3 text-xs text-emerald-600">¡Copiado!</p>}
 
-            <label className="label-flat">Link portable (recomendado)</label>
-            <div className="flex items-center gap-2">
-              <input type="text" readOnly value={portableLink} className="input-flat flex-1 text-xs font-mono" />
-              <button onClick={() => onCopy(portableLink, 'portable')} className="btn-flat" title="Copiar">
-                <CopyIcon className="h-4 w-4" />
-              </button>
-            </div>
-            {copiedField === 'portable' && <p className="mt-2 text-xs text-emerald-600">¡Copiado!</p>}
-
             <div className="mt-4 flex items-center gap-2">
-              <a href={portableLink} target="_blank" rel="noreferrer" className="btn-flat flex-1 justify-center">
+              <a href={shareLink} target="_blank" rel="noreferrer" className="btn-flat flex-1 justify-center">
                 Abrir vista pública ↗
               </a>
             </div>
