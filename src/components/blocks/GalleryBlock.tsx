@@ -1,5 +1,6 @@
 import type { GalleryData, InvitationBlock } from '../../types/invitation.types'
 import { BlockWrapper } from './BlockWrapper'
+import { TextEl } from './TextEl'
 
 export function GalleryBlock({ block }: { block: InvitationBlock<'gallery'> }) {
   const data = block.data as GalleryData
@@ -8,7 +9,9 @@ export function GalleryBlock({ block }: { block: InvitationBlock<'gallery'> }) {
     <BlockWrapper style={block.style}>
       {data.title && (
         <div className="mb-8 text-center">
-          <h2 className="font-serif text-3xl">{data.title}</h2>
+          <TextEl block={block} field="title" as="h2" className="font-serif text-3xl">
+            {data.title}
+          </TextEl>
         </div>
       )}
       <div className={`grid ${cols} gap-2`}>

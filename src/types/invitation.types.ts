@@ -17,11 +17,20 @@ export interface BlockMetadata {
   lastEdited: string
 }
 
+export type TextSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+
+export interface TextElementStyle {
+  size?: TextSize
+  color?: string
+}
+
 export interface BlockStyle {
   backgroundColor?: string
   textColor?: string
   paddingY?: 'sm' | 'md' | 'lg' | 'xl'
-  textSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  textSize?: TextSize
+  // Per-element overrides keyed by field name (e.g. "title", "items.title").
+  textStyles?: Record<string, TextElementStyle>
 }
 
 export interface HeroData {
