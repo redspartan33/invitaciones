@@ -9,7 +9,6 @@ import type {
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
 import { uploadToJsonBlob, deleteFromJsonBlob, isJsonBlobId } from '../utils/jsonblob'
-import { shortenUrl } from '../utils/shortener'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 const BACKEND_KEY = 'invitation-builder:backend'
@@ -272,35 +271,53 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   publishInvitation: async () => {
     const { invitation: inv } = get()
     const now = new Date().toISOString()
-
-    // Primary remote: JSONBlob (zero-config, anonymous, cross-device).
     set({ publishMode: 'pushing', publishError: null })
-    const previousId = inv.publicSlug && isJsonBlobId(inv.publicSlug) ? inv.publicSlug : undefined
-    const draft: Invitation = { ...inv, status: 'published', updatedAt: now }
-    const remoteId = await uploadToJsonBlob(draft, previousId)
 
-    let slug: string
-    let sharedLink: string
-    if (remoteId) {
-      slug = remoteId
-      const canonical = `${window.location.origin}/?inv=${remoteId}`
-      // Shorten via TinyURL → "tinyurl.com/abc1234" (7-char code). The
-      // canonical URL still works; the short one redirects to it.
-      const shortened = await shortenUrl(canonical)
-      sharedLink = shortened ?? canonical
-      set({ publishMode: 'pushed' })
-      setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
-    } else {
-      // Remote failed — fall back to compressed hash payload so link still
-      // opens on any device (longer URL).
-      slug = inv.publicSlug && !isJsonBlobId(inv.publicSlug) ? inv.publicSlug : generateShortSlug()
+    const shortSlug =
+      inv.publicSlug && !isJsonBlobId(inv.publicSlug) ? inv.publicSlug : generateShortSlug()
+    const draft: Invitation = { ...inv, publicSlug: shortSlug, status: 'published', updatedAt: now }
+
+    let slug: string = shortSlug
+    let sharedLink: string = `${window.location.origin}/?inv=${shortSlug}`
+    let stored = false
+
+    // PRIORITY 1: own serverless backend (Vercel Blob) with the short 9-char
+    // slug we generated. Produces `lamartinasma.com/?inv=<9chars>`.
+    try {
+      const res = await fetch(`/api/invitations/${shortSlug}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...draft, sharedLink }),
+      })
+      if (res.ok) {
+        stored = true
+        set({ publishMode: 'pushed' })
+        setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
+      }
+    } catch {
+      /* falls through to JSONBlob fallback */
+    }
+
+    // PRIORITY 2: JSONBlob (zero-config, but returns long UUID slugs).
+    if (!stored) {
+      const previousId = inv.publicSlug && isJsonBlobId(inv.publicSlug) ? inv.publicSlug : undefined
+      const remoteId = await uploadToJsonBlob(draft, previousId)
+      if (remoteId) {
+        slug = remoteId
+        sharedLink = `${window.location.origin}/?inv=${remoteId}`
+        stored = true
+        set({ publishMode: 'pushed' })
+        setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
+      }
+    }
+
+    // PRIORITY 3: hash fallback (link funcional pero largo).
+    if (!stored) {
       try {
         const compressed = await encodeInvitationCompressed(draft)
         sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
-      } catch {
-        sharedLink = `${window.location.origin}/?inv=${slug}`
-      }
-      set({ publishMode: 'error', publishError: 'No se pudo conectar al almacenamiento remoto; usando link extendido.' })
+      } catch { /* ignore */ }
+      set({ publishMode: 'error', publishError: 'Backend no disponible; usando link con datos embebidos.' })
     }
 
     const published: Invitation = { ...draft, publicSlug: slug, sharedLink }

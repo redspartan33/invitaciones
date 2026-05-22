@@ -46,14 +46,24 @@ async function resolvePublic(route: Route): Promise<Invitation | null> {
       : decodeInvitation(route.encoded)
   }
   if (route.kind === 'public-id') {
-    // Numeric ids → JSONBlob.com (default zero-config remote).
+    // Short slugs → our own Vercel serverless backend (Vercel Blob).
+    if (!isJsonBlobId(route.id)) {
+      try {
+        const res = await fetch(`/api/invitations/${route.id}`, { headers: { Accept: 'application/json' } })
+        if (res.ok) {
+          const data = (await res.json()) as Invitation
+          if (data?.id && Array.isArray(data.blocks)) return data
+        }
+      } catch { /* fall through */ }
+    }
+    // UUID-like ids → JSONBlob fallback.
     if (isJsonBlobId(route.id)) {
       const remote = await fetchFromJsonBlob(route.id)
       if (remote) return remote
     }
-    // Optional self-hosted backend (if user configured one).
+    // Legacy self-hosted backend (rarely used).
     const backend = loadBackend()
-    if (backend.baseUrl) {
+    if (backend.baseUrl && backend.baseUrl !== '/api') {
       const remote = await fetchPublishedFromBackend(route.id, backend)
       if (remote) return remote
     }
