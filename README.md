@@ -87,22 +87,48 @@ su contenido) al `public_html` de Hostinger via File Manager, FTP o SFTP.
 - SPA fallback: cualquier ruta cae en `index.html` para que `/?inv=<id>` funcione
 - Cache largo para los assets hasheados, `no-cache` para el HTML
 
-## Backend opcional
+## Backend en Hostinger
 
-Si conectas un backend en el panel **API** del editor, la app:
+El backend está deployado en Hostinger con Node.js + Express:
 
-- Publica la invitación con `PUT {baseUrl}/invitations/<id>`
-- La vista pública la lee con `GET {baseUrl}/invitations/<id>`
-- Probarás la conexión con `GET {baseUrl}/health`
+**API URL:** `https://api.lamartinasma.com` (requiere que crees la subdomain en cPanel)
 
-Contrato mínimo del backend:
+### Endpoints
 
 ```
-PUT    /invitations/<id>   { Invitation JSON }
-GET    /invitations/<id>   → Invitation JSON
-DELETE /invitations/<id>
-GET    /health             → 200 OK
+GET    /health                 → { status: "ok", timestamp: "..." }
+PUT    /invitations/<id>       → { success: true, id: "<id>" }
+GET    /invitations/<id>       → { Invitation JSON } | 404
+DELETE /invitations/<id>       → { success: true } | 404
 ```
 
-Sin backend, la publicación sigue funcionando con `localStorage` (mismo navegador)
-+ link portable (datos embebidos en el hash de la URL).
+### Setup en Hostinger
+
+El código del backend ya está en `/home/u814790894/domains/api.lamartinasma.com/public_html/`:
+
+1. **Crea el subdomain en cPanel:**
+   - Ve a **Addon Domains** o **Subdomains**
+   - Nombre: `api.lamartinasma.com`
+   - Document Root: `/home/u814790894/domains/api.lamartinasma.com/public_html`
+   - Salva y espera a que DNS se propague (~5-15 min)
+
+2. **Habilita Node.js (si no lo está):**
+   - Ve a **Setup Node.js App** en cPanel
+   - Si aparece el dominio, selecciona y aplica
+
+3. **El app.js se ejecutará automáticamente con Passenger**
+   - La app escucha en puerto 3000 internamente
+   - Passenger expone a través de HTTPS (lamartinasma.com/api/)
+
+### Almacenamiento
+
+- Los datos se guardan en `/app/data/<id>.json`
+- Máximo 50 MB por invitación
+- Sin base de datos - escalable para primeras fases
+
+### Sin backend
+
+La app sigue funcionando sin API configurada:
+- Guarda en `localStorage` (mismo navegador)
+- Link portable: datos embebidos en el hash de la URL
+- Útil para testing o compartir temporalmente
