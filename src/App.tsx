@@ -10,6 +10,7 @@ import {
   loadBackend,
   loadPublishedById,
 } from './store/editorStore'
+import { fetchFromJsonBlob, isJsonBlobId } from './utils/jsonblob'
 import type { Invitation } from './types/invitation.types'
 
 type Route =
@@ -45,6 +46,12 @@ async function resolvePublic(route: Route): Promise<Invitation | null> {
       : decodeInvitation(route.encoded)
   }
   if (route.kind === 'public-id') {
+    // Numeric ids → JSONBlob.com (default zero-config remote).
+    if (isJsonBlobId(route.id)) {
+      const remote = await fetchFromJsonBlob(route.id)
+      if (remote) return remote
+    }
+    // Optional self-hosted backend (if user configured one).
     const backend = loadBackend()
     if (backend.baseUrl) {
       const remote = await fetchPublishedFromBackend(route.id, backend)

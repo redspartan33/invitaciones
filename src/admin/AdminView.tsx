@@ -170,10 +170,10 @@ export function ForbiddenView() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink-50 p-8 text-center">
       <div>
-        <p className="font-serif text-[120px] leading-none text-ink-900">403</p>
-        <p className="mt-2 text-sm uppercase tracking-[0.3em] text-ink-500">Acceso denegado</p>
-        <p className="mt-6 max-w-sm text-xs text-ink-400">
-          Esta página no existe o no tienes permiso para verla.
+        <p className="font-serif text-5xl leading-none text-ink-900">Invitación no encontrada</p>
+        <p className="mt-6 max-w-md text-sm text-ink-500">
+          Es posible que el enlace haya expirado o que aún no esté publicado.
+          Pídele al organizador un link actualizado.
         </p>
       </div>
     </div>

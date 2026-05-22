@@ -8,6 +8,7 @@ import type {
   ViewportMode,
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
+import { uploadToJsonBlob, deleteFromJsonBlob, isJsonBlobId } from '../utils/jsonblob'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 const BACKEND_KEY = 'invitation-builder:backend'
@@ -268,14 +269,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadInvitation: (inv) => set({ invitation: inv, selectedBlockId: null }),
 
   publishInvitation: async () => {
-    const { invitation: inv, backend } = get()
+    const { invitation: inv } = get()
     const now = new Date().toISOString()
-    const slug = inv.publicSlug || generateShortSlug()
-    // Short, clean link — relies on the serverless backend (Vercel Blob via
-    // `/api/invitations/<slug>`) to serve the payload. The fallback hash is
-    // appended below only if the remote PUT fails.
-    let sharedLink = `${window.location.origin}/?inv=${slug}`
-    const published: Invitation = { ...inv, publicSlug: slug, status: 'published', updatedAt: now, sharedLink }
+
+    // Primary remote: JSONBlob (zero-config, anonymous, cross-device).
+    set({ publishMode: 'pushing', publishError: null })
+    const previousId = inv.publicSlug && isJsonBlobId(inv.publicSlug) ? inv.publicSlug : undefined
+    const draft: Invitation = { ...inv, status: 'published', updatedAt: now }
+    const remoteId = await uploadToJsonBlob(draft, previousId)
+
+    let slug: string
+    let sharedLink: string
+    if (remoteId) {
+      slug = remoteId
+      sharedLink = `${window.location.origin}/?inv=${remoteId}`
+      set({ publishMode: 'pushed' })
+      setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
+    } else {
+      // Remote failed — fall back to compressed hash payload so link still
+      // opens on any device (longer URL).
+      slug = inv.publicSlug && !isJsonBlobId(inv.publicSlug) ? inv.publicSlug : generateShortSlug()
+      try {
+        const compressed = await encodeInvitationCompressed(draft)
+        sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
+      } catch {
+        sharedLink = `${window.location.origin}/?inv=${slug}`
+      }
+      set({ publishMode: 'error', publishError: 'No se pudo conectar al almacenamiento remoto; usando link extendido.' })
+    }
+
+    const published: Invitation = { ...draft, publicSlug: slug, sharedLink }
 
     try {
       window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
@@ -284,55 +307,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       /* ignore quota errors */
     }
 
-    if (backend.baseUrl) {
-      set({ publishMode: 'pushing', publishError: null })
-      try {
-        const res = await fetch(getBackendUrl(backend.baseUrl, { id: slug }), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(backend.token ? { Authorization: `Bearer ${backend.token}` } : {}),
-          },
-          body: JSON.stringify(published),
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        set({ publishMode: 'pushed' })
-        setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
-      } catch (e) {
-        // Remote storage failed — fall back to embedding the invitation in the
-        // hash so the link still works cross-device (longer URL, but accessible).
-        try {
-          const compressed = await encodeInvitationCompressed(published)
-          sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
-          published.sharedLink = sharedLink
-          window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
-          window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(published))
-        } catch { /* ignore */ }
-        set({ publishMode: 'error', publishError: (e as Error).message })
-      }
-    }
-
     set({ invitation: published })
     return sharedLink
   },
 
   unpublishInvitation: async () => {
-    const { invitation: inv, backend } = get()
+    const { invitation: inv } = get()
     const key = inv.publicSlug || inv.id
     try {
       window.localStorage.removeItem(PUBLISHED_PREFIX + key)
     } catch {
       /* ignore */
     }
-    if (backend.baseUrl) {
-      try {
-        await fetch(getBackendUrl(backend.baseUrl, { id: key }), {
-          method: 'DELETE',
-          headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
-        })
-      } catch {
-        /* ignore */
-      }
+    if (inv.publicSlug && isJsonBlobId(inv.publicSlug)) {
+      await deleteFromJsonBlob(inv.publicSlug)
     }
     const updated: Invitation = { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() }
     try {
