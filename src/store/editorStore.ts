@@ -8,7 +8,8 @@ import type {
   ViewportMode,
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
-import { uploadToJsonBlob, deleteFromJsonBlob, isJsonBlobId } from '../utils/jsonblob'
+import { isJsonBlobId } from '../utils/jsonblob'
+import { saveToRegistry, deleteFromRegistry } from '../utils/inviteRegistry'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 const BACKEND_KEY = 'invitation-builder:backend'
@@ -273,54 +274,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const now = new Date().toISOString()
     set({ publishMode: 'pushing', publishError: null })
 
-    const shortSlug =
+    // Always use a clean 9-char short slug. Reuse it on republish for stable
+    // links. Old UUID slugs (from previous JSONBlob flow) are discarded.
+    const slug =
       inv.publicSlug && !isJsonBlobId(inv.publicSlug) ? inv.publicSlug : generateShortSlug()
-    const draft: Invitation = { ...inv, publicSlug: shortSlug, status: 'published', updatedAt: now }
-
-    let slug: string = shortSlug
-    let sharedLink: string = `${window.location.origin}/?inv=${shortSlug}`
-    let stored = false
-
-    // PRIORITY 1: own serverless backend (Vercel Blob) with the short 9-char
-    // slug we generated. Produces `lamartinasma.com/?inv=<9chars>`.
-    try {
-      const res = await fetch(`/api/invitations/${shortSlug}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...draft, sharedLink }),
-      })
-      if (res.ok) {
-        stored = true
-        set({ publishMode: 'pushed' })
-        setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
-      }
-    } catch {
-      /* falls through to JSONBlob fallback */
+    const sharedLink = `${window.location.origin}/?id=${slug}`
+    const draft: Invitation = {
+      ...inv,
+      publicSlug: slug,
+      status: 'published',
+      updatedAt: now,
+      sharedLink,
     }
 
-    // PRIORITY 2: JSONBlob (zero-config, but returns long UUID slugs).
-    if (!stored) {
-      const previousId = inv.publicSlug && isJsonBlobId(inv.publicSlug) ? inv.publicSlug : undefined
-      const remoteId = await uploadToJsonBlob(draft, previousId)
-      if (remoteId) {
-        slug = remoteId
-        sharedLink = `${window.location.origin}/?inv=${remoteId}`
-        stored = true
-        set({ publishMode: 'pushed' })
-        setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
-      }
+    const ok = await saveToRegistry(slug, draft)
+    if (ok) {
+      set({ publishMode: 'pushed' })
+      setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
+    } else {
+      set({ publishMode: 'error', publishError: 'No se pudo guardar la invitación en el servidor.' })
     }
 
-    // PRIORITY 3: hash fallback (link funcional pero largo).
-    if (!stored) {
-      try {
-        const compressed = await encodeInvitationCompressed(draft)
-        sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
-      } catch { /* ignore */ }
-      set({ publishMode: 'error', publishError: 'Backend no disponible; usando link con datos embebidos.' })
-    }
-
-    const published: Invitation = { ...draft, publicSlug: slug, sharedLink }
+    const published = draft
 
     try {
       window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
@@ -341,8 +316,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } catch {
       /* ignore */
     }
-    if (inv.publicSlug && isJsonBlobId(inv.publicSlug)) {
-      await deleteFromJsonBlob(inv.publicSlug)
+    if (inv.publicSlug) {
+      await deleteFromRegistry(inv.publicSlug)
     }
     const updated: Invitation = { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() }
     try {

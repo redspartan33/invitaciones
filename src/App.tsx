@@ -6,11 +6,10 @@ import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
 import {
   decodeInvitation,
   decodeInvitationCompressed,
-  fetchPublishedFromBackend,
-  loadBackend,
   loadPublishedById,
 } from './store/editorStore'
 import { fetchFromJsonBlob, isJsonBlobId } from './utils/jsonblob'
+import { loadFromRegistry } from './utils/inviteRegistry'
 import type { Invitation } from './types/invitation.types'
 
 type Route =
@@ -23,7 +22,8 @@ type Route =
 function resolveRoute(url: URL): Route {
   const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
   const hashParams = new URLSearchParams(hash)
-  const inv = url.searchParams.get('inv') || undefined
+  // Accept both `?id=` (new short-slug format) and `?inv=` (legacy).
+  const inv = url.searchParams.get('id') || url.searchParams.get('inv') || undefined
   const compressed = hashParams.get('d')
   if (compressed) return { kind: 'public-hash', encoded: compressed, compressed: true, slug: inv }
   const data = hashParams.get('data')
@@ -46,25 +46,14 @@ async function resolvePublic(route: Route): Promise<Invitation | null> {
       : decodeInvitation(route.encoded)
   }
   if (route.kind === 'public-id') {
-    // Short slugs → our own Vercel serverless backend (Vercel Blob).
+    // Primary: shared registry indexed by short slug.
     if (!isJsonBlobId(route.id)) {
-      try {
-        const res = await fetch(`/api/invitations/${route.id}`, { headers: { Accept: 'application/json' } })
-        if (res.ok) {
-          const data = (await res.json()) as Invitation
-          if (data?.id && Array.isArray(data.blocks)) return data
-        }
-      } catch { /* fall through */ }
-    }
-    // UUID-like ids → JSONBlob fallback.
-    if (isJsonBlobId(route.id)) {
-      const remote = await fetchFromJsonBlob(route.id)
+      const remote = await loadFromRegistry(route.id)
       if (remote) return remote
     }
-    // Legacy self-hosted backend (rarely used).
-    const backend = loadBackend()
-    if (backend.baseUrl && backend.baseUrl !== '/api') {
-      const remote = await fetchPublishedFromBackend(route.id, backend)
+    // Legacy: previous JSONBlob UUID slugs.
+    if (isJsonBlobId(route.id)) {
+      const remote = await fetchFromJsonBlob(route.id)
       if (remote) return remote
     }
     return loadPublishedById(route.id)

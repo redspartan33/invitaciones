@@ -150,11 +150,6 @@ export function EditorHeader() {
                 ¡Invitación publicada! Comparte el link con tus invitados.
               </p>
             )}
-            <p className="mb-3 text-xs text-ink-500">
-              Comparte este <b>enlace único</b> con tus invitados. Funciona en cualquier dispositivo
-              porque la invitación se guarda en tu propio dominio.
-            </p>
-
             <label className="label-flat">Enlace de la invitación</label>
             <div className="mb-3 flex items-center gap-2">
               <input type="text" readOnly value={shareLink} className="input-flat flex-1 text-xs font-mono" />
