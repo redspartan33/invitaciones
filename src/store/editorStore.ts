@@ -17,8 +17,12 @@ export interface BackendConfig {
   token: string
 }
 
-const DEFAULT_BACKEND_URL = '/api/index.php'
-const LEGACY_BACKEND_URLS = ['https://api.lamartinasma.com', 'https://api.lamartinasma.com/']
+const DEFAULT_BACKEND_URL = '/api'
+const LEGACY_BACKEND_URLS = [
+  'https://api.lamartinasma.com',
+  'https://api.lamartinasma.com/',
+  '/api/index.php',
+]
 
 function loadBackend(): BackendConfig {
   if (typeof window === 'undefined') return { baseUrl: DEFAULT_BACKEND_URL, token: '' }
@@ -267,13 +271,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { invitation: inv, backend } = get()
     const now = new Date().toISOString()
     const slug = inv.publicSlug || generateShortSlug()
-    // The link embeds the full invitation as a compressed hash payload so it
-    // works on any device without a backend. The slug stays in the query for
-    // identity/analytics and is also used when the backend is available.
-    const baseToCompress: Invitation = { ...inv, publicSlug: slug, status: 'published', updatedAt: now }
-    const compressed = await encodeInvitationCompressed(baseToCompress)
-    const sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
-    const published: Invitation = { ...baseToCompress, sharedLink }
+    // Short, clean link — relies on the serverless backend (Vercel Blob via
+    // `/api/invitations/<slug>`) to serve the payload. The fallback hash is
+    // appended below only if the remote PUT fails.
+    let sharedLink = `${window.location.origin}/?inv=${slug}`
+    const published: Invitation = { ...inv, publicSlug: slug, status: 'published', updatedAt: now, sharedLink }
 
     try {
       window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
@@ -297,6 +299,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         set({ publishMode: 'pushed' })
         setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
       } catch (e) {
+        // Remote storage failed — fall back to embedding the invitation in the
+        // hash so the link still works cross-device (longer URL, but accessible).
+        try {
+          const compressed = await encodeInvitationCompressed(published)
+          sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
+          published.sharedLink = sharedLink
+          window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
+          window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(published))
+        } catch { /* ignore */ }
         set({ publishMode: 'error', publishError: (e as Error).message })
       }
     }

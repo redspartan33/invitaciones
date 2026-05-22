@@ -99,48 +99,32 @@ su contenido) al `public_html` de Hostinger via File Manager, FTP o SFTP.
 - SPA fallback: cualquier ruta cae en `index.html` para que `/?inv=<id>` funcione
 - Cache largo para los assets hasheados, `no-cache` para el HTML
 
-## Backend en Hostinger
+## Backend en Vercel (Vercel Blob)
 
-El backend está deployado en Hostinger con Node.js + Express:
+El backend vive en este mismo repo como funciones serverless de Vercel y guarda
+cada invitación como un blob público JSON. No requiere base de datos ni
+subdominio: comparte el dominio del frontend.
 
-**API URL:** `https://api.lamartinasma.com` (requiere que crees la subdomain en cPanel)
-
-### Endpoints
+**Endpoints (mismo origen):**
 
 ```
-GET    /health                 → { status: "ok", timestamp: "..." }
-PUT    /invitations/<id>       → { success: true, id: "<id>" }
-GET    /invitations/<id>       → { Invitation JSON } | 404
-DELETE /invitations/<id>       → { success: true } | 404
+GET    /api/health                       → { ok: true }
+PUT    /api/invitations/<slug>           → { ok: true }    (body: Invitation JSON)
+GET    /api/invitations/<slug>           → Invitation JSON | 404
+DELETE /api/invitations/<slug>           → { ok: true }
 ```
 
-### Setup en Hostinger
+### Setup en Vercel (una sola vez)
 
-El código del backend ya está en `/home/u814790894/domains/api.lamartinasma.com/public_html/`:
+1. En el dashboard de Vercel del proyecto, ve a **Storage → Create Database
+   → Blob → Connect to Project**.
+2. Vercel inyecta automáticamente `BLOB_READ_WRITE_TOKEN` como variable de
+   entorno del proyecto. No hay que copiar nada manualmente.
+3. Redeploy: el endpoint `/api/invitations/<slug>` queda listo.
 
-1. **Crea el subdomain en cPanel:**
-   - Ve a **Addon Domains** o **Subdomains**
-   - Nombre: `api.lamartinasma.com`
-   - Document Root: `/home/u814790894/domains/api.lamartinasma.com/public_html`
-   - Salva y espera a que DNS se propague (~5-15 min)
+### Sin backend (fallback)
 
-2. **Habilita Node.js (si no lo está):**
-   - Ve a **Setup Node.js App** en cPanel
-   - Si aparece el dominio, selecciona y aplica
-
-3. **El app.js se ejecutará automáticamente con Passenger**
-   - La app escucha en puerto 3000 internamente
-   - Passenger expone a través de HTTPS (lamartinasma.com/api/)
-
-### Almacenamiento
-
-- Los datos se guardan en `/app/data/<id>.json`
-- Máximo 50 MB por invitación
-- Sin base de datos - escalable para primeras fases
-
-### Sin backend
-
-La app sigue funcionando sin API configurada:
-- Guarda en `localStorage` (mismo navegador)
-- Link portable: datos embebidos en el hash de la URL
-- Útil para testing o compartir temporalmente
+Si la conexión al Blob falla en el momento de publicar, `publishInvitation`
+genera automáticamente un link con el payload comprimido en el hash
+(`/?inv=<slug>#d=<compressed>`). El link es más largo pero abre en cualquier
+dispositivo sin depender del backend.
