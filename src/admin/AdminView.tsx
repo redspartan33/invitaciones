@@ -1,20 +1,63 @@
 import { useEffect, useState } from 'react'
-import { PUBLISHED_PREFIX, useEditorStore } from '../store/editorStore'
+import { INVITATION_PREFIX, PUBLISHED_PREFIX, useEditorStore } from '../store/editorStore'
 import type { Invitation } from '../types/invitation.types'
 import { ADMIN_TOKEN } from './adminAuth'
 
-function loadAllPublished(): Invitation[] {
+function StatusBadge({ status }: { status: 'draft' | 'published' | 'archived' }) {
+  const map = {
+    draft: { label: 'Borrador', cls: 'bg-ink-100 text-ink-600 border border-ink-200' },
+    published: { label: 'Publicada', cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200' },
+    archived: { label: 'Archivada', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
+  } as const
+  const v = map[status] || map.draft
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${v.cls}`}>
+      {v.label}
+    </span>
+  )
+}
+
+function loadAllInvitations(): Invitation[] {
   const list: Invitation[] = []
+  const seenIds = new Set<string>()
+
+  // 1. Cargar copias maestras/borradores
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i)
+    if (!key || !key.startsWith(INVITATION_PREFIX)) continue
+    try {
+      const raw = window.localStorage.getItem(key)
+      if (raw) {
+        const inv = JSON.parse(raw) as Invitation
+        list.push(inv)
+        seenIds.add(inv.id)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // 2. Cargar publicadas antiguas para migración y retrocompatibilidad
   for (let i = 0; i < window.localStorage.length; i++) {
     const key = window.localStorage.key(i)
     if (!key || !key.startsWith(PUBLISHED_PREFIX)) continue
     try {
       const raw = window.localStorage.getItem(key)
-      if (raw) list.push(JSON.parse(raw) as Invitation)
+      if (raw) {
+        const inv = JSON.parse(raw) as Invitation
+        if (!seenIds.has(inv.id)) {
+          // Guardar copia maestra automáticamente
+          const masterKey = INVITATION_PREFIX + inv.id
+          window.localStorage.setItem(masterKey, JSON.stringify(inv))
+          list.push(inv)
+          seenIds.add(inv.id)
+        }
+      }
     } catch {
       /* ignore */
     }
   }
+
   return list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
 }
 
@@ -23,15 +66,22 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
   const unpublish = useEditorStore((s) => s.unpublishInvitation)
   const loadInvitation = useEditorStore((s) => s.loadInvitation)
 
-  const refresh = () => setItems(loadAllPublished())
+  const refresh = () => setItems(loadAllInvitations())
   useEffect(() => {
     refresh()
   }, [])
 
   const onDelete = async (inv: Invitation) => {
     if (!confirm(`¿Eliminar la invitación "${inv.title}"?`)) return
-    loadInvitation(inv)
-    await unpublish()
+    
+    // Si estaba publicada, despublicarla del backend
+    if (inv.status === 'published') {
+      loadInvitation(inv)
+      await unpublish()
+    }
+    
+    // Eliminar claves locales
+    window.localStorage.removeItem(INVITATION_PREFIX + inv.id)
     window.localStorage.removeItem(PUBLISHED_PREFIX + (inv.publicSlug || inv.id))
     refresh()
   }
@@ -56,7 +106,7 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
       <main className="mx-auto max-w-5xl px-8 py-10">
         {items.length === 0 ? (
           <div className="rounded border border-dashed border-ink-300 bg-white p-12 text-center">
-            <p className="text-ink-500">Aún no has publicado ninguna invitación.</p>
+            <p className="text-ink-500">Aún no has creado ninguna invitación.</p>
             <button onClick={() => onOpenEditor()} className="mt-4 btn-primary">
               Crear la primera
             </button>
@@ -64,27 +114,37 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
         ) : (
           <ul className="space-y-3">
             {items.map((inv) => {
-              const link = `${window.location.origin}/?inv=${inv.publicSlug || inv.id}`
+              const isPub = inv.status === 'published'
+              const link = isPub ? `${window.location.origin}/?inv=${inv.publicSlug || inv.id}` : ''
               return (
                 <li key={inv.id} className="flex items-center justify-between rounded border border-ink-200 bg-white px-5 py-4">
                   <div className="min-w-0">
-                    <p className="font-serif text-lg text-ink-900 truncate">{inv.title}</p>
+                    <div className="flex items-center gap-2.5">
+                      <p className="font-serif text-lg text-ink-900 truncate">{inv.title}</p>
+                      <StatusBadge status={inv.status} />
+                    </div>
                     <p className="mt-0.5 text-xs text-ink-400">
                       {inv.blocks.length} bloques · actualizada {new Date(inv.updatedAt).toLocaleString()}
                     </p>
-                    <a href={link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-ink-500 underline truncate max-w-md">
-                      {link}
-                    </a>
+                    {isPub ? (
+                      <a href={link} target="_blank" rel="noreferrer" className="mt-1.5 inline-block text-xs text-ink-500 underline truncate max-w-md">
+                        {link}
+                      </a>
+                    ) : (
+                      <p className="mt-1.5 text-xs text-ink-400 italic">No publicada (en borrador)</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(link)
-                      }}
-                      className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400"
-                    >
-                      Copiar link
-                    </button>
+                    {isPub && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(link)
+                        }}
+                        className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400"
+                      >
+                        Copiar link
+                      </button>
+                    )}
                     <button onClick={() => onEdit(inv)} className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400">
                       Editar
                     </button>

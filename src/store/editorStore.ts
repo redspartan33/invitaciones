@@ -82,6 +82,7 @@ interface EditorState {
 }
 
 export const PUBLISHED_PREFIX = 'invitation-builder:published:'
+export const INVITATION_PREFIX = 'invitation-builder:inv:'
 
 // Slug corto (~9 chars base62, ≈ 53 bits) — no enumerable y mucho más corto
 // que el UUID original. Suficiente para links privados.
@@ -223,8 +224,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
 
   resetDraft: () => {
-    if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY)
-    set({ invitation: createExampleInvitation(), selectedBlockId: null })
+    const { invitation } = get()
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(INVITATION_PREFIX + invitation.id)
+    }
+    const newInv = createExampleInvitation()
+    newInv.id = invitation.id // Mantener el mismo ID para seguir en la misma sesión
+    set({ invitation: newInv, selectedBlockId: null })
   },
 
   loadInvitation: (inv) => set({ invitation: inv, selectedBlockId: null }),
@@ -238,6 +244,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     try {
       window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
+      window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(published))
     } catch {
       /* ignore quota errors */
     }
@@ -283,7 +290,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         /* ignore */
       }
     }
-    set({ invitation: { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() } })
+    const updated: Invitation = { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() }
+    try {
+      window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(updated))
+    } catch {
+      /* ignore */
+    }
+    set({ invitation: updated })
   },
 
   setBackend: (patch) => {

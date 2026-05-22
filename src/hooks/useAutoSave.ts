@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { EDITOR_STORAGE_KEY, useEditorStore } from '../store/editorStore'
+import { INVITATION_PREFIX, useEditorStore } from '../store/editorStore'
 import type { Invitation } from '../types/invitation.types'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved'
@@ -23,7 +23,8 @@ export function useAutoSave(): { status: SaveStatus; lastSavedAt: Date | null } 
     timer.current = window.setTimeout(() => {
       try {
         const payload: Invitation = invitation
-        window.localStorage.setItem(EDITOR_STORAGE_KEY, JSON.stringify(payload))
+        const key = INVITATION_PREFIX + invitation.id
+        window.localStorage.setItem(key, JSON.stringify(payload))
         setStatus('saved')
         setLastSavedAt(new Date())
         window.setTimeout(() => setStatus('idle'), 1200)

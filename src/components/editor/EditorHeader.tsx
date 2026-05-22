@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { encodeInvitationCompressed, useEditorStore } from '../../store/editorStore'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { CopyIcon, ShareIcon } from '../blocks/icons'
+import { ADMIN_TOKEN } from '../../admin/adminAuth'
 
 export function EditorHeader() {
   const title = useEditorStore((s) => s.invitation.title)
@@ -49,9 +50,39 @@ export function EditorHeader() {
     }
   }
 
+  const [updating, setUpdating] = useState(false)
+  const [updateSuccess, setUpdateSuccess] = useState(false)
+
+  const onBackToAdmin = () => {
+    window.history.pushState({}, '', `/?admin=${ADMIN_TOKEN}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const onUpdatePublish = async () => {
+    setUpdating(true)
+    setUpdateSuccess(false)
+    try {
+      await publishInvitation()
+      setUpdateSuccess(true)
+      setTimeout(() => setUpdateSuccess(false), 3000)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   return (
     <header className="relative flex items-center justify-between border-b border-ink-200 bg-white px-6 py-3">
       <div className="flex items-center gap-4">
+        <button
+          onClick={onBackToAdmin}
+          className="btn-ghost flex items-center gap-1.5 px-2.5 py-1 text-xs hover:bg-ink-100 rounded text-ink-600 transition-colors"
+          title="Volver al panel"
+        >
+          ← Volver
+        </button>
+        <span className="h-5 w-px bg-ink-200" />
         <div className="flex h-7 w-7 items-center justify-center rounded bg-ink-900 text-xs font-bold text-white">D</div>
         <input
           type="text"
@@ -80,9 +111,30 @@ export function EditorHeader() {
           <ShareIcon className="h-4 w-4" /> Compartir
         </button>
         {isPublished ? (
-          <button onClick={() => { if (confirm('¿Despublicar invitación?')) void unpublishInvitation() }} className="btn-flat">
-            Despublicar
-          </button>
+          <>
+            <button
+              onClick={onUpdatePublish}
+              disabled={updating}
+              className={`btn-primary flex items-center gap-1.5 transition-all ${
+                updateSuccess ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''
+              }`}
+            >
+              {updating ? (
+                <>
+                  <span className="animate-spin inline-block">⏳</span> Guardando…
+                </>
+              ) : updateSuccess ? (
+                <>
+                  <span>✓</span> ¡Guardado!
+                </>
+              ) : (
+                'Guardar cambios'
+              )}
+            </button>
+            <button onClick={() => { if (confirm('¿Despublicar invitación?')) void unpublishInvitation() }} className="btn-flat">
+              Despublicar
+            </button>
+          </>
         ) : (
           <button onClick={onPublish} className="btn-primary">
             Publicar
