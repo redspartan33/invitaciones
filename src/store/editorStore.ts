@@ -9,6 +9,7 @@ import type {
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
 import { uploadToJsonBlob, deleteFromJsonBlob, isJsonBlobId } from '../utils/jsonblob'
+import { shortenUrl } from '../utils/shortener'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 const BACKEND_KEY = 'invitation-builder:backend'
@@ -282,7 +283,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     let sharedLink: string
     if (remoteId) {
       slug = remoteId
-      sharedLink = `${window.location.origin}/?inv=${remoteId}`
+      const canonical = `${window.location.origin}/?inv=${remoteId}`
+      // Shorten via TinyURL → "tinyurl.com/abc1234" (7-char code). The
+      // canonical URL still works; the short one redirects to it.
+      const shortened = await shortenUrl(canonical)
+      sharedLink = shortened ?? canonical
       set({ publishMode: 'pushed' })
       setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
     } else {
