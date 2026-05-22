@@ -25,7 +25,9 @@ export function ConfigPanel() {
         ) : activePanel === 'music' ? (
           <MusicPanel
             value={settings.backgroundMusic ?? ''}
+            autoplay={settings.backgroundMusicAutoplay ?? false}
             update={(v) => updateGlobalSettings({ backgroundMusic: v })}
+            updateAutoplay={(v) => updateGlobalSettings({ backgroundMusicAutoplay: v })}
           />
         ) : activePanel === 'details' ? (
           <DetailsPanel />
@@ -190,7 +192,17 @@ function FontsPanel({ font, update }: { font: FontFamily; update: (f: FontFamily
   )
 }
 
-function MusicPanel({ value, update }: { value: string; update: (v: string) => void }) {
+function MusicPanel({
+  value,
+  autoplay,
+  update,
+  updateAutoplay,
+}: {
+  value: string
+  autoplay: boolean
+  update: (v: string) => void
+  updateAutoplay: (v: boolean) => void
+}) {
   const tracks = [
     { url: '', label: 'Sin música' },
     { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', label: 'Clásica' },
@@ -266,6 +278,22 @@ function MusicPanel({ value, update }: { value: string; update: (v: string) => v
           className="input-flat"
         />
       </div>
+      <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-sm">
+        <span className="text-ink-700">Reproducir al abrir</span>
+        <button
+          type="button"
+          onClick={() => updateAutoplay(!autoplay)}
+          className={`relative h-5 w-9 rounded-full transition-colors ${autoplay ? 'bg-ink-900' : 'bg-ink-200'}`}
+          aria-pressed={autoplay}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? 'translate-x-4' : 'translate-x-0.5'}`}
+          />
+        </button>
+      </label>
+      <p className="text-[10px] text-ink-400">
+        Los navegadores pueden bloquear el autoplay; si no inicia, comenzará al primer toque del invitado.
+      </p>
     </div>
   )
 }

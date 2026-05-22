@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useEditorStore } from '../../store/editorStore'
+import { useEffect, useState } from 'react'
+import { encodeInvitationCompressed, useEditorStore } from '../../store/editorStore'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { CopyIcon, ShareIcon } from '../blocks/icons'
 
@@ -19,6 +19,18 @@ export function EditorHeader() {
   const isPublished = status === 'published'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareLink = invitation.sharedLink || (invitation.publicSlug ? `${origin}/?inv=${invitation.publicSlug}` : '')
+  const [portableLink, setPortableLink] = useState('')
+
+  useEffect(() => {
+    if (!shareOpen || !isPublished) return
+    let cancelled = false
+    encodeInvitationCompressed(invitation).then((c) => {
+      if (!cancelled) setPortableLink(`${origin}/?inv=${invitation.publicSlug || invitation.id}#d=${c}`)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [shareOpen, isPublished, invitation, origin])
 
   const onPublish = async () => {
     await publishInvitation()
@@ -96,11 +108,12 @@ export function EditorHeader() {
               </p>
             )}
             <p className="mb-3 text-xs text-ink-500">
-              Link corto con un slug aleatorio (no enumerable). Necesita estar conectada a un backend
-              para que abra desde otros dispositivos.
+              El <b>link corto</b> funciona si tienes backend conectado. El <b>link portable</b>
+              lleva la invitación embebida (comprimida) y abre desde cualquier dispositivo aunque
+              no haya backend.
             </p>
 
-            <label className="label-flat">Link de la invitación</label>
+            <label className="label-flat">Link corto</label>
             <div className="mb-3 flex items-center gap-2">
               <input type="text" readOnly value={shareLink} className="input-flat flex-1 text-xs font-mono" />
               <button onClick={() => onCopy(shareLink, 'simple')} className="btn-flat" title="Copiar">
@@ -109,8 +122,17 @@ export function EditorHeader() {
             </div>
             {copiedField === 'simple' && <p className="mb-3 text-xs text-emerald-600">¡Copiado!</p>}
 
+            <label className="label-flat">Link portable (cross-device)</label>
+            <div className="flex items-center gap-2">
+              <input type="text" readOnly value={portableLink} className="input-flat flex-1 text-xs font-mono" />
+              <button onClick={() => onCopy(portableLink, 'portable')} className="btn-flat" disabled={!portableLink} title="Copiar">
+                <CopyIcon className="h-4 w-4" />
+              </button>
+            </div>
+            {copiedField === 'portable' && <p className="mt-2 text-xs text-emerald-600">¡Copiado!</p>}
+
             <div className="mt-4 flex items-center gap-2">
-              <a href={shareLink} target="_blank" rel="noreferrer" className="btn-flat flex-1 justify-center">
+              <a href={portableLink || shareLink} target="_blank" rel="noreferrer" className="btn-flat flex-1 justify-center">
                 Abrir vista pública ↗
               </a>
             </div>

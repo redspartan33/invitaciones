@@ -138,6 +138,7 @@ export interface GlobalSettings {
   backgroundImage?: string
   logo?: string
   backgroundMusic?: string
+  backgroundMusicAutoplay?: boolean
 }
 
 export interface Invitation {

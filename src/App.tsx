@@ -3,23 +3,31 @@ import { InvitationBuilder } from './components/editor/InvitationBuilder'
 import { PublicInvitationView } from './components/public/PublicInvitationView'
 import { AdminView, ForbiddenView } from './admin/AdminView'
 import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
-import { decodeInvitation, fetchPublishedFromBackend, loadBackend, loadPublishedById } from './store/editorStore'
+import {
+  decodeInvitation,
+  decodeInvitationCompressed,
+  fetchPublishedFromBackend,
+  loadBackend,
+  loadPublishedById,
+} from './store/editorStore'
 import type { Invitation } from './types/invitation.types'
 
 type Route =
   | { kind: 'forbidden' }
   | { kind: 'admin' }
   | { kind: 'editor' }
-  | { kind: 'public-hash'; encoded: string }
+  | { kind: 'public-hash'; encoded: string; compressed: boolean; slug?: string }
   | { kind: 'public-id'; id: string }
 
 function resolveRoute(url: URL): Route {
   const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
   const hashParams = new URLSearchParams(hash)
+  const inv = url.searchParams.get('inv') || undefined
+  const compressed = hashParams.get('d')
+  if (compressed) return { kind: 'public-hash', encoded: compressed, compressed: true, slug: inv }
   const data = hashParams.get('data')
-  if (data) return { kind: 'public-hash', encoded: data }
+  if (data) return { kind: 'public-hash', encoded: data, compressed: false, slug: inv }
 
-  const inv = url.searchParams.get('inv')
   if (inv) return { kind: 'public-id', id: inv }
 
   if (isAdminUrl(url)) {
@@ -31,7 +39,11 @@ function resolveRoute(url: URL): Route {
 }
 
 async function resolvePublic(route: Route): Promise<Invitation | null> {
-  if (route.kind === 'public-hash') return decodeInvitation(route.encoded)
+  if (route.kind === 'public-hash') {
+    return route.compressed
+      ? await decodeInvitationCompressed(route.encoded)
+      : decodeInvitation(route.encoded)
+  }
   if (route.kind === 'public-id') {
     const backend = loadBackend()
     if (backend.baseUrl) {

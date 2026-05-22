@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { BlockFormField } from '../../hooks/useBlockForm'
 
 interface FieldProps {
@@ -88,23 +89,8 @@ function renderInput(
         </div>
       )
     case 'image':
-      return (
-        <div className="space-y-2">
-          <input
-            type="url"
-            id={id}
-            value={(value as string) ?? ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="https://..."
-            className={cls}
-          />
-          {typeof value === 'string' && value.length > 0 ? (
-            <div className="overflow-hidden rounded border border-ink-200 bg-ink-50">
-              <img src={value} alt="" className="block h-28 w-full object-cover" />
-            </div>
-          ) : null}
-        </div>
-      )
+      return <ImageField id={id} value={value as string} onChange={onChange} cls={cls} />
+
     case 'date':
     case 'time':
     case 'email':
@@ -121,4 +107,74 @@ function renderInput(
         />
       )
   }
+}
+
+function ImageField({
+  id,
+  value,
+  onChange,
+  cls,
+}: {
+  id: string
+  value: string | undefined
+  onChange: (v: unknown) => void
+  cls: string
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const v = value ?? ''
+
+  const onFile = (file: File) => {
+    if (file.size > 3 * 1024 * 1024) {
+      alert('La imagen pesa más de 3 MB. Usa una más ligera o pega una URL.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result))
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="url"
+          id={id}
+          value={v.startsWith('data:') ? '' : v}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Pega URL o sube archivo →"
+          className={`${cls} flex-1`}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+        >
+          Subir
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onFile(f)
+            e.target.value = ''
+          }}
+        />
+      </div>
+      {v && (
+        <div className="relative overflow-hidden rounded border border-ink-200 bg-ink-50">
+          <img src={v} alt="" className="block h-28 w-full object-cover" />
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-white"
+          >
+            Quitar
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }

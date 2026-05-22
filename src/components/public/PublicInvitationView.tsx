@@ -15,6 +15,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   const musicUrl = globalSettings.backgroundMusic && /^https?:\/\//i.test(globalSettings.backgroundMusic)
     ? globalSettings.backgroundMusic
     : ''
+  const autoplay = !!globalSettings.backgroundMusicAutoplay
 
   return (
     <div
@@ -34,12 +35,12 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           </div>
         ))}
       </div>
-      {musicUrl && <MusicPlayer src={musicUrl} />}
+      {musicUrl && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
     </div>
   )
 }
 
-function MusicPlayer({ src }: { src: string }) {
+function MusicPlayer({ src, autoplay }: { src: string; autoplay: boolean }) {
   const ref = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
 
@@ -47,9 +48,25 @@ function MusicPlayer({ src }: { src: string }) {
     const audio = ref.current
     if (!audio) return
     audio.volume = 0.5
-    // Intento de autoplay (la mayoría de navegadores lo bloquea hasta haber gesto)
-    audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
-  }, [src])
+    if (!autoplay) return
+    let cancelled = false
+    const tryPlay = () => audio.play().then(() => !cancelled && setPlaying(true))
+    tryPlay().catch(() => {
+      // Bloqueado por el navegador; iniciar al primer gesto del usuario
+      const onGesture = () => {
+        tryPlay().catch(() => undefined)
+        window.removeEventListener('pointerdown', onGesture)
+        window.removeEventListener('keydown', onGesture)
+        window.removeEventListener('touchstart', onGesture)
+      }
+      window.addEventListener('pointerdown', onGesture, { once: true })
+      window.addEventListener('keydown', onGesture, { once: true })
+      window.addEventListener('touchstart', onGesture, { once: true })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [src, autoplay])
 
   const toggle = () => {
     const audio = ref.current

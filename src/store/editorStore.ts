@@ -330,6 +330,32 @@ export function encodeInvitation(inv: Invitation): string {
   return btoa(utf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
+// Comprime + base64url. Reduce el JSON ~70-80% respecto a base64 plano.
+export async function encodeInvitationCompressed(inv: Invitation): Promise<string> {
+  const json = JSON.stringify(inv)
+  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'))
+  const buf = new Uint8Array(await new Response(stream).arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i])
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+export async function decodeInvitationCompressed(encoded: string): Promise<Invitation | null> {
+  try {
+    const padded = encoded.replace(/-/g, '+').replace(/_/g, '/')
+    const bin = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
+    const json = await new Response(stream).text()
+    const parsed = JSON.parse(json) as Invitation
+    if (!parsed?.id || !Array.isArray(parsed.blocks)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export function decodeInvitation(encoded: string): Invitation | null {
   try {
     const padded = encoded.replace(/-/g, '+').replace(/_/g, '/')
