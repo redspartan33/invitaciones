@@ -53,15 +53,16 @@ src/
 
 Esta app no tiene login. Las únicas rutas válidas son:
 
-- `/?admin=jb-c7f9a3e1b8d24f5e9a1c6b3d8e2f4a7b` → **Panel admin** privado. Lista todas las invitaciones publicadas, permite editarlas, copiar link o eliminar. Desde ahí se crean nuevas (`&new=1`) o se edita una existente (`&edit=<id>`).
-- `/?inv=<id>` → vista pública de una invitación publicada (busca primero en el backend si está configurado, luego en `localStorage`).
-- `/#data=<base64>` → vista pública portable (la invitación viaja codificada en la URL, sin backend).
+- `/?admin=jb-c7f9a3e1b8d24f5e9a1c6b3d8e2f4a7b` → **Panel admin** privado. Permite gestionar múltiples (N) invitaciones de manera aislada. Lista todas las invitaciones creadas (borradores y publicadas), permite editarlas sin interferencias, copiar su link corto único de compartir o eliminarlas físicamente de forma segura.
+- `/?inv=<slug>` → **Link corto y único** de vista pública para una invitación publicada (por ejemplo: `http://localhost:5173/?inv=sD7aK2fG9`). El `<slug>` es un identificador aleatorio base62 corto de solo 9 caracteres, lo que lo hace muy corto, fácil de compartir y sumamente seguro (alta entropía criptográfica, no enumerable para proteger la privacidad de tus invitados).
+- `/#data=<base64>` → Vista pública portable (los datos de la invitación viajan comprimidos y codificados en la URL, abriendo en cualquier dispositivo sin necesidad de backend).
 - **Cualquier otra ruta** (incluyendo `/`, links borrados o IDs inválidos) → **403 Acceso denegado**.
 
 El token admin está hardcodeado en `src/admin/adminAuth.ts`. Cámbialo antes de hacer deploy a producción.
-- Validación visual de campos requeridos
-- Auto-save a `localStorage` (debounced ~600ms)
-- Link público de compartir (demo)
+- Soporte para múltiples (N) invitaciones simultáneas e independientes en local y backend
+- Guardado y actualización directa ("Guardar cambios") de invitaciones publicadas sin alterar sus enlaces
+- Auto-save debounced a `localStorage` por invitación específica
+- Copiado rápido de link corto único en el panel de administrador
 - Modal de guía con instrucciones
 
 ## Desarrollo
