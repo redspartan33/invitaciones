@@ -43,7 +43,8 @@ src/
 - Cambios en el formulario actualizan el canvas en vivo
 - + Añadir bloque, duplicar, ocultar/mostrar, eliminar
 - Drag & drop para reordenar
-- Panel global de **colores** (3 colores + paletas sugeridas)
+- Panel global de **colores** (3 colores + paletas sugeridas) — los colores se aplican **solo al lienzo de la invitación**, nunca a la UI del editor
+- **Publicar** la invitación → genera un link privado (mismo navegador) y un link portable (toda la invitación viaja codificada en el hash, abre en cualquier dispositivo)
 - Panel global de **fuentes** (serif / sans / script)
 - Panel global de **música** (selector demo)
 - Viewport switcher: móvil / tablet / escritorio

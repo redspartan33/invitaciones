@@ -10,17 +10,17 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
         {data.title && <h2 className="font-serif text-3xl">{data.title}</h2>}
       </div>
       <div className="mt-10">
-        <ol className="relative space-y-6 border-l border-ink-200 pl-8">
+        <ol className="relative space-y-6 border-l pl-8 accent-border">
           {data.items.map((item) => (
             <li key={item.id} className="relative">
-              <span className="absolute -left-[42px] flex h-7 w-7 items-center justify-center rounded-full border border-ink-200 bg-white">
+              <span className="absolute -left-[42px] flex h-7 w-7 items-center justify-center rounded-full accent-bg">
                 <TimelineActIcon kind={item.icon} className="h-4 w-4" />
               </span>
               <div className="flex items-baseline gap-4">
-                <span className="w-16 shrink-0 font-mono text-xs uppercase tracking-widest text-ink-500">{item.time}</span>
+                <span className="w-16 shrink-0 font-mono text-xs uppercase tracking-widest opacity-70">{item.time}</span>
                 <div>
-                  <p className="font-medium text-ink-900">{item.title}</p>
-                  {item.description && <p className="text-sm text-ink-500">{item.description}</p>}
+                  <p className="font-medium">{item.title}</p>
+                  {item.description && <p className="text-sm opacity-70">{item.description}</p>}
                 </div>
               </div>
             </li>

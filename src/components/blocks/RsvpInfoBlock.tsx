@@ -7,15 +7,15 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
-        <p className="mb-2 text-xs uppercase tracking-[0.3em] text-ink-500">RSVP</p>
+        <p className="accent mb-2 text-xs uppercase tracking-[0.3em]">RSVP</p>
         <h2 className="font-serif text-3xl">Confirma tu asistencia</h2>
-        {data.instructions && <p className="mx-auto mt-3 max-w-md text-sm text-ink-600">{data.instructions}</p>}
+        {data.instructions && <p className="mx-auto mt-3 max-w-md text-sm opacity-80">{data.instructions}</p>}
         {data.deadline && (
           <p className="mt-4 text-sm">
             Fecha límite: <span className="font-medium">{formatDate(data.deadline, 'DD MMMM YYYY')}</span>
           </p>
         )}
-        <div className="mt-6 flex flex-col items-center gap-2 text-sm text-ink-700">
+        <div className="mt-6 flex flex-col items-center gap-2 text-sm opacity-80">
           {data.contactEmail && <span>✉ {data.contactEmail}</span>}
           {data.contactPhone && <span>☏ {data.contactPhone}</span>}
         </div>
@@ -24,13 +24,13 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
             href={data.rsvpLink}
             target="_blank"
             rel="noreferrer"
-            className="mt-6 inline-block border border-ink-900 px-6 py-3 text-xs uppercase tracking-[0.3em] text-ink-900 transition-colors hover:bg-ink-900 hover:text-white"
+            className="invitation-btn mt-6"
           >
             Confirmar asistencia
           </a>
         )}
         {data.accessCode && (
-          <p className="mt-4 text-xs text-ink-500">Código de acceso: <span className="font-mono">{data.accessCode}</span></p>
+          <p className="mt-4 text-xs opacity-70">Código de acceso: <span className="font-mono">{data.accessCode}</span></p>
         )}
       </div>
     </BlockWrapper>

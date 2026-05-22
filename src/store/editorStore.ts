@@ -45,7 +45,11 @@ interface EditorState {
   updateTitle: (title: string) => void
   resetDraft: () => void
   loadInvitation: (inv: Invitation) => void
+  publishInvitation: () => string
+  unpublishInvitation: () => void
 }
+
+export const PUBLISHED_PREFIX = 'invitation-builder:published:'
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   invitation: loadInitial(),
@@ -178,6 +182,61 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   loadInvitation: (inv) => set({ invitation: inv, selectedBlockId: null }),
+
+  publishInvitation: () => {
+    const inv = get().invitation
+    const now = new Date().toISOString()
+    const sharedLink = `${window.location.origin}/?inv=${inv.id}`
+    const published: Invitation = { ...inv, status: 'published', updatedAt: now, sharedLink }
+    try {
+      window.localStorage.setItem(PUBLISHED_PREFIX + inv.id, JSON.stringify(published))
+    } catch {
+      /* ignore quota errors */
+    }
+    set({ invitation: published })
+    return sharedLink
+  },
+
+  unpublishInvitation: () => {
+    const inv = get().invitation
+    try {
+      window.localStorage.removeItem(PUBLISHED_PREFIX + inv.id)
+    } catch {
+      /* ignore */
+    }
+    set({ invitation: { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() } })
+  },
 }))
+
+// Serialize an invitation into a URL-safe base64 string, so it can be shared
+// via link across browsers without a backend.
+export function encodeInvitation(inv: Invitation): string {
+  const json = JSON.stringify(inv)
+  const utf8 = unescape(encodeURIComponent(json))
+  return btoa(utf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+export function decodeInvitation(encoded: string): Invitation | null {
+  try {
+    const padded = encoded.replace(/-/g, '+').replace(/_/g, '/')
+    const utf8 = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
+    const json = decodeURIComponent(escape(utf8))
+    const parsed = JSON.parse(json) as Invitation
+    if (!parsed?.id || !Array.isArray(parsed.blocks)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+export function loadPublishedById(id: string): Invitation | null {
+  try {
+    const raw = window.localStorage.getItem(PUBLISHED_PREFIX + id)
+    if (!raw) return null
+    return JSON.parse(raw) as Invitation
+  } catch {
+    return null
+  }
+}
 
 export const EDITOR_STORAGE_KEY = STORAGE_KEY

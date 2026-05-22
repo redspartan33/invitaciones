@@ -13,7 +13,7 @@ export function GalleryBlock({ block }: { block: InvitationBlock<'gallery'> }) {
       )}
       <div className={`grid ${cols} gap-2`}>
         {data.images.map((img) => (
-          <div key={img.id} className="aspect-square overflow-hidden bg-ink-100">
+          <div key={img.id} className="aspect-square overflow-hidden border accent-border bg-black/5">
             <img src={img.url} alt={img.caption ?? ''} className="block h-full w-full object-cover" loading="lazy" />
           </div>
         ))}

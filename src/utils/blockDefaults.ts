@@ -26,7 +26,7 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       alignment: 'center',
       dateFormat: 'DD MMMM YYYY',
       eventDate: '2026-06-15',
-      backgroundColor: '#fafafa',
+      backgroundColor: '',
       showDate: true,
       showTitle: true,
       showSubtitle: true,

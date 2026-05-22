@@ -49,7 +49,7 @@ export function Canvas() {
     <div className="h-full overflow-auto bg-ink-100 scroll-thin">
       <div className="mx-auto p-8" onClick={() => selectBlock(null)}>
         <div
-          className={`mx-auto bg-white border border-ink-200 transition-all ${viewportClass[viewport]} ${fontClass}`}
+          className={`invitation-canvas mx-auto border border-ink-200 transition-all ${viewportClass[viewport]} ${fontClass}`}
           style={
             {
               ['--color-accent' as never]: colorAccent,

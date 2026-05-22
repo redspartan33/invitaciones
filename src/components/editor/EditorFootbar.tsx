@@ -43,7 +43,7 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
       </div>
 
       <div className="relative">
-        <button onClick={() => setAddOpen((v) => !v)} className="btn-accent">
+        <button onClick={() => setAddOpen((v) => !v)} className="btn-primary">
           <PlusIcon className="h-4 w-4" /> Añadir bloque
         </button>
         {addOpen && (
