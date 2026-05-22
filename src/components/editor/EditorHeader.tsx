@@ -21,8 +21,8 @@ export function EditorHeader() {
   const simpleLink = `${origin}/?inv=${invitation.id}`
   const portableLink = `${origin}/?inv=${invitation.id}#data=${encodeInvitation(invitation)}`
 
-  const onPublish = () => {
-    publishInvitation()
+  const onPublish = async () => {
+    await publishInvitation()
     setJustPublished(true)
     setShareOpen(true)
     setTimeout(() => setJustPublished(false), 2500)
@@ -69,7 +69,7 @@ export function EditorHeader() {
           <ShareIcon className="h-4 w-4" /> Compartir
         </button>
         {isPublished ? (
-          <button onClick={() => { if (confirm('¿Despublicar invitación?')) unpublishInvitation() }} className="btn-flat">
+          <button onClick={() => { if (confirm('¿Despublicar invitación?')) void unpublishInvitation() }} className="btn-flat">
             Despublicar
           </button>
         ) : (

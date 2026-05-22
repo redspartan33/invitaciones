@@ -24,6 +24,7 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
         <FootbarBtn label="Colores" active={activePanel === 'colors'} onClick={() => setActivePanel(activePanel === 'colors' ? null : 'colors')} />
         <FootbarBtn label="Fuentes" active={activePanel === 'fonts'} onClick={() => setActivePanel(activePanel === 'fonts' ? null : 'fonts')} />
         <FootbarBtn label="Música" active={activePanel === 'music'} onClick={() => setActivePanel(activePanel === 'music' ? null : 'music')} />
+        <FootbarBtn label="API" active={activePanel === 'api'} onClick={() => setActivePanel(activePanel === 'api' ? null : 'api')} />
         <span className="mx-2 h-5 w-px bg-ink-200" />
         <FootbarBtn label="Guía" onClick={onShowGuide} />
       </div>

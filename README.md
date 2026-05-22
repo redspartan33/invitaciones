@@ -68,3 +68,41 @@ App: http://localhost:5173
 npm run build
 npm run preview
 ```
+
+## Deploy a Hostinger (u otro hosting estático)
+
+**Importante:** no se puede subir el código fuente directamente — el navegador no
+ejecuta TypeScript ni resuelve imports como `import React from 'react'`. Hay que
+compilarlo con Vite primero:
+
+```bash
+npm run build
+```
+
+Esto genera la carpeta `dist/`. Sube **todo el contenido de `dist/`** (no la carpeta,
+su contenido) al `public_html` de Hostinger via File Manager, FTP o SFTP.
+
+`public/.htaccess` se copia automáticamente al build y hace dos cosas:
+
+- SPA fallback: cualquier ruta cae en `index.html` para que `/?inv=<id>` funcione
+- Cache largo para los assets hasheados, `no-cache` para el HTML
+
+## Backend opcional
+
+Si conectas un backend en el panel **API** del editor, la app:
+
+- Publica la invitación con `PUT {baseUrl}/invitations/<id>`
+- La vista pública la lee con `GET {baseUrl}/invitations/<id>`
+- Probarás la conexión con `GET {baseUrl}/health`
+
+Contrato mínimo del backend:
+
+```
+PUT    /invitations/<id>   { Invitation JSON }
+GET    /invitations/<id>   → Invitation JSON
+DELETE /invitations/<id>
+GET    /health             → 200 OK
+```
+
+Sin backend, la publicación sigue funcionando con `localStorage` (mismo navegador)
++ link portable (datos embebidos en el hash de la URL).

@@ -10,6 +10,31 @@ import type {
 import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
 
 const STORAGE_KEY = 'invitation-builder:draft'
+const BACKEND_KEY = 'invitation-builder:backend'
+
+export interface BackendConfig {
+  baseUrl: string
+  token: string
+}
+
+function loadBackend(): BackendConfig {
+  if (typeof window === 'undefined') return { baseUrl: '', token: '' }
+  try {
+    const raw = window.localStorage.getItem(BACKEND_KEY)
+    if (raw) return { baseUrl: '', token: '', ...(JSON.parse(raw) as Partial<BackendConfig>) }
+  } catch {
+    /* ignore */
+  }
+  return { baseUrl: '', token: '' }
+}
+
+function persistBackend(b: BackendConfig) {
+  try {
+    window.localStorage.setItem(BACKEND_KEY, JSON.stringify(b))
+  } catch {
+    /* ignore */
+  }
+}
 
 function loadInitial(): Invitation {
   if (typeof window === 'undefined') return createExampleInvitation()
@@ -25,11 +50,16 @@ function loadInitial(): Invitation {
   return createExampleInvitation()
 }
 
+export type PublishMode = 'idle' | 'pushing' | 'pushed' | 'error'
+
 interface EditorState {
   invitation: Invitation
   selectedBlockId: string | null
   viewport: ViewportMode
-  activePanel: 'block' | 'colors' | 'fonts' | 'music' | 'details' | null
+  activePanel: 'block' | 'colors' | 'fonts' | 'music' | 'details' | 'api' | null
+  backend: BackendConfig
+  publishMode: PublishMode
+  publishError: string | null
   // actions
   selectBlock: (id: string | null) => void
   setActivePanel: (p: EditorState['activePanel']) => void
@@ -45,8 +75,10 @@ interface EditorState {
   updateTitle: (title: string) => void
   resetDraft: () => void
   loadInvitation: (inv: Invitation) => void
-  publishInvitation: () => string
-  unpublishInvitation: () => void
+  publishInvitation: () => Promise<string>
+  unpublishInvitation: () => Promise<void>
+  setBackend: (patch: Partial<BackendConfig>) => void
+  testBackend: () => Promise<{ ok: boolean; message: string }>
 }
 
 export const PUBLISHED_PREFIX = 'invitation-builder:published:'
@@ -56,6 +88,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedBlockId: null,
   viewport: 'desktop',
   activePanel: 'block',
+  backend: loadBackend(),
+  publishMode: 'idle',
+  publishError: null,
 
   selectBlock: (id) => set({ selectedBlockId: id, activePanel: id ? 'block' : get().activePanel }),
   setActivePanel: (p) => set({ activePanel: p }),
@@ -183,30 +218,96 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   loadInvitation: (inv) => set({ invitation: inv, selectedBlockId: null }),
 
-  publishInvitation: () => {
-    const inv = get().invitation
+  publishInvitation: async () => {
+    const { invitation: inv, backend } = get()
     const now = new Date().toISOString()
     const sharedLink = `${window.location.origin}/?inv=${inv.id}`
     const published: Invitation = { ...inv, status: 'published', updatedAt: now, sharedLink }
+
     try {
       window.localStorage.setItem(PUBLISHED_PREFIX + inv.id, JSON.stringify(published))
     } catch {
       /* ignore quota errors */
     }
+
+    if (backend.baseUrl) {
+      set({ publishMode: 'pushing', publishError: null })
+      try {
+        const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${inv.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(backend.token ? { Authorization: `Bearer ${backend.token}` } : {}),
+          },
+          body: JSON.stringify(published),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        set({ publishMode: 'pushed' })
+        setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
+      } catch (e) {
+        set({ publishMode: 'error', publishError: (e as Error).message })
+      }
+    }
+
     set({ invitation: published })
     return sharedLink
   },
 
-  unpublishInvitation: () => {
-    const inv = get().invitation
+  unpublishInvitation: async () => {
+    const { invitation: inv, backend } = get()
     try {
       window.localStorage.removeItem(PUBLISHED_PREFIX + inv.id)
     } catch {
       /* ignore */
     }
+    if (backend.baseUrl) {
+      try {
+        await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${inv.id}`, {
+          method: 'DELETE',
+          headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
+        })
+      } catch {
+        /* ignore */
+      }
+    }
     set({ invitation: { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() } })
   },
+
+  setBackend: (patch) => {
+    const next = { ...get().backend, ...patch }
+    persistBackend(next)
+    set({ backend: next })
+  },
+
+  testBackend: async () => {
+    const { backend } = get()
+    if (!backend.baseUrl) return { ok: false, message: 'Falta la URL base' }
+    try {
+      const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/health`, {
+        headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
+      })
+      if (res.ok) return { ok: true, message: `Conexión OK (${res.status})` }
+      return { ok: false, message: `HTTP ${res.status}` }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  },
 }))
+
+export async function fetchPublishedFromBackend(id: string, backend: BackendConfig): Promise<Invitation | null> {
+  if (!backend.baseUrl) return null
+  try {
+    const res = await fetch(`${backend.baseUrl.replace(/\/$/, '')}/invitations/${id}`, {
+      headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
+    })
+    if (!res.ok) return null
+    return (await res.json()) as Invitation
+  } catch {
+    return null
+  }
+}
+
+export { loadBackend }
 
 // Serialize an invitation into a URL-safe base64 string, so it can be shared
 // via link across browsers without a backend.
