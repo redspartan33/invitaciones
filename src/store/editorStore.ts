@@ -267,8 +267,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { invitation: inv, backend } = get()
     const now = new Date().toISOString()
     const slug = inv.publicSlug || generateShortSlug()
-    const sharedLink = `${window.location.origin}/?inv=${slug}`
-    const published: Invitation = { ...inv, publicSlug: slug, status: 'published', updatedAt: now, sharedLink }
+    // The link embeds the full invitation as a compressed hash payload so it
+    // works on any device without a backend. The slug stays in the query for
+    // identity/analytics and is also used when the backend is available.
+    const baseToCompress: Invitation = { ...inv, publicSlug: slug, status: 'published', updatedAt: now }
+    const compressed = await encodeInvitationCompressed(baseToCompress)
+    const sharedLink = `${window.location.origin}/?inv=${slug}#d=${compressed}`
+    const published: Invitation = { ...baseToCompress, sharedLink }
 
     try {
       window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
