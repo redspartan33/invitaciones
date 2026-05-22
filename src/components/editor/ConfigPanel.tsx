@@ -192,27 +192,40 @@ function FontsPanel({ font, update }: { font: FontFamily; update: (f: FontFamily
 
 function MusicPanel({ value, update }: { value: string; update: (v: string) => void }) {
   const tracks = [
-    { id: '', label: 'Sin música' },
-    { id: 'classical', label: 'Clásica' },
-    { id: 'acoustic', label: 'Acústica' },
-    { id: 'jazz', label: 'Jazz suave' },
-    { id: 'romantic', label: 'Romántica' },
+    { url: '', label: 'Sin música' },
+    { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', label: 'Clásica' },
+    { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', label: 'Acústica' },
+    { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', label: 'Jazz suave' },
+    { url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', label: 'Romántica' },
   ]
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-ink-500">Música de fondo para la vista pública (demo).</p>
+    <div className="space-y-3">
+      <p className="text-xs text-ink-500">
+        Música de fondo para la vista pública. Los invitados verán un botón para activarla
+        (los navegadores bloquean el autoplay sin interacción).
+      </p>
       {tracks.map((t) => (
         <button
-          key={t.id || 'none'}
-          onClick={() => update(t.id)}
+          key={t.url || 'none'}
+          onClick={() => update(t.url)}
           className={`flex w-full items-center justify-between rounded border px-4 py-3 text-left text-sm transition-colors ${
-            value === t.id ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white hover:border-ink-400'
+            value === t.url ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white hover:border-ink-400'
           }`}
         >
           {t.label}
-          {value === t.id && <span className="text-xs">✓</span>}
+          {value === t.url && <span className="text-xs">✓</span>}
         </button>
       ))}
+      <div>
+        <label className="label-flat">O pega una URL de audio (.mp3)</label>
+        <input
+          type="url"
+          value={value && !tracks.some((t) => t.url === value) ? value : ''}
+          onChange={(e) => update(e.target.value)}
+          placeholder="https://…/cancion.mp3"
+          className="input-flat"
+        />
+      </div>
     </div>
   )
 }

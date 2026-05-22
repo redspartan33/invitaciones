@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Invitation } from '../../types/invitation.types'
 import { BlockRenderer } from '../blocks/BlockRenderer'
 
@@ -11,6 +12,9 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
       : 'font-sans'
 
   const visible = [...blocks].sort((a, b) => a.order - b.order).filter((b) => b.visible)
+  const musicUrl = globalSettings.backgroundMusic && /^https?:\/\//i.test(globalSettings.backgroundMusic)
+    ? globalSettings.backgroundMusic
+    : ''
 
   return (
     <div
@@ -30,20 +34,48 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           </div>
         ))}
       </div>
+      {musicUrl && <MusicPlayer src={musicUrl} />}
     </div>
   )
 }
 
-export function NotFoundView() {
+function MusicPlayer({ src }: { src: string }) {
+  const ref = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  useEffect(() => {
+    const audio = ref.current
+    if (!audio) return
+    audio.volume = 0.5
+    // Intento de autoplay (la mayoría de navegadores lo bloquea hasta haber gesto)
+    audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+  }, [src])
+
+  const toggle = () => {
+    const audio = ref.current
+    if (!audio) return
+    if (audio.paused) {
+      audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    } else {
+      audio.pause()
+      setPlaying(false)
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-50 p-8 text-center">
-      <div>
-        <p className="font-serif text-4xl text-ink-900">Invitación no encontrada</p>
-        <p className="mt-2 text-sm text-ink-500">
-          El link puede haber expirado o aún no ha sido publicado en este navegador.
-        </p>
-        <a href="/" className="mt-6 inline-block btn-primary">Volver al editor</a>
-      </div>
-    </div>
+    <>
+      <audio ref={ref} src={src} loop preload="auto" />
+      <button
+        onClick={toggle}
+        aria-label={playing ? 'Pausar música' : 'Reproducir música'}
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-900 hover:border-ink-400"
+      >
+        {playing ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" /><rect x="14" y="5" width="4" height="14" /></svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+        )}
+      </button>
+    </>
   )
 }

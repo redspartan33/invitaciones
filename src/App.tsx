@@ -1,48 +1,73 @@
 import { useEffect, useState } from 'react'
 import { InvitationBuilder } from './components/editor/InvitationBuilder'
-import { NotFoundView, PublicInvitationView } from './components/public/PublicInvitationView'
+import { PublicInvitationView } from './components/public/PublicInvitationView'
+import { AdminView, ForbiddenView } from './admin/AdminView'
+import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
 import { decodeInvitation, fetchPublishedFromBackend, loadBackend, loadPublishedById } from './store/editorStore'
 import type { Invitation } from './types/invitation.types'
 
-async function readPublicInvitation(): Promise<Invitation | null> {
-  const url = new URL(window.location.href)
+type Route =
+  | { kind: 'forbidden' }
+  | { kind: 'admin' }
+  | { kind: 'editor' }
+  | { kind: 'public-hash'; encoded: string }
+  | { kind: 'public-id'; id: string }
+
+function resolveRoute(url: URL): Route {
   const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
   const hashParams = new URLSearchParams(hash)
   const data = hashParams.get('data')
-  if (data) {
-    const decoded = decodeInvitation(data)
-    if (decoded) return decoded
+  if (data) return { kind: 'public-hash', encoded: data }
+
+  const inv = url.searchParams.get('inv')
+  if (inv) return { kind: 'public-id', id: inv }
+
+  if (isAdminUrl(url)) {
+    if (url.searchParams.get('edit') || url.searchParams.get('new')) return { kind: 'editor' }
+    return { kind: 'admin' }
   }
-  const id = url.searchParams.get('inv')
-  if (!id) return null
-  const backend = loadBackend()
-  if (backend.baseUrl) {
-    const remote = await fetchPublishedFromBackend(id, backend)
-    if (remote) return remote
+
+  return { kind: 'forbidden' }
+}
+
+async function resolvePublic(route: Route): Promise<Invitation | null> {
+  if (route.kind === 'public-hash') return decodeInvitation(route.encoded)
+  if (route.kind === 'public-id') {
+    const backend = loadBackend()
+    if (backend.baseUrl) {
+      const remote = await fetchPublishedFromBackend(route.id, backend)
+      if (remote) return remote
+    }
+    return loadPublishedById(route.id)
   }
-  return loadPublishedById(id)
+  return null
 }
 
 export default function App() {
-  const url = new URL(window.location.href)
-  const isPublicView = url.searchParams.has('inv') || url.hash.includes('data=')
-
+  const [route, setRoute] = useState<Route>(() => resolveRoute(new URL(window.location.href)))
   const [publicInvitation, setPublicInvitation] = useState<Invitation | null | undefined>(
-    isPublicView ? undefined : null,
+    route.kind === 'public-hash' || route.kind === 'public-id' ? undefined : null,
   )
 
   useEffect(() => {
-    if (!isPublicView) return
+    const onPop = () => setRoute(resolveRoute(new URL(window.location.href)))
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  useEffect(() => {
+    if (route.kind !== 'public-hash' && route.kind !== 'public-id') return
     let cancelled = false
-    readPublicInvitation().then((inv) => {
+    setPublicInvitation(undefined)
+    resolvePublic(route).then((inv) => {
       if (!cancelled) setPublicInvitation(inv)
     })
     return () => {
       cancelled = true
     }
-  }, [isPublicView])
+  }, [route])
 
-  if (isPublicView) {
+  if (route.kind === 'public-hash' || route.kind === 'public-id') {
     if (publicInvitation === undefined) {
       return (
         <div className="flex min-h-screen items-center justify-center text-sm text-ink-500">
@@ -50,7 +75,25 @@ export default function App() {
         </div>
       )
     }
-    return publicInvitation ? <PublicInvitationView invitation={publicInvitation} /> : <NotFoundView />
+    return publicInvitation ? <PublicInvitationView invitation={publicInvitation} /> : <ForbiddenView />
   }
-  return <InvitationBuilder />
+
+  if (route.kind === 'admin') {
+    return (
+      <AdminView
+        onOpenEditor={(id) => {
+          const params = new URLSearchParams()
+          params.set('admin', ADMIN_TOKEN)
+          if (id) params.set('edit', id)
+          else params.set('new', '1')
+          window.history.pushState({}, '', `/?${params.toString()}`)
+          setRoute({ kind: 'editor' })
+        }}
+      />
+    )
+  }
+
+  if (route.kind === 'editor') return <InvitationBuilder />
+
+  return <ForbiddenView />
 }

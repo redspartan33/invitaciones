@@ -46,8 +46,19 @@ src/
 - Panel global de **colores** (3 colores + paletas sugeridas) — los colores se aplican **solo al lienzo de la invitación**, nunca a la UI del editor
 - **Publicar** la invitación → genera un link privado (mismo navegador) y un link portable (toda la invitación viaja codificada en el hash, abre en cualquier dispositivo)
 - Panel global de **fuentes** (serif / sans / script)
-- Panel global de **música** (selector demo)
+- Panel global de **música** — reproduce un MP3 real (presets de SoundHelix o URL custom) con botón flotante de play/pausa en la vista pública
 - Viewport switcher: móvil / tablet / escritorio
+
+## Rutas y acceso
+
+Esta app no tiene login. Las únicas rutas válidas son:
+
+- `/?admin=jb-c7f9a3e1b8d24f5e9a1c6b3d8e2f4a7b` → **Panel admin** privado. Lista todas las invitaciones publicadas, permite editarlas, copiar link o eliminar. Desde ahí se crean nuevas (`&new=1`) o se edita una existente (`&edit=<id>`).
+- `/?inv=<id>` → vista pública de una invitación publicada (busca primero en el backend si está configurado, luego en `localStorage`).
+- `/#data=<base64>` → vista pública portable (la invitación viaja codificada en la URL, sin backend).
+- **Cualquier otra ruta** (incluyendo `/`, links borrados o IDs inválidos) → **403 Acceso denegado**.
+
+El token admin está hardcodeado en `src/admin/adminAuth.ts`. Cámbialo antes de hacer deploy a producción.
 - Validación visual de campos requeridos
 - Auto-save a `localStorage` (debounced ~600ms)
 - Link público de compartir (demo)
