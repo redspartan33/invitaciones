@@ -1,112 +1,69 @@
 # Digital Invitation Builder
 
-App full-stack para crear invitaciones digitales por secciones (editor estilo Elementor), con confirmación de asistencia vía WhatsApp y panel de administración.
-
-## Estado actual
-
-- **Admin** (`/admin`): lista de invitaciones — crear, editar, ver, copiar link, eliminar.
-- **Editor estilo Elementor** (`/editor/:id`): lienzo vivo, selección de elemento + panel lateral, paleta de widgets, drag & drop. UI plana (sin sombras).
-- **Bloques**: Título, Texto, Imagen, Video. Por bloque: color de fondo, color de texto, espaciado interno, espacio entre secciones y animación de entrada (aparecer / deslizar / zoom).
-- **Media**: upload real de imágenes/videos al backend (multer).
-- **Vista pública** (`/invitations/:id`): invitación renderizada + confirmación por WhatsApp.
-- **Invitados** (`/invitations/:id/guests`): lista de confirmados.
+Editor visual estilo Invitio para crear invitaciones digitales profesionales
+(bodas, cumpleaños, eventos corporativos, etc.) con vista dividida
+**Canvas + ConfigPanel**, bloques modulares y preview en tiempo real.
 
 ## Stack
 
-React 18 + TypeScript + Tailwind + Vite · Node.js + Express + Prisma · PostgreSQL · @dnd-kit
-
-## Setup local
-
-### 1. Requisitos
-- Node.js 18+
-- PostgreSQL 14+
-
-### 2. Base de datos
-```bash
-createdb invitation_builder_dev
-```
-
-### 3. Variables de entorno
-
-`backend/.env` (ajusta usuario/clave a tu Postgres):
-```
-DATABASE_URL="postgresql://<usuario>@localhost:5432/invitation_builder_dev"
-PORT=5050
-NODE_ENV=development
-```
-> Nota: el puerto del backend es **5050** (en macOS el 5000 lo ocupa AirPlay/ControlCenter). El proxy del frontend (`vite.config.ts`) apunta a `:5050`.
-
-### 4. Instalación
-
-**Backend:**
-```bash
-cd backend
-npm install
-npx prisma db push   # aplica el esquema (db push, no migrate dev)
-npm run dev
-```
-
-**Frontend** (otra terminal):
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 5. URLs
-- Frontend: http://localhost:5173 (redirige a `/admin`)
-- Backend API: http://localhost:5050
-
-## API
-
-```
-GET    /api/health
-GET    /api/invitations
-GET    /api/invitations/:id
-POST   /api/invitations
-PUT    /api/invitations/:id
-DELETE /api/invitations/:id
-POST   /api/invitations/:id/publish
-GET    /api/invitations/:id/guests
-POST   /api/invitations/:id/guests
-POST   /api/upload                  # multipart, devuelve { url }
-GET    /uploads/:file               # archivos subidos (disco local)
-```
+- **Vite + React 18 + TypeScript**
+- **Tailwind CSS** (UI plana, sin sombras)
+- **Zustand** para estado global
+- **@dnd-kit** para reordenar bloques con drag & drop
+- **localStorage** para auto-save del borrador
 
 ## Estructura
 
 ```
-invitation-builder/
-├── backend/
-│   ├── src/server.ts          # Express: invitaciones, guests, upload
-│   ├── prisma/schema.prisma
-│   └── uploads/               # archivos subidos (gitignored)
-├── frontend/
-│   └── src/
-│       ├── blocks.ts          # modelo de bloques + generación de HTML
-│       ├── components/
-│       │   ├── Admin.tsx
-│       │   ├── Editor.tsx     # builder estilo Elementor
-│       │   ├── InvitationLanding.tsx
-│       │   └── GuestsPage.tsx
-│       └── App.tsx
-└── docs/
-    └── DEPLOY_HOSTINGER.md    # guía de despliegue
+src/
+├─ components/
+│  ├─ editor/         InvitationBuilder, EditorHeader, Canvas, ConfigPanel, Footbar
+│  ├─ blocks/         8 bloques renderizables (Hero, EventDetails, Timeline…)
+│  └─ forms/          DynamicBlockForm + sub-forms (Timeline, GiftRegistry, Gallery)
+├─ hooks/             useInvitationEditor, useSelectedBlock, useBlockForm, useAutoSave
+├─ store/             editorStore (Zustand)
+├─ types/             invitation.types.ts
+└─ utils/             blockDefaults, blockValidation
 ```
 
-## Despliegue
+## Tipos de bloques
 
-Ver [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md).
+1. **Hero** — Portada (título, subtítulo, fecha, fondo)
+2. **Event details** — Cuándo y dónde
+3. **Timeline** — Itinerario con iconos por actividad
+4. **Dress code** — Código de vestimenta + inspiración
+5. **Gift registry** — Mesa de regalos (links a tiendas)
+6. **RSVP info** — Instrucciones, fecha límite, contacto
+7. **Gallery** — Galería de fotos responsive
+8. **Footer** — Mensaje final + contacto + redes
 
-- El frontend usa `axios.defaults.baseURL = import.meta.env.VITE_API_URL`. En dev queda vacío (proxy de Vite); en producción hay que buildear con `VITE_API_URL=https://tu-backend`.
-- `frontend/public/.htaccess` se incluye en `dist/` al buildear → routing SPA en Apache.
-- Hosting **Shared/Premium NO corre Node**: ahí solo va el frontend estático; backend (Node) + Postgres deben ir en otro host. Opción gestionada recomendada: Hostinger "Node.js Web App" (Business/Cloud) + Postgres gestionada. Mover uploads a object storage (R2/S3) antes de producción.
+## Funcionalidades
 
-## Comandos útiles
+- Click en cualquier bloque → abre su formulario a la derecha
+- Cambios en el formulario actualizan el canvas en vivo
+- + Añadir bloque, duplicar, ocultar/mostrar, eliminar
+- Drag & drop para reordenar
+- Panel global de **colores** (3 colores + paletas sugeridas)
+- Panel global de **fuentes** (serif / sans / script)
+- Panel global de **música** (selector demo)
+- Viewport switcher: móvil / tablet / escritorio
+- Validación visual de campos requeridos
+- Auto-save a `localStorage` (debounced ~600ms)
+- Link público de compartir (demo)
+- Modal de guía con instrucciones
 
-**Backend:** `npm run dev` · `npm run build` · `npm run type-check` · `npx prisma studio`
-**Frontend:** `npm run dev` · `npm run build` · `npx tsc --noEmit`
+## Desarrollo
 
----
+```bash
+npm install
+npm run dev
+```
 
-**Stack**: React 18 + TS + Tailwind | Express + Prisma | PostgreSQL
+App: http://localhost:5173
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
