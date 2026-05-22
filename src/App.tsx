@@ -31,7 +31,11 @@ function resolveRoute(url: URL): Route {
 
   if (inv) return { kind: 'public-id', id: inv }
 
-  if (isAdminUrl(url)) {
+  // Auth gate temporarily disabled — any non-public route falls into the
+  // admin panel. Flip this flag back to `true` to re-enable the 403 rule.
+  const ADMIN_AUTH_ENABLED = false
+
+  if (!ADMIN_AUTH_ENABLED || isAdminUrl(url)) {
     if (url.searchParams.get('edit') || url.searchParams.get('new')) return { kind: 'editor' }
     return { kind: 'admin' }
   }
