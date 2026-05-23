@@ -52,6 +52,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
               <MenuHeaderBlock
                 block={block as InvitationBlock<'menu-header'>}
                 sectionsOverride={menuSections}
+                publicView
               />
             ) : (
               <BlockRenderer block={block} />
