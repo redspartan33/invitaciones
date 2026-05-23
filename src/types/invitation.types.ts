@@ -116,6 +116,14 @@ export interface RsvpInfoData {
   whatsappMessage?: string
   /** Label on the confirm button (defaults to "Confirmar asistencia"). */
   whatsappButtonLabel?: string
+  /** Toggle: when true guests confirm via inline form instead of WhatsApp. */
+  useRsvpForm?: boolean
+  /** When using form, a public guestlist link is generated and tied to this invitation (slug only). */
+  enableGuestList?: boolean
+  /** Generated guestlist slug (short id). */
+  guestListSlug?: string
+  /** Full shareable guestlist URL (client-side convenience). */
+  guestListLink?: string
 }
 
 export interface MapData {

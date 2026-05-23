@@ -147,6 +147,7 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
           { name: 'instructions', label: 'Instrucciones', kind: 'textarea' },
           { name: 'deadline', label: 'Fecha límite', kind: 'date' },
           { name: 'rsvpLink', label: 'Link de confirmación (fallback)', kind: 'url', helper: 'Se usa solo si no defines un WhatsApp abajo.' },
+          { name: 'useRsvpForm', label: 'Usar formulario en vez de WhatsApp', kind: 'toggle', helper: 'Si lo activas, los invitados confirman con un formulario y se genera un link público para ver la lista.' },
           { name: 'contactEmail', label: 'Email de contacto', kind: 'email' },
           { name: 'contactPhone', label: 'Teléfono de contacto', kind: 'text' },
           { name: 'accessCode', label: 'Código de acceso (opcional)', kind: 'text' },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { InvitationBuilder } from './components/editor/InvitationBuilder'
 import { PublicInvitationView } from './components/public/PublicInvitationView'
+import { GuestListView } from './components/public/GuestListView'
 import { AdminView, ForbiddenView } from './admin/AdminView'
 import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
 import { loadFromRegistry } from './utils/inviteRegistry'
@@ -11,9 +12,12 @@ type Route =
   | { kind: 'admin' }
   | { kind: 'editor' }
   | { kind: 'public-id'; id: string }
+  | { kind: 'public-guestlist'; slug: string }
 
 function resolveRoute(url: URL): Route {
   // Accept both `?id=` (new short-slug format) and `?inv=` (legacy).
+  const guestlist = url.searchParams.get('guestlist') || undefined
+  if (guestlist) return { kind: 'public-guestlist', slug: guestlist }
   const inv = url.searchParams.get('id') || url.searchParams.get('inv') || undefined
   if (inv) return { kind: 'public-id', id: inv }
 
@@ -61,6 +65,10 @@ export default function App() {
       )
     }
     return publicInvitation ? <PublicInvitationView invitation={publicInvitation} /> : <ForbiddenView />
+  }
+
+  if (route.kind === 'public-guestlist') {
+    return <GuestListView slug={route.slug} />
   }
 
   if (route.kind === 'admin') {

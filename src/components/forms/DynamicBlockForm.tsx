@@ -67,6 +67,27 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                         updateBlockData(block.id, { stickyHeader: false, stickyNavOnly: true })
                         return
                       }
+                      // Special handling: when enabling the RSVP form, generate a guestlist slug+link once.
+                      if (field.name === 'useRsvpForm') {
+                        const enabled = !!next
+                        if (enabled) {
+                          const curr = (block.data as Record<string, unknown>)['guestListSlug'] as string | undefined
+                          if (!curr) {
+                            const makeSlug = () => {
+                              const r = Math.random().toString(36).slice(2, 8)
+                              const t = Date.now().toString(36).slice(-4)
+                              return `${r}${t}`
+                            }
+                            const slug = makeSlug()
+                            const link = `${window.location.origin}/?guestlist=${slug}`
+                            updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
+                            return
+                          }
+                        }
+                        // If disabling, just update the flag
+                        updateBlockData(block.id, { useRsvpForm: enabled })
+                        return
+                      }
                       updateBlockData(block.id, { [field.name]: next })
                     }}
                   />
