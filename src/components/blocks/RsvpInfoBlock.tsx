@@ -27,6 +27,7 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   const [guestMessage, setGuestMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submittedOk, setSubmittedOk] = useState(false)
+  const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
@@ -66,6 +67,27 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
             >
               {buttonLabel}
             </button>
+            {isEditorView && data.guestListLink && (
+              <div className="mx-auto flex max-w-lg flex-col gap-3 rounded-3xl border border-ink-200 bg-white/90 p-4 text-left shadow-sm shadow-ink-200/10 text-sm">
+                <p className="text-sm text-ink-700">Comparte este link para que el cliente vea quién ha aceptado.</p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="text"
+                    readOnly
+                    value={data.guestListLink}
+                    className="input-flat flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(data.guestListLink || '')}
+                    className="btn-flat"
+                  >
+                    Copiar link
+                  </button>
+                </div>
+                <a href={data.guestListLink} target="_blank" rel="noreferrer" className="text-sm text-ink-900 underline">Abrir lista</a>
+              </div>
+            )}
             {submittedOk && !showForm && (
               <p className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 Gracias — tu confirmación quedó registrada.
