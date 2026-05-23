@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { INVITATION_PREFIX, PUBLISHED_PREFIX, useEditorStore } from '../store/editorStore'
 import type { Invitation } from '../types/invitation.types'
 import { ADMIN_TOKEN } from './adminAuth'
+import { listFromRegistry, deleteFromRegistry } from '../utils/inviteRegistry'
 
 function StatusBadge({ status }: { status: 'draft' | 'published' | 'archived' }) {
   const map = {
@@ -17,7 +18,7 @@ function StatusBadge({ status }: { status: 'draft' | 'published' | 'archived' })
   )
 }
 
-function loadAllInvitations(): Invitation[] {
+function loadLocalInvitations(): Invitation[] {
   const list: Invitation[] = []
   const seenIds = new Set<string>()
 
@@ -58,15 +59,56 @@ function loadAllInvitations(): Invitation[] {
     }
   }
 
-  return list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+  return list
+}
+
+async function loadAllInvitations(): Promise<Invitation[]> {
+  const seenIds = new Set<string>()
+  const merged: Invitation[] = []
+
+  // 1. Primary: fetch from remote (Vercel Blob via /api/invitations/index)
+  const remote = await listFromRegistry()
+  if (remote) {
+    for (const inv of remote) {
+      if (!inv?.id) continue
+      // Skip draft blobs (they use the 'draft-' prefix internally and will
+      // appear as normal invitations — just deduplicate by their real id).
+      if (!seenIds.has(inv.id)) {
+        seenIds.add(inv.id)
+        merged.push(inv)
+        // Keep localStorage in sync for offline use
+        try {
+          window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(inv))
+        } catch { /* ignore */ }
+      }
+    }
+  }
+
+  // 2. Fallback / supplement: local storage (works offline and during local dev)
+  const local = loadLocalInvitations()
+  for (const inv of local) {
+    if (!seenIds.has(inv.id)) {
+      seenIds.add(inv.id)
+      merged.push(inv)
+    }
+  }
+
+  return merged.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
 }
 
 export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => void }) {
   const [items, setItems] = useState<Invitation[]>([])
+  const [loading, setLoading] = useState(true)
   const unpublish = useEditorStore((s) => s.unpublishInvitation)
   const loadInvitation = useEditorStore((s) => s.loadInvitation)
 
-  const refresh = () => setItems(loadAllInvitations())
+  const refresh = () => {
+    setLoading(true)
+    loadAllInvitations().then((list) => {
+      setItems(list)
+      setLoading(false)
+    })
+  }
   useEffect(() => {
     refresh()
   }, [])
@@ -78,6 +120,9 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
     if (inv.status === 'published') {
       loadInvitation(inv)
       await unpublish()
+    } else if (inv.id) {
+      // Borrador: eliminar del servidor también
+      await deleteFromRegistry(`draft-${inv.id}`)
     }
     
     // Eliminar claves locales
@@ -104,7 +149,11 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
       </header>
 
       <main className="mx-auto max-w-5xl px-8 py-10">
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="rounded border border-ink-200 bg-white p-12 text-center">
+            <p className="text-ink-400 text-sm animate-pulse">Cargando invitaciones…</p>
+          </div>
+        ) : items.length === 0 ? (
           <div className="rounded border border-dashed border-ink-300 bg-white p-12 text-center">
             <p className="text-ink-500">Aún no has creado ninguna invitación.</p>
             <button onClick={() => onOpenEditor()} className="mt-4 btn-primary">

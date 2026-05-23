@@ -1,42 +1,28 @@
 import type { Invitation } from '../types/invitation.types'
 
-// Single shared JSONBlob acting as a tiny key-value store. Every published
-// invitation lives at `registry.invitations[<slug>]`. The slug is 9 chars and
-// is the public id in the share URL. Zero-config, no auth.
+// Persistent registry backed by Vercel Blob via our own serverless API.
+// Each invitation is stored as a public JSON blob at `inv/<slug>.json`.
 //
-// To rotate the registry (e.g. it grew too big), POST a fresh blob to
-// https://jsonblob.com/api/jsonBlob and replace REGISTRY_BLOB_ID below.
-const REGISTRY_BLOB_ID = '019e520f-c2da-7332-b404-a229be2ce628'
-const REGISTRY_URL = `https://jsonblob.com/api/jsonBlob/${REGISTRY_BLOB_ID}`
+// In local development (where /api is not available) every function falls back
+// to a no-op / null so the rest of the app continues working with localStorage.
 
-interface Registry {
-  _meta: string
-  _version: number
-  invitations: Record<string, Invitation>
+const API_BASE = '/api/invitations'
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function invitationUrl(slug: string) {
+  return `${API_BASE}/${slug}`
 }
 
-function emptyRegistry(): Registry {
-  return { _meta: 'invitation-builder-index', _version: 1, invitations: {} }
-}
+// ── public API ────────────────────────────────────────────────────────────────
 
-async function readRegistry(): Promise<Registry | null> {
+/** Saves (creates or updates) an invitation in the remote store. */
+export async function saveToRegistry(slug: string, inv: Invitation): Promise<boolean> {
   try {
-    const res = await fetch(REGISTRY_URL, { cache: 'no-store' })
-    if (!res.ok) return null
-    const data = (await res.json()) as Registry
-    if (!data?.invitations || typeof data.invitations !== 'object') return null
-    return data
-  } catch {
-    return null
-  }
-}
-
-async function writeRegistry(reg: Registry): Promise<boolean> {
-  try {
-    const res = await fetch(REGISTRY_URL, {
+    const res = await fetch(invitationUrl(slug), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reg),
+      body: JSON.stringify(inv),
     })
     return res.ok
   } catch {
@@ -44,21 +30,39 @@ async function writeRegistry(reg: Registry): Promise<boolean> {
   }
 }
 
-export async function saveToRegistry(slug: string, inv: Invitation): Promise<boolean> {
-  const reg = (await readRegistry()) ?? emptyRegistry()
-  reg.invitations[slug] = inv
-  return writeRegistry(reg)
-}
-
+/** Loads a single invitation by its public slug from the remote store. */
 export async function loadFromRegistry(slug: string): Promise<Invitation | null> {
-  const reg = await readRegistry()
-  return reg?.invitations[slug] ?? null
+  try {
+    const res = await fetch(invitationUrl(slug), { cache: 'no-store' })
+    if (!res.ok) return null
+    return (await res.json()) as Invitation
+  } catch {
+    return null
+  }
 }
 
+/** Removes an invitation from the remote store. */
 export async function deleteFromRegistry(slug: string): Promise<boolean> {
-  const reg = await readRegistry()
-  if (!reg) return false
-  if (!(slug in reg.invitations)) return true
-  delete reg.invitations[slug]
-  return writeRegistry(reg)
+  try {
+    const res = await fetch(invitationUrl(slug), { method: 'DELETE' })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns the full list of all invitations stored remotely.
+ * Returns null if the endpoint is unreachable (e.g. local dev without Vercel).
+ */
+export async function listFromRegistry(): Promise<Invitation[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/index`, { cache: 'no-store' })
+    if (!res.ok) return null
+    const data = (await res.json()) as Invitation[]
+    if (!Array.isArray(data)) return null
+    return data
+  } catch {
+    return null
+  }
 }

@@ -109,6 +109,7 @@ interface EditorState {
   updateTitle: (title: string) => void
   resetDraft: () => void
   loadInvitation: (inv: Invitation) => void
+  saveInvitationDraft: () => Promise<void>
   publishInvitation: () => Promise<string>
   unpublishInvitation: () => Promise<void>
   setBackend: (patch: Partial<BackendConfig>) => void
@@ -269,6 +270,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   loadInvitation: (inv) => set({ invitation: inv, selectedBlockId: null }),
 
+  saveInvitationDraft: async () => {
+    const { invitation: inv } = get()
+    // Use the invitation's own ID as the blob key for drafts (prefixed to avoid
+    // collisions with published slugs which are short 9-char strings).
+    const draftSlug = `draft-${inv.id}`
+    const draft: Invitation = { ...inv, updatedAt: new Date().toISOString() }
+    // Persist locally first (always works)
+    try {
+      window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(draft))
+    } catch { /* ignore */ }
+    // Persist remotely (best-effort, non-blocking for the UI)
+    saveToRegistry(draftSlug, draft).catch(() => { /* ignore network errors */ })
+    set({ invitation: draft })
+  },
+
   publishInvitation: async () => {
     const { invitation: inv } = get()
     const now = new Date().toISOString()
@@ -325,6 +341,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } catch {
       /* ignore */
     }
+    // Also persist the draft state remotely so it shows up from other devices
+    const draftSlug = `draft-${inv.id}`
+    saveToRegistry(draftSlug, updated).catch(() => { /* ignore */ })
     set({ invitation: updated })
   },
 
