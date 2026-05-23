@@ -41,29 +41,12 @@ export function MenuHeaderBlock({ block, sectionsOverride }: Props) {
   const stickyHeader = !!data.stickyHeader
   const stickyNavOnly = !stickyHeader && !!data.stickyNavOnly
 
-  return (
-    <div className="menu-header-block">
-      {stickyHeader ? (
-        <div className="sticky top-0 z-30">
-          <div style={bgStyle} className="px-6 py-16 text-center">
-        {data.showLogo && data.logo && (
-          <img src={data.logo} alt="Logo" className="mx-auto mb-4 h-16 w-auto object-contain" />
-        )}
-        {data.showTitle && data.title && (
-          <TextEl block={block} field="title" as="h1" className="font-serif text-5xl font-medium tracking-wide md:text-6xl">
-            {data.title}
-          </TextEl>
-        )}
-        {data.showTagline && data.tagline && (
-          <TextEl block={block} field="tagline" as="p" className="mt-3 text-sm uppercase tracking-[0.3em] opacity-90">
-            {data.tagline}
-          </TextEl>
-        )}
-          </div>
-          <nav
-            className="menu-sticky-nav overflow-x-auto border-y border-black/10"
-            style={{ backgroundColor: navBg, color: navText }}
-          >
+  const renderNav = () => (
+    <div
+      className={`menu-sticky-nav border-y border-black/10 ${stickyNavOnly ? 'sticky top-0 z-30' : ''}`}
+      style={{ backgroundColor: navBg, color: navText }}
+    >
+      <div className="overflow-x-auto">
         <ul className="mx-auto flex w-max items-center gap-1 px-4 py-2.5 text-[12px] uppercase tracking-[0.18em]">
           {sections.length === 0 ? (
             <li className="opacity-60 px-3 py-1.5">Añade secciones al menú</li>
@@ -80,7 +63,30 @@ export function MenuHeaderBlock({ block, sectionsOverride }: Props) {
             ))
           )}
         </ul>
-          </nav>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="menu-header-block">
+      {stickyHeader ? (
+        <div className="sticky top-0 z-30">
+          <div style={bgStyle} className="px-6 py-16 text-center">
+            {data.showLogo && data.logo && (
+              <img src={data.logo} alt="Logo" className="mx-auto mb-4 h-16 w-auto object-contain" />
+            )}
+            {data.showTitle && data.title && (
+              <TextEl block={block} field="title" as="h1" className="font-serif text-5xl font-medium tracking-wide md:text-6xl">
+                {data.title}
+              </TextEl>
+            )}
+            {data.showTagline && data.tagline && (
+              <TextEl block={block} field="tagline" as="p" className="mt-3 text-sm uppercase tracking-[0.3em] opacity-90">
+                {data.tagline}
+              </TextEl>
+            )}
+          </div>
+          {renderNav()}
         </div>
       ) : (
         <>
@@ -99,27 +105,7 @@ export function MenuHeaderBlock({ block, sectionsOverride }: Props) {
               </TextEl>
             )}
           </div>
-          <nav
-            className={`menu-sticky-nav ${stickyNavOnly ? 'sticky top-0 z-30' : ''} overflow-x-auto border-y border-black/10`}
-            style={{ backgroundColor: navBg, color: navText }}
-          >
-          <ul className="mx-auto flex w-max items-center gap-1 px-4 py-2.5 text-[12px] uppercase tracking-[0.18em]">
-            {sections.length === 0 ? (
-              <li className="opacity-60 px-3 py-1.5">Añade secciones al menú</li>
-            ) : (
-              sections.map((s) => (
-                <li key={s.id}>
-                  <a
-                    href={`#${s.id}`}
-                    className="inline-block whitespace-nowrap rounded-full px-3 py-1.5 transition-colors hover:bg-white/15"
-                  >
-                    {s.title}
-                  </a>
-                </li>
-              ))
-            )}
-          </ul>
-          </nav>
+          {renderNav()}
         </>
       )}
     </div>
