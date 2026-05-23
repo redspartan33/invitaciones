@@ -27,6 +27,7 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   const [guestMessage, setGuestMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submittedOk, setSubmittedOk] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
 
   const getGuestListSlug = () => {
@@ -75,16 +76,19 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
         </div>
         {data.useRsvpForm ? (
           <div className="mt-6 space-y-4">
-            <button
-              type="button"
-              onClick={() => {
-                setSubmittedOk(false)
-                setShowForm(true)
-              }}
-              className="invitation-btn"
-            >
-              {buttonLabel}
-            </button>
+            {!showForm && !submittedOk && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmittedOk(false)
+                  setSubmitError(null)
+                  setShowForm(true)
+                }}
+                className="invitation-btn"
+              >
+                {buttonLabel}
+              </button>
+            )}
             {isEditorView && data.guestListLink && (
               <div className="mx-auto flex max-w-lg flex-col gap-3 rounded-3xl border border-ink-200 bg-white/90 p-4 text-left shadow-sm shadow-ink-200/10 text-sm">
                 <p className="text-sm text-ink-700">Comparte este link para que el cliente vea quién ha aceptado.</p>
@@ -107,77 +111,114 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
               </div>
             )}
             {submittedOk && !showForm && (
-              <p className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                Gracias — tu confirmación quedó registrada.
-              </p>
+              <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <p className="font-medium">¡Gracias! Tu confirmación quedó registrada.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmittedOk(false)
+                    setSubmitError(null)
+                    setShowForm(true)
+                  }}
+                  className="mt-2 text-xs uppercase tracking-widest underline"
+                >
+                  Confirmar otra persona
+                </button>
+              </div>
+            )}
+            {submitError && !showForm && (
+              <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                {submitError}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmitError(null)
+                    setShowForm(true)
+                  }}
+                  className="ml-2 text-xs uppercase tracking-widest underline"
+                >
+                  Reintentar
+                </button>
+              </div>
             )}
             {showForm && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault()
-                  if (!guestListSlug) return
+                  if (submitting) return
+                  if (!guestListSlug) {
+                    setSubmitError('No se pudo identificar la lista de invitados de esta invitación.')
+                    setShowForm(false)
+                    return
+                  }
                   setSubmitting(true)
+                  setSubmitError(null)
+                  let ok = false
                   try {
                     const res = await fetch(`/api/guestlists/${guestListSlug}`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ name: guestName, message: guestMessage }),
                     })
-                    if (res.ok) {
-                      setSubmittedOk(true)
-                      setShowForm(false)
-                      setGuestName('')
-                      setGuestMessage('')
-                      try {
-                        window.localStorage.setItem(
-                          'guestlist-updated',
-                          JSON.stringify({ slug: data.guestListSlug, ts: Date.now() }),
-                        )
-                      } catch {
-                        // ignore
-                      }
-                    }
+                    ok = res.ok
                   } catch {
-                    // ignore
-                  } finally {
-                    setSubmitting(false)
+                    ok = false
+                  }
+                  setSubmitting(false)
+                  setShowForm(false)
+                  if (ok) {
+                    setSubmittedOk(true)
+                    setGuestName('')
+                    setGuestMessage('')
+                    try {
+                      window.localStorage.setItem(
+                        'guestlist-updated',
+                        JSON.stringify({ slug: guestListSlug, ts: Date.now() }),
+                      )
+                    } catch {
+                      // ignore
+                    }
+                  } else {
+                    setSubmitError('No pudimos registrar tu confirmación. Intenta de nuevo en unos momentos.')
                   }
                 }}
                 className="mx-auto mt-4 max-w-lg rounded-3xl border border-ink-200 bg-white/95 p-6 shadow-sm shadow-ink-200/10 text-left"
               >
-                {submittedOk ? (
-                  <div className="rounded border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">Gracias — tu confirmación quedó registrada.</div>
-                ) : (
-                  <>
-                    <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-ink-500">Confirmación</p>
-                    <div className="space-y-4">
-                      <label className="label-flat">Nombre</label>
-                      <input
-                        value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
-                        required
-                        placeholder="Nombre completo"
-                        className="input-flat w-full"
-                      />
-                      <label className="label-flat">Mensaje (opcional)</label>
-                      <textarea
-                        value={guestMessage}
-                        onChange={(e) => setGuestMessage(e.target.value)}
-                        placeholder="Escribe un mensaje breve..."
-                        rows={5}
-                        className="input-flat w-full min-h-[140px] resize-none"
-                      />
-                    </div>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
-                        {submitting ? 'Enviando…' : 'Enviar confirmación'}
-                      </button>
-                      <button type="button" onClick={() => setShowForm(false)} className="btn-flat w-full sm:w-auto">
-                        Cancelar
-                      </button>
-                    </div>
-                  </>
-                )}
+                <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-ink-500">Confirmación</p>
+                <div className="space-y-4">
+                  <label className="label-flat">Nombre</label>
+                  <input
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    required
+                    placeholder="Nombre completo"
+                    className="input-flat w-full"
+                  />
+                  <label className="label-flat">Mensaje (opcional)</label>
+                  <textarea
+                    value={guestMessage}
+                    onChange={(e) => setGuestMessage(e.target.value)}
+                    placeholder="Escribe un mensaje breve..."
+                    rows={5}
+                    className="input-flat w-full min-h-[140px] resize-none"
+                  />
+                </div>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
+                    {submitting ? 'Enviando…' : 'Enviar confirmación'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false)
+                      setSubmitError(null)
+                    }}
+                    disabled={submitting}
+                    className="btn-flat w-full sm:w-auto"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </form>
             )}
           </div>

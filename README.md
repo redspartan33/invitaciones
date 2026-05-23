@@ -41,9 +41,14 @@ src/
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 
-### RSVP a WhatsApp
+### RSVP — WhatsApp o formulario con guestlist
 
-El bloque RSVP genera un botón que abre WhatsApp si defines un teléfono internacional (solo dígitos, ej. `525512345678`). El link usa el formato oficial `https://wa.me/<phone>?text=<mensaje URL-encoded>`. Si no defines teléfono, cae al `rsvpLink` clásico.
+El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
+
+- **WhatsApp (default)** — Botón que abre `https://wa.me/<phone>?text=<mensaje URL-encoded>` si defines un teléfono internacional (solo dígitos). Cae a `rsvpLink` clásico si no hay teléfono.
+- **Formulario de confirmación** — Toggle "Usar formulario en vez de WhatsApp". Al activarlo se genera automáticamente un link público único (`/?guestlist=<slug>`) atado a la invitación y se inicializa el archivo en Vercel Blob. El botón "Confirmar asistencia" abre un formulario inline pidiendo nombre + mensaje opcional. Al enviar (éxito o error) el formulario se cierra y se muestra el feedback correspondiente.
+
+**Link de invitados (`/?guestlist=<slug>`)** — Página pública compartible con el cliente que muestra: contador grande de confirmados, contador adicional de resultados al buscar, buscador por nombre/mensaje, lista con timestamps y botón "Actualizar" para refrescar. Se auto-refresca por evento `storage` cuando otra pestaña confirma y al volver a tener foco.
 
 ### Favicon y Google Fonts (Detalles / Fuentes)
 

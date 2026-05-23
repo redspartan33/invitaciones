@@ -51,21 +51,60 @@ export function GuestListView({ slug }: { slug: string }) {
     return entries.filter((e) => e.name.toLowerCase().includes(qq) || (e.message || '').toLowerCase().includes(qq)).slice().reverse()
   }, [entries, q])
 
+  const total = entries?.length ?? 0
+  const isSearching = q.trim().length > 0
+
   return (
-    <div className="min-h-screen bg-[color:var(--color-secondary)]">
+    <div className="min-h-screen bg-ink-50">
       <div className="mx-auto max-w-2xl p-6">
-        <h1 className="text-2xl font-semibold">Lista de invitados</h1>
-        <p className="text-sm text-ink-600 mt-1">Total: {entries ? entries.length : '...'}</p>
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 className="text-2xl font-semibold">Lista de invitados</h1>
+          <button
+            type="button"
+            onClick={loadEntries}
+            className="text-xs uppercase tracking-widest text-ink-500 hover:text-ink-900"
+            aria-label="Recargar lista"
+          >
+            Actualizar
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-4 rounded-2xl border border-ink-200 bg-white p-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">Confirmados</span>
+            <span className="text-4xl font-semibold tabular-nums text-ink-900">
+              {entries === undefined ? '…' : total}
+            </span>
+          </div>
+          {isSearching && entries && (
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">Resultados</span>
+              <span className="text-4xl font-semibold tabular-nums text-ink-900">{filtered.length}</span>
+            </div>
+          )}
+        </div>
 
         <div className="mt-4">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar" className="input-field w-full" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nombre o mensaje"
+            className="input-field w-full"
+          />
         </div>
 
         <div className="mt-6 space-y-3">
-          {entries === undefined && <div className="text-sm text-ink-500">Cargando...</div>}
-          {entries && entries.length === 0 && <div className="text-sm text-ink-500">No hay confirmaciones aún.</div>}
+          {entries === undefined && <div className="text-sm text-ink-500">Cargando…</div>}
+          {entries && entries.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-ink-200 bg-white p-6 text-center text-sm text-ink-500">
+              Aún no hay confirmaciones.
+            </div>
+          )}
+          {entries && entries.length > 0 && filtered.length === 0 && isSearching && (
+            <div className="text-sm text-ink-500">Sin resultados para “{q}”.</div>
+          )}
           {filtered.map((e) => (
-            <div key={e.id} className="rounded border border-ink-200 bg-white p-3">
+            <div key={e.id} className="rounded-2xl border border-ink-200 bg-white p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <div className="font-medium">{e.name}</div>
                 <div className="text-xs text-ink-500">{new Date(e.createdAt).toLocaleString()}</div>
