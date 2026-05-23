@@ -58,8 +58,15 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                     value={value}
                     error={validation.errors[field.name]}
                     onChange={(v) => {
-                      const next =
-                        field.name === 'columns' ? Number(v) : v
+                      const next = field.name === 'columns' ? Number(v) : v
+                      if (field.name === 'stickyHeader' && next === true) {
+                        updateBlockData(block.id, { stickyHeader: true, stickyNavOnly: false })
+                        return
+                      }
+                      if (field.name === 'stickyNavOnly' && next === true) {
+                        updateBlockData(block.id, { stickyHeader: false, stickyNavOnly: true })
+                        return
+                      }
                       updateBlockData(block.id, { [field.name]: next })
                     }}
                   />

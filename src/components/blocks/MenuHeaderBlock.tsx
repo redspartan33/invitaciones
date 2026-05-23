@@ -39,7 +39,7 @@ export function MenuHeaderBlock({ block, sectionsOverride }: Props) {
   const navText = data.navTextColor || '#ffffff'
 
   const stickyHeader = !!data.stickyHeader
-  const stickyNavOnly = !!data.stickyNavOnly
+  const stickyNavOnly = !stickyHeader && !!data.stickyNavOnly
 
   return (
     <div className="menu-header-block">
