@@ -47,17 +47,22 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
           <div className="space-y-3">
             {section.fields.map((field) => {
               const raw = (block.data as unknown as Record<string, unknown>)[field.name]
-              const value =
-                field.name === 'columns' && typeof raw === 'number' ? String(raw) : raw
+              const value = field.name === 'columns' && typeof raw === 'number' ? String(raw) : raw
               const showElementStyle = TEXTUAL_KINDS.has(field.kind) && !!(value as string)
               const override = textStyles[field.name]
+              const useRsvpForm = !!((block.data as Record<string, unknown>)['useRsvpForm'])
+
+              // Hide WhatsApp fields when RSVP form is active
+              const whatsappFields = new Set(['whatsappPhone', 'whatsappMessage', 'whatsappButtonLabel'])
+              if (useRsvpForm && whatsappFields.has(field.name)) return null
+
               return (
                 <div key={field.name} className="space-y-1.5">
                   <Field
                     field={field}
                     value={value}
                     error={validation.errors[field.name]}
-                    onChange={(v) => {
+                    onChange={async (v) => {
                       const next = field.name === 'columns' ? Number(v) : v
                       if (field.name === 'stickyHeader' && next === true) {
                         updateBlockData(block.id, { stickyHeader: true, stickyNavOnly: false })
@@ -67,7 +72,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                         updateBlockData(block.id, { stickyHeader: false, stickyNavOnly: true })
                         return
                       }
-                      // Special handling: when enabling the RSVP form, generate a guestlist slug+link once.
+                      // Special handling: when enabling the RSVP form, generate a guestlist slug+link once and initialize the guestlist file.
                       if (field.name === 'useRsvpForm') {
                         const enabled = !!next
                         if (enabled) {
@@ -80,7 +85,14 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                             }
                             const slug = makeSlug()
                             const link = `${window.location.origin}/?guestlist=${slug}`
-                            updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
+                            // create empty guestlist on the server so the link is ready
+                            try {
+                              await fetch(`/api/guestlists/${slug}`, { method: 'PUT' })
+                              updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
+                            } catch {
+                              // If initialization fails, still store slug/link locally
+                              updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
+                            }
                             return
                           }
                         }
@@ -105,6 +117,24 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
           </div>
         </section>
       ))}
+
+      {/* Guestlist link preview when RSVP form is active */}
+      {((block.data as Record<string, unknown>)['useRsvpForm']) && (
+        <section className="space-y-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Guestlist público</h3>
+          <div>
+            <p className="text-sm text-ink-600">Cuando el formulario está activo se genera un link público donde se verán las confirmaciones.</p>
+            {((block.data as Record<string, unknown>)['guestListLink']) ? (
+              <div className="mt-2 flex gap-2">
+                <input readOnly value={String((block.data as Record<string, unknown>)['guestListLink'])} className="input-flat flex-1" />
+                <button type="button" onClick={() => navigator.clipboard.writeText(String((block.data as Record<string, unknown>)['guestListLink']))} className="rounded border px-3 py-2 text-sm">Copiar</button>
+              </div>
+            ) : (
+              <div className="mt-2 text-sm text-ink-500">Generando link…</div>
+            )}
+          </div>
+        </section>
+      )}
 
       {block.type === 'timeline' && <TimelineItemsForm block={block as InvitationBlock<'timeline'>} />}
       {block.type === 'gift-registry' && <GiftRegistryItemsForm block={block as InvitationBlock<'gift-registry'>} />}

@@ -16,7 +16,7 @@ interface VercelResponse {
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Cache-Control', 'no-store')
 }
@@ -71,6 +71,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
 
       return res.status(200).json({ ok: true, entry })
+    }
+
+    if (req.method === 'PUT') {
+      // Initialize an empty guest list file (create or overwrite).
+      const empty: any[] = []
+      await put(pathname, JSON.stringify(empty), {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/json',
+        allowOverwrite: true,
+      })
+      return res.status(200).json({ ok: true })
     }
 
     return res.status(405).json({ error: 'Method not allowed' })
