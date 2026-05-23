@@ -28,6 +28,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   let writeOk = false
   let readOk = false
   let error: string | null = null
+  let readStatus: number | null = null
+  let readBody: unknown = null
 
   try {
     await put(probePath, JSON.stringify(probeValue), {
@@ -38,10 +40,20 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     })
     writeOk = true
 
-    const result = await get(probePath, { access: 'private' })
-    if (result && result.statusCode === 200) {
-      const back = JSON.parse(await new Response(result.stream).text())
-      readOk = back?.nonce === probeValue.nonce
+    const result = await get(probePath, { access: 'private', useCache: false })
+    if (!result) {
+      readStatus = -1
+    } else {
+      readStatus = result.statusCode
+      if (result.statusCode === 200) {
+        const text = await new Response(result.stream).text()
+        try {
+          readBody = JSON.parse(text)
+          readOk = (readBody as { nonce?: string }).nonce === probeValue.nonce
+        } catch {
+          readBody = text.slice(0, 200)
+        }
+      }
     }
 
     await del(probePath)
@@ -51,10 +63,10 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
   return res.status(200).json({
     env,
-    blob: { writeOk, readOk, error },
+    blob: { writeOk, readOk, readStatus, readBody, error, expectedNonce: probeValue.nonce },
     summary:
       writeOk && readOk
         ? 'Blob OK — publish should work end-to-end.'
-        : error ?? 'Blob reachable but write/read returned unexpected value.',
+        : error ?? `Blob reachable but read failed (status=${readStatus}).`,
   })
 }
