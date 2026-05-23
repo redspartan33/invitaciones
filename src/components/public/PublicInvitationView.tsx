@@ -3,15 +3,23 @@ import type { Invitation, InvitationBlock, MenuSectionData } from '../../types/i
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
 import { menuSectionAnchor } from '../../utils/menuNav'
+import { usePageChrome } from '../../hooks/usePageChrome'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
   const { globalSettings, blocks } = invitation
+  usePageChrome({
+    favicon: globalSettings.favicon,
+    headingFont: globalSettings.headingFont,
+    bodyFont: globalSettings.bodyFont,
+  })
   const fontClass =
     globalSettings.fontFamily === 'serif'
       ? 'font-serif'
       : globalSettings.fontFamily === 'script'
       ? 'font-script'
       : 'font-sans'
+  const headingFont = globalSettings.headingFont?.trim()
+  const bodyFont = globalSettings.bodyFont?.trim()
 
   const visible = [...blocks].sort((a, b) => a.order - b.order).filter((b) => b.visible)
   const isMenu =
@@ -42,6 +50,9 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           ['--color-accent' as never]: globalSettings.colorAccent,
           ['--color-primary' as never]: globalSettings.colorPrimary,
           ['--color-secondary' as never]: globalSettings.colorSecondary,
+          ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
+          ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
+          fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined,
         } as React.CSSProperties
       }
     >

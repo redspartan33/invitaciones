@@ -43,7 +43,13 @@ export function ConfigPanel() {
             update={updateGlobalSettings}
           />
         ) : activePanel === 'fonts' ? (
-          <FontsPanel font={settings.fontFamily} update={(f) => updateGlobalSettings({ fontFamily: f })} />
+          <FontsPanel
+            font={settings.fontFamily}
+            headingFont={settings.headingFont ?? ''}
+            bodyFont={settings.bodyFont ?? ''}
+            update={(f) => updateGlobalSettings({ fontFamily: f })}
+            updateFont={(patch) => updateGlobalSettings(patch)}
+          />
         ) : activePanel === 'music' ? (
           <MusicPanel
             value={settings.backgroundMusic ?? ''}
@@ -311,27 +317,134 @@ function ColorsPanel({
   )
 }
 
-function FontsPanel({ font, update }: { font: FontFamily; update: (f: FontFamily) => void }) {
+const GOOGLE_FONT_PRESETS = [
+  'Playfair Display',
+  'Cormorant Garamond',
+  'Libre Baskerville',
+  'EB Garamond',
+  'Lora',
+  'Inter',
+  'Poppins',
+  'Montserrat',
+  'Work Sans',
+  'Nunito',
+  'Great Vibes',
+  'Dancing Script',
+  'Allura',
+  'Parisienne',
+  'Cinzel',
+] as const
+
+function FontsPanel({
+  font,
+  headingFont,
+  bodyFont,
+  update,
+  updateFont,
+}: {
+  font: FontFamily
+  headingFont: string
+  bodyFont: string
+  update: (f: FontFamily) => void
+  updateFont: (patch: { headingFont?: string; bodyFont?: string }) => void
+}) {
   const fonts: { value: FontFamily; label: string; sample: string; cls: string }[] = [
     { value: 'serif', label: 'Serif', sample: 'Ana & Juan', cls: 'font-serif text-3xl' },
     { value: 'sans-serif', label: 'Sans', sample: 'Ana & Juan', cls: 'font-sans text-3xl' },
     { value: 'script', label: 'Script', sample: 'Ana & Juan', cls: 'font-script text-4xl' },
   ]
+  const hasCustom = !!(headingFont || bodyFont)
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-ink-500">Familia tipográfica para la invitación.</p>
-      {fonts.map((f) => (
-        <button
-          key={f.value}
-          onClick={() => update(f.value)}
-          className={`flex w-full items-center justify-between rounded border px-4 py-3 text-left transition-colors ${
-            font === f.value ? 'border-ink-900' : 'border-ink-200 hover:border-ink-400'
-          }`}
-        >
-          <span className="text-xs uppercase tracking-widest text-ink-500">{f.label}</span>
-          <span className={f.cls}>{f.sample}</span>
-        </button>
-      ))}
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <p className="text-xs text-ink-500">
+          Familia tipográfica base. Si defines fuentes de Google Fonts más abajo, esas mandan.
+        </p>
+        {fonts.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => update(f.value)}
+            className={`flex w-full items-center justify-between rounded border px-4 py-3 text-left transition-colors ${
+              font === f.value && !hasCustom ? 'border-ink-900' : 'border-ink-200 hover:border-ink-400'
+            }`}
+          >
+            <span className="text-xs uppercase tracking-widest text-ink-500">{f.label}</span>
+            <span className={f.cls}>{f.sample}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3 border-t border-ink-200 pt-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-[11px] font-semibold uppercase tracking-widest text-ink-500">Google Fonts</h4>
+          {hasCustom && (
+            <button
+              type="button"
+              onClick={() => updateFont({ headingFont: '', bodyFont: '' })}
+              className="text-[10px] uppercase tracking-widest text-ink-500 hover:text-rose-600"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+        <p className="text-[11px] leading-snug text-ink-500">
+          Escribe el nombre exacto de una fuente (ej.{' '}
+          <span className="font-medium text-ink-700">Playfair Display</span>) o elige una sugerida.
+        </p>
+
+        <div>
+          <label className="label-flat">Títulos (h1/h2/h3)</label>
+          <input
+            type="text"
+            value={headingFont}
+            onChange={(e) => updateFont({ headingFont: e.target.value })}
+            placeholder="Playfair Display"
+            className="input-flat"
+            list="google-fonts-list"
+          />
+          {headingFont && (
+            <p className="mt-1 text-sm" style={{ fontFamily: `"${headingFont}", serif` }}>
+              Ana & Juan
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="label-flat">Cuerpo del texto</label>
+          <input
+            type="text"
+            value={bodyFont}
+            onChange={(e) => updateFont({ bodyFont: e.target.value })}
+            placeholder="Inter"
+            className="input-flat"
+            list="google-fonts-list"
+          />
+          {bodyFont && (
+            <p className="mt-1 text-sm" style={{ fontFamily: `"${bodyFont}", sans-serif` }}>
+              Por favor confirma tu asistencia antes del 30 de mayo.
+            </p>
+          )}
+        </div>
+
+        <datalist id="google-fonts-list">
+          {GOOGLE_FONT_PRESETS.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+
+        <div className="flex flex-wrap gap-1.5">
+          {GOOGLE_FONT_PRESETS.slice(0, 8).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => updateFont({ headingFont: preset })}
+              className="rounded border border-ink-200 bg-white px-2 py-1 text-[11px] text-ink-600 transition-colors hover:border-ink-900"
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -444,10 +557,13 @@ function MusicPanel({
 
 function DetailsPanel() {
   const inv = useEditorStore((s) => s.invitation)
+  const updateGlobalSettings = useEditorStore((s) => s.updateGlobalSettings)
   const totalBlocks = inv.blocks.length
   const visible = inv.blocks.filter((b) => b.visible).length
+  const favicon = inv.globalSettings.favicon ?? ''
   return (
     <div className="space-y-3 text-sm">
+      <FaviconRow value={favicon} onChange={(v) => updateGlobalSettings({ favicon: v })} />
       <div className="rounded border border-ink-200 p-3">
         <p className="text-[11px] uppercase tracking-widest text-ink-400">ID</p>
         <p className="font-mono text-xs text-ink-700">{inv.id}</p>
@@ -469,6 +585,69 @@ function DetailsPanel() {
       <div className="rounded border border-ink-200 p-3">
         <p className="text-[11px] uppercase tracking-widest text-ink-400">Última edición</p>
         <p className="text-xs text-ink-700">{new Date(inv.updatedAt).toLocaleString()}</p>
+      </div>
+    </div>
+  )
+}
+
+function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const onFile = (file: File) => {
+    if (file.size > 512 * 1024) {
+      alert('El favicon debe pesar menos de 512 KB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result))
+    reader.readAsDataURL(file)
+  }
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <p className="text-[11px] uppercase tracking-widest text-ink-400">Favicon</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">Icono de la pestaña en el navegador. Recomendado: PNG/SVG cuadrado, 32×32 o más.</p>
+      <div className="mt-2 flex items-center gap-2">
+        {value ? (
+          <img src={value} alt="Favicon" className="h-8 w-8 rounded border border-ink-200 bg-white object-contain" />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-dashed border-ink-300 text-[10px] text-ink-400">
+            —
+          </div>
+        )}
+        <input
+          type="url"
+          value={value.startsWith('data:') ? '' : value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="URL o sube archivo →"
+          className="input-flat flex-1"
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="btn-flat shrink-0"
+        >
+          Subir
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="btn-ghost shrink-0 text-rose-600"
+            title="Quitar favicon"
+          >
+            ×
+          </button>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/svg+xml,image/x-icon,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onFile(f)
+            e.target.value = ''
+          }}
+        />
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ export type InvitationBlockType =
   | 'rsvp-info'
   | 'footer'
   | 'gallery'
+  | 'map'
 
 export type MenuBlockType =
   | 'menu-header'
@@ -41,6 +42,8 @@ export interface BlockStyle {
   textSize?: TextSize
   // Per-element overrides keyed by field name (e.g. "title", "items.title").
   textStyles?: Record<string, TextElementStyle>
+  /** Hide the decorative icons that some invitation blocks render in their cards. */
+  hideIcons?: boolean
 }
 
 export interface HeroData {
@@ -107,6 +110,23 @@ export interface RsvpInfoData {
   rsvpLink?: string
   deadline: string
   accessCode?: string
+  /** International phone number (digits only, with country code) for the WhatsApp deep-link. */
+  whatsappPhone?: string
+  /** Default message that pre-fills the WhatsApp chat. */
+  whatsappMessage?: string
+  /** Label on the confirm button (defaults to "Confirmar asistencia"). */
+  whatsappButtonLabel?: string
+}
+
+export interface MapData {
+  title?: string
+  address: string
+  /** Optional override for the iframe src. If absent, generated from address. */
+  embedUrl?: string
+  /** Display height of the map in pixels. */
+  height?: number
+  /** Optional link text shown under the map. */
+  openLinkLabel?: string
 }
 
 export interface FooterData {
@@ -190,6 +210,7 @@ export type BlockDataMap = {
   'rsvp-info': RsvpInfoData
   footer: FooterData
   gallery: GalleryData
+  map: MapData
   'menu-header': MenuHeaderData
   'menu-section': MenuSectionData
   'menu-note': MenuNoteData
@@ -215,6 +236,18 @@ export interface GlobalSettings {
   logo?: string
   backgroundMusic?: string
   backgroundMusicAutoplay?: boolean
+  /** Image URL used as <link rel="icon"> in the public view. */
+  favicon?: string
+  /**
+   * Google Fonts name (e.g. "Playfair Display"). When set, overrides the
+   * built-in `fontFamily` choice. `headingFont` is used for h1/h2/h3
+   * (font-serif slot); `bodyFont` is used for everything else.
+   */
+  headingFont?: string
+  bodyFont?: string
+  /** Optional CSS custom property weights for the loaded Google Fonts. */
+  headingFontWeight?: string
+  bodyFontWeight?: string
 }
 
 export interface Invitation {

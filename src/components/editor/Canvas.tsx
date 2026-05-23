@@ -17,6 +17,7 @@ import { useEditorStore } from '../../store/editorStore'
 import type { InvitationBlock, ViewportMode } from '../../types/invitation.types'
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { DragIcon, EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
+import { usePageChrome } from '../../hooks/usePageChrome'
 
 const viewportClass: Record<ViewportMode, string> = {
   mobile: 'max-w-[390px]',
@@ -31,9 +32,13 @@ export function Canvas() {
   const reorderBlocks = useEditorStore((s) => s.reorderBlocks)
   const viewport = useEditorStore((s) => s.viewport)
   const fontFamily = useEditorStore((s) => s.invitation.globalSettings.fontFamily)
+  const headingFont = useEditorStore((s) => s.invitation.globalSettings.headingFont)
+  const bodyFont = useEditorStore((s) => s.invitation.globalSettings.bodyFont)
+  const favicon = useEditorStore((s) => s.invitation.globalSettings.favicon)
   const colorAccent = useEditorStore((s) => s.invitation.globalSettings.colorAccent)
   const colorPrimary = useEditorStore((s) => s.invitation.globalSettings.colorPrimary)
   const colorSecondary = useEditorStore((s) => s.invitation.globalSettings.colorSecondary)
+  usePageChrome({ favicon, headingFont, bodyFont })
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -55,6 +60,8 @@ export function Canvas() {
               ['--color-accent' as never]: colorAccent,
               ['--color-primary' as never]: colorPrimary,
               ['--color-secondary' as never]: colorSecondary,
+              ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
+              ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
             } as React.CSSProperties
           }
         >

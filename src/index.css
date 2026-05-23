@@ -83,6 +83,24 @@ html, body, #root {
 .invitation-canvas h2 {
   color: var(--color-primary);
 }
+/* Google Fonts overrides: when --font-heading / --font-body are set on the
+   .invitation-canvas root, route headings and body text to them. When the
+   custom property is unset the declaration becomes invalid and the cascade
+   falls back to the Tailwind font-* class on the same element. */
+.invitation-canvas h1,
+.invitation-canvas h2,
+.invitation-canvas h3,
+.invitation-canvas .font-serif {
+  font-family: var(--font-heading);
+}
+.invitation-canvas p,
+.invitation-canvas li,
+.invitation-canvas span,
+.invitation-canvas a,
+.invitation-canvas input,
+.invitation-canvas button {
+  font-family: var(--font-body);
+}
 .invitation-canvas .accent {
   color: var(--color-accent);
 }

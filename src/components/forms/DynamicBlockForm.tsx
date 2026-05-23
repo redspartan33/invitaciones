@@ -162,6 +162,25 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
         </section>
       )}
 
+      {(block.type === 'event-details' || block.type === 'timeline') && (
+        <section className="space-y-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Iconos</h3>
+          <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-sm">
+            <span className="text-ink-700">Ocultar iconos del bloque</span>
+            <button
+              type="button"
+              onClick={() => updateBlockStyle(block.id, { hideIcons: !block.style?.hideIcons })}
+              className={`relative h-5 w-9 rounded-full transition-colors ${block.style?.hideIcons ? 'bg-ink-900' : 'bg-ink-200'}`}
+              aria-pressed={!!block.style?.hideIcons}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${block.style?.hideIcons ? 'translate-x-4' : 'translate-x-0.5'}`}
+              />
+            </button>
+          </label>
+        </section>
+      )}
+
       <section className="space-y-3">
         <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Tamaño de texto</h3>
         <div className="grid grid-cols-5 gap-2">

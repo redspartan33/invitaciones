@@ -146,10 +146,28 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
         fields: [
           { name: 'instructions', label: 'Instrucciones', kind: 'textarea' },
           { name: 'deadline', label: 'Fecha límite', kind: 'date' },
-          { name: 'rsvpLink', label: 'Link de confirmación', kind: 'url' },
+          { name: 'rsvpLink', label: 'Link de confirmación (fallback)', kind: 'url', helper: 'Se usa solo si no defines un WhatsApp abajo.' },
           { name: 'contactEmail', label: 'Email de contacto', kind: 'email' },
           { name: 'contactPhone', label: 'Teléfono de contacto', kind: 'text' },
           { name: 'accessCode', label: 'Código de acceso (opcional)', kind: 'text' },
+        ],
+      },
+      {
+        title: 'WhatsApp (wa.me)',
+        fields: [
+          {
+            name: 'whatsappPhone',
+            label: 'Teléfono con código país',
+            kind: 'text',
+            helper: 'Solo dígitos, ej. 525512345678 (México). Si lo defines, el botón abre WhatsApp.',
+          },
+          {
+            name: 'whatsappMessage',
+            label: 'Mensaje predeterminado',
+            kind: 'textarea',
+            helper: 'Lo verá el invitado al abrir el chat (puede editarlo antes de enviar).',
+          },
+          { name: 'whatsappButtonLabel', label: 'Texto del botón', kind: 'text', helper: 'Default: “Confirmar asistencia”.' },
         ],
       },
     ],
@@ -183,6 +201,24 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
               { value: '3', label: '3' },
               { value: '4', label: '4' },
             ],
+          },
+        ],
+      },
+    ],
+  },
+  map: {
+    sections: [
+      {
+        title: 'Mapa',
+        fields: [
+          { name: 'title', label: 'Título (opcional)', kind: 'text' },
+          { name: 'address', label: 'Dirección o lugar', kind: 'text', helper: 'Ej. “Jardín Botánico, Ciudad de México”.' },
+          { name: 'openLinkLabel', label: 'Texto del link a Google Maps', kind: 'text' },
+          {
+            name: 'embedUrl',
+            label: 'URL embed personalizado (opcional)',
+            kind: 'url',
+            helper: 'Si pegas un iframe src de Google Maps lo usaremos en vez de generar uno.',
           },
         ],
       },

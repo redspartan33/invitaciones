@@ -6,6 +6,7 @@ import { TextEl } from './TextEl'
 export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> }) {
   const data = block.data as TimelineData
   const align = data.alignment ?? 'left'
+  const hideIcons = block.style?.hideIcons === true
 
   if (align === 'left') {
     return (
@@ -15,12 +16,14 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
             {data.title}
           </TextEl>
         )}
-        <ol className="relative space-y-6 border-l pl-8 accent-border">
+        <ol className={`relative space-y-6 ${hideIcons ? '' : 'border-l pl-8 accent-border'}`}>
           {data.items.map((item) => (
             <li key={item.id} className="relative">
-              <span className="absolute -left-[42px] flex h-7 w-7 items-center justify-center rounded-full accent-bg">
-                <TimelineActIcon kind={item.icon} className="h-4 w-4" />
-              </span>
+              {!hideIcons && (
+                <span className="absolute -left-[42px] flex h-7 w-7 items-center justify-center rounded-full accent-bg">
+                  <TimelineActIcon kind={item.icon} className="h-4 w-4" />
+                </span>
+              )}
               <div className="flex items-baseline gap-4">
                 <TextEl block={block} field="items.time" className="w-16 shrink-0 font-mono text-xs uppercase tracking-widest opacity-70">
                   {item.time}
@@ -54,7 +57,7 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
         {data.items.map((item) => (
           <li key={item.id} className={`flex flex-col gap-1 ${align === 'right' ? 'items-end' : 'items-center'}`}>
             <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest opacity-70">
-              <TimelineActIcon kind={item.icon} className="h-4 w-4 accent" />
+              {!hideIcons && <TimelineActIcon kind={item.icon} className="h-4 w-4 accent" />}
               <TextEl block={block} field="items.time">{item.time}</TextEl>
             </span>
             <TextEl block={block} field="items.title" as="p" className="font-medium">

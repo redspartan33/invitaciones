@@ -37,6 +37,19 @@ src/
 7. **Gallery** — Galería de fotos responsive
 8. **Footer** — Mensaje final + contacto + redes
 
+9. **Map** — Mapa interactivo embebido de Google Maps a partir de una dirección, con link "Abrir en Google Maps"
+
+Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
+
+### RSVP a WhatsApp
+
+El bloque RSVP genera un botón que abre WhatsApp si defines un teléfono internacional (solo dígitos, ej. `525512345678`). El link usa el formato oficial `https://wa.me/<phone>?text=<mensaje URL-encoded>`. Si no defines teléfono, cae al `rsvpLink` clásico.
+
+### Favicon y Google Fonts (Detalles / Fuentes)
+
+- **Favicon**: en el panel **Detalles** puedes pegar una URL o subir un PNG/SVG/ICO. Se aplica como `<link rel="icon">` en la vista pública y en el editor.
+- **Google Fonts**: en **Fuentes** puedes escribir el nombre exacto de cualquier fuente de Google (con autocompletado de 15 sugerencias). Se carga vía `<link>` a `fonts.googleapis.com/css2`. La fuente de "Títulos" se aplica a h1/h2/h3 y la de "Cuerpo" al resto. Cuando defines fuentes custom mandan sobre la elección Serif/Sans/Script.
+
 ### Bloques de menú (kind = `menu`)
 
 - **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección. Tamaño de barra (S/M/XL) y tamaño de logo (S/M/L/XL) configurables.

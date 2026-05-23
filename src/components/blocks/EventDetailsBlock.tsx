@@ -9,7 +9,7 @@ export function EventDetailsBlock({ block }: { block: InvitationBlock<'event-det
   return (
     <BlockWrapper style={block.style}>
       <div className="flex flex-col items-center gap-4 text-center">
-        {data.icon && <EventIcon kind={data.icon} className="h-10 w-10 accent" />}
+        {data.icon && !block.style?.hideIcons && <EventIcon kind={data.icon} className="h-10 w-10 accent" />}
         {(data.date || data.time) && (
           <div>
             {data.date && (
