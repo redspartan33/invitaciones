@@ -66,11 +66,11 @@ export default function App() {
   if (route.kind === 'admin') {
     return (
       <AdminView
-        onOpenEditor={(id) => {
+        onOpenEditor={(id, kind) => {
           const params = new URLSearchParams()
           params.set('admin', ADMIN_TOKEN)
           if (id) params.set('edit', id)
-          else params.set('new', '1')
+          else params.set('new', kind === 'menu' ? 'menu' : 'invitation')
           window.history.pushState({}, '', `/?${params.toString()}`)
           setRoute({ kind: 'editor' })
         }}

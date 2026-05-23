@@ -5,7 +5,7 @@ import { EditorFootbar } from './EditorFootbar'
 import { EditorHeader } from './EditorHeader'
 import { GuideModal } from './GuideModal'
 import { INVITATION_PREFIX, useEditorStore } from '../../store/editorStore'
-import { createExampleInvitation } from '../../utils/blockDefaults'
+import { createExampleInvitation, createExampleMenu } from '../../utils/blockDefaults'
 import { loadFromRegistry, saveToRegistry } from '../../utils/inviteRegistry'
 
 // How often (ms) to autosave the draft to the server
@@ -22,6 +22,8 @@ export function InvitationBuilder() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const editId = params.get('edit')
+    const newKind = params.get('new') === 'menu' ? 'menu' : 'invitation'
+    const makeNew = newKind === 'menu' ? createExampleMenu : createExampleInvitation
 
     async function boot() {
       if (editId) {
@@ -54,13 +56,13 @@ export function InvitationBuilder() {
         }
 
         // 3. Nothing found — create fresh with that ID
-        const newInv = createExampleInvitation()
+        const newInv = makeNew()
         newInv.id = editId
         window.localStorage.setItem(key, JSON.stringify(newInv))
         loadInvitation(newInv)
       } else {
-        // No ID in URL → brand new invitation
-        const newInv = createExampleInvitation()
+        // No ID in URL → brand new document of the requested kind
+        const newInv = makeNew()
         const key = INVITATION_PREFIX + newInv.id
         window.localStorage.setItem(key, JSON.stringify(newInv))
         loadInvitation(newInv)

@@ -7,6 +7,10 @@ import { GiftRegistryBlock } from './GiftRegistryBlock'
 import { HeroBlock } from './HeroBlock'
 import { RsvpInfoBlock } from './RsvpInfoBlock'
 import { TimelineBlock } from './TimelineBlock'
+import { MenuHeaderBlock } from './MenuHeaderBlock'
+import { MenuSectionBlock } from './MenuSectionBlock'
+import { MenuNoteBlock } from './MenuNoteBlock'
+import { MenuFooterBlock } from './MenuFooterBlock'
 
 export function BlockRenderer({ block }: { block: InvitationBlock }) {
   switch (block.type) {
@@ -26,6 +30,14 @@ export function BlockRenderer({ block }: { block: InvitationBlock }) {
       return <FooterBlock block={block as InvitationBlock<'footer'>} />
     case 'gallery':
       return <GalleryBlock block={block as InvitationBlock<'gallery'>} />
+    case 'menu-header':
+      return <MenuHeaderBlock block={block as InvitationBlock<'menu-header'>} />
+    case 'menu-section':
+      return <MenuSectionBlock block={block as InvitationBlock<'menu-section'>} />
+    case 'menu-note':
+      return <MenuNoteBlock block={block as InvitationBlock<'menu-note'>} />
+    case 'menu-footer':
+      return <MenuFooterBlock block={block as InvitationBlock<'menu-footer'>} />
     default:
       return null
   }

@@ -1,4 +1,6 @@
-export type BlockType =
+export type InvitationKind = 'invitation' | 'menu'
+
+export type InvitationBlockType =
   | 'hero'
   | 'event-details'
   | 'timeline'
@@ -7,6 +9,14 @@ export type BlockType =
   | 'rsvp-info'
   | 'footer'
   | 'gallery'
+
+export type MenuBlockType =
+  | 'menu-header'
+  | 'menu-section'
+  | 'menu-note'
+  | 'menu-footer'
+
+export type BlockType = InvitationBlockType | MenuBlockType
 
 export type FontFamily = 'serif' | 'sans-serif' | 'script'
 
@@ -119,6 +129,49 @@ export interface GalleryData {
   columns: 2 | 3 | 4
 }
 
+// ── Menu block data ─────────────────────────────────────────────────────────
+
+export interface MenuHeaderData {
+  title: string
+  tagline?: string
+  logo?: string
+  backgroundImage?: string
+  backgroundColor?: string
+  navBackgroundColor?: string
+  navTextColor?: string
+  showLogo: boolean
+  showTitle: boolean
+  showTagline: boolean
+}
+
+export interface MenuItem {
+  id: string
+  name: string
+  description?: string
+  price?: string
+  badges?: string
+}
+
+export interface MenuSectionData {
+  title: string
+  description?: string
+  items: MenuItem[]
+}
+
+export interface MenuNoteData {
+  text: string
+  alignment?: Alignment
+}
+
+export interface MenuFooterData {
+  address?: string
+  phone?: string
+  hours?: string
+  instagram?: string
+  whatsapp?: string
+  website?: string
+}
+
 export type BlockDataMap = {
   hero: HeroData
   'event-details': EventDetailsData
@@ -128,6 +181,10 @@ export type BlockDataMap = {
   'rsvp-info': RsvpInfoData
   footer: FooterData
   gallery: GalleryData
+  'menu-header': MenuHeaderData
+  'menu-section': MenuSectionData
+  'menu-note': MenuNoteData
+  'menu-footer': MenuFooterData
 }
 
 export interface InvitationBlock<T extends BlockType = BlockType> {
@@ -153,6 +210,7 @@ export interface GlobalSettings {
 
 export interface Invitation {
   id: string
+  kind?: InvitationKind
   title: string
   blocks: InvitationBlock[]
   globalSettings: GlobalSettings

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import type { BlockType, ViewportMode } from '../../types/invitation.types'
-import { BLOCK_CATALOG } from '../../utils/blockDefaults'
+import { blockCatalogFor } from '../../utils/blockDefaults'
 import { PlusIcon } from '../blocks/icons'
 
 export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
@@ -10,6 +10,8 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
   const viewport = useEditorStore((s) => s.viewport)
   const setViewport = useEditorStore((s) => s.setViewport)
   const addBlock = useEditorStore((s) => s.addBlock)
+  const kind = useEditorStore((s) => s.invitation.kind ?? 'invitation')
+  const catalog = blockCatalogFor(kind)
   const [addOpen, setAddOpen] = useState(false)
 
   const onAdd = (type: BlockType) => {
@@ -50,9 +52,11 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
           <>
             <div className="fixed inset-0 z-10" onClick={() => setAddOpen(false)} />
             <div className="absolute bottom-12 right-0 z-20 w-72 rounded border border-ink-200 bg-white p-2 anim-fade-in">
-              <p className="px-2 py-1.5 text-[11px] uppercase tracking-widest text-ink-400">Tipos de bloque</p>
+              <p className="px-2 py-1.5 text-[11px] uppercase tracking-widest text-ink-400">
+                {kind === 'menu' ? 'Bloques de menú' : 'Bloques de invitación'}
+              </p>
               <div className="grid grid-cols-1 gap-0.5">
-                {BLOCK_CATALOG.map((b) => (
+                {catalog.map((b) => (
                   <button
                     key={b.type}
                     onClick={() => onAdd(b.type)}
