@@ -1,12 +1,10 @@
-import { put, list, del } from '@vercel/blob'
+import { kv } from '@vercel/kv'
 
-// Vercel serverless function: stores each invitation as a public JSON blob at
-// pathname `inv/<slug>.json`. Public so reads are direct from CDN, but we keep
-// the proxy via this endpoint for stable URLs (the underlying blob URL has a
-// store-id prefix that we don't want to leak into our share links).
+// Vercel serverless function: stores each invitation as a JSON value in
+// Vercel KV (Redis) at key `inv:<slug>`.
 //
-// Auth: writes use `BLOB_READ_WRITE_TOKEN` (auto-injected by Vercel when a
-// Blob store is connected to the project). Reads list+fetch via the same SDK.
+// Auth: KV uses `KV_*` env vars auto-injected by Vercel when a KV/Upstash
+// store is connected to the project.
 
 interface VercelRequest {
   method?: string
@@ -23,6 +21,7 @@ interface VercelResponse {
 }
 
 const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/
+const KEY_PREFIX = 'inv:'
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -38,40 +37,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const idRaw = req.query.id
   const id = Array.isArray(idRaw) ? idRaw[0] : idRaw
   if (!id || !SLUG_RE.test(id)) return res.status(400).json({ error: 'Invalid id' })
-  const pathname = `inv/${id}.json`
+  const key = KEY_PREFIX + id
 
   try {
     if (req.method === 'GET') {
-      const { blobs } = await list({ prefix: pathname })
-      const match = blobs.find((b) => b.pathname === pathname)
-      if (!match) return res.status(404).json({ error: 'Not found' })
-      const r = await fetch(match.url, { cache: 'no-store' })
-      const text = await r.text()
+      const value = await kv.get(key)
+      if (value === null || value === undefined) return res.status(404).json({ error: 'Not found' })
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      return res.status(200).send(text)
+      return res.status(200).send(typeof value === 'string' ? value : JSON.stringify(value))
     }
 
     if (req.method === 'PUT' || req.method === 'POST') {
-      // Vercel parses JSON body by default into req.body (object). Re-serialize
-      // so storage is canonical and we can also accept raw strings.
       const payload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
       if (!payload || payload.length > 2 * 1024 * 1024) {
         return res.status(413).json({ error: 'Payload too large' })
       }
-      await put(pathname, payload, {
-        access: 'public',
-        addRandomSuffix: false,
-        contentType: 'application/json',
-        allowOverwrite: true,
-      })
+      const parsed = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+      await kv.set(key, parsed)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'DELETE') {
-      const { blobs } = await list({ prefix: pathname })
-      for (const b of blobs) {
-        if (b.pathname === pathname) await del(b.url)
-      }
+      await kv.del(key)
       return res.status(200).json({ ok: true })
     }
 

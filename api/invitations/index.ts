@@ -1,12 +1,11 @@
-import { list, del } from '@vercel/blob'
+import { kv } from '@vercel/kv'
 
-// Vercel serverless function: lists all invitations stored as blobs under the
-// `inv/` prefix. Each blob was saved by api/invitations/[id].ts as a public
-// JSON file at `inv/<slug>.json`.
+// Vercel serverless function: lists / deletes invitations stored in Vercel KV.
+// Each invitation lives at key `inv:<slug>` (see api/invitations/[id].ts).
 //
 // Routes:
-//   GET  /api/invitations/index        → returns array of full Invitation objects
-//   DELETE /api/invitations/index?id=<slug> → deletes the blob for that slug
+//   GET    /api/invitations/index        → array of full Invitation objects
+//   DELETE /api/invitations/index?id=<slug> → deletes one invitation
 
 interface VercelRequest {
   method?: string
@@ -23,6 +22,7 @@ interface VercelResponse {
 }
 
 const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/
+const KEY_PREFIX = 'inv:'
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -36,39 +36,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   try {
-    // ── GET: list all invitations ─────────────────────────────────────────────
     if (req.method === 'GET') {
-      const { blobs } = await list({ prefix: 'inv/' })
-
-      // Fetch every blob in parallel and parse the JSON
-      const results = await Promise.allSettled(
-        blobs
-          .filter((b) => b.pathname.endsWith('.json'))
-          .map(async (b) => {
-            const r = await fetch(b.url, { cache: 'no-store' })
-            if (!r.ok) return null
-            return r.json()
-          }),
-      )
-
-      const invitations = results
-        .filter((r): r is PromiseFulfilledResult<unknown> => r.status === 'fulfilled' && r.value !== null)
-        .map((r) => r.value)
-
+      // Scan keys under the inv: prefix. For <10k entries this is fine; if it
+      // ever grows we'd swap to SCAN cursors or a sorted-set index.
+      const keys = await kv.keys(KEY_PREFIX + '*')
+      if (keys.length === 0) return res.status(200).json([])
+      const values = await kv.mget<unknown[]>(...keys)
+      const invitations = values.filter((v) => v !== null && v !== undefined)
       return res.status(200).json(invitations)
     }
 
-    // ── DELETE: remove one invitation by slug ─────────────────────────────────
     if (req.method === 'DELETE') {
       const idRaw = req.query.id
       const id = Array.isArray(idRaw) ? idRaw[0] : idRaw
       if (!id || !SLUG_RE.test(id)) return res.status(400).json({ error: 'Invalid id' })
-
-      const pathname = `inv/${id}.json`
-      const { blobs } = await list({ prefix: pathname })
-      for (const b of blobs) {
-        if (b.pathname === pathname) await del(b.url)
-      }
+      await kv.del(KEY_PREFIX + id)
       return res.status(200).json({ ok: true })
     }
 
