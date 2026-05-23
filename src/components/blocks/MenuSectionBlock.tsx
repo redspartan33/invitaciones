@@ -3,9 +3,18 @@ import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
 import { menuSectionAnchor } from '../../utils/menuNav'
 
+const itemSpacingClass: Record<NonNullable<MenuSectionData['itemSpacing']>, string> = {
+  xs: 'space-y-1',
+  sm: 'space-y-2',
+  md: 'space-y-4',
+  lg: 'space-y-6',
+  xl: 'space-y-8',
+}
+
 export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-section'> }) {
   const data = block.data as MenuSectionData
   const anchor = menuSectionAnchor(block.id, data.title)
+  const spacing = itemSpacingClass[data.itemSpacing ?? 'md']
 
   return (
     <div id={anchor} className="scroll-mt-24">
@@ -31,7 +40,7 @@ export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-secti
               </TextEl>
             )}
           </header>
-          <ul className="space-y-4">
+          <ul className={spacing}>
             {data.items.map((item) => (
               <li key={item.id} className="grid grid-cols-[1fr_auto] gap-x-4">
                 <div className="min-w-0">

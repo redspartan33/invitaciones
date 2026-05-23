@@ -90,6 +90,31 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'gallery' && <GalleryImagesForm block={block as InvitationBlock<'gallery'>} />}
       {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
 
+      {block.type === 'menu-section' && (
+        <section className="space-y-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Espaciado entre platillos</h3>
+          <div className="grid grid-cols-5 gap-2">
+            {SIZES.map((s) => {
+              const current = ((block.data as { itemSpacing?: string }).itemSpacing ?? 'md')
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => updateBlockData(block.id, { itemSpacing: s })}
+                  className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
+                    current === s
+                      ? 'border-ink-900 bg-ink-900 text-white'
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                  }`}
+                >
+                  {s}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Estilos compartidos para campos repetibles (cuando aplica). */}
       {(block.type === 'timeline' || block.type === 'gift-registry') && (
         <section className="space-y-3">

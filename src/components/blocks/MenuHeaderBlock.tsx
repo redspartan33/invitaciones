@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
 import type { InvitationBlock, MenuHeaderData, MenuSectionData } from '../../types/invitation.types'
 import { useEditorStore } from '../../store/editorStore'
 import { TextEl } from './TextEl'
@@ -73,6 +73,35 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
     return () => window.removeEventListener('scroll', update)
   }, [headerHeight, isPublicView, stickyNavOnly])
 
+  // Deep-link: if the page arrives with a hash (e.g. ?id=foo#section),
+  // wait until sections actually exist in the DOM, then scroll to the
+  // target. Native anchor scroll fires before our async data loads.
+  useEffect(() => {
+    if (!isPublicView) return
+    const hash = window.location.hash.slice(1)
+    if (!hash) return
+    const target = document.getElementById(hash)
+    if (!target) return
+    requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }))
+  }, [isPublicView, sections.length])
+
+  const handleNavClick = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
+    // Native anchor scrolling is unreliable here because the sticky-nav
+    // placeholder mounts on scroll and shifts the layout mid-jump. Drive
+    // the scroll ourselves and update the hash without re-triggering the
+    // browser's anchor algorithm.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    const target = document.getElementById(id)
+    if (!target) return
+    e.preventDefault()
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    try {
+      window.history.replaceState(null, '', `#${id}`)
+    } catch {
+      window.location.hash = id
+    }
+  }
+
   const renderHeaderContent = () => (
     <div style={bgStyle} className="px-6 py-16 text-center" ref={headerRef}>
       {data.showLogo && data.logo && (
@@ -106,6 +135,7 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
               <li key={s.id}>
                 <a
                   href={`#${s.id}`}
+                  onClick={(e) => handleNavClick(e, s.id)}
                   className="inline-block whitespace-nowrap rounded-full px-3 py-1.5 transition-colors hover:bg-white/15"
                 >
                   {s.title}

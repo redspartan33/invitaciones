@@ -37,6 +37,15 @@ src/
 7. **Gallery** — Galería de fotos responsive
 8. **Footer** — Mensaje final + contacto + redes
 
+### Bloques de menú (kind = `menu`)
+
+- **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección
+- **Menu section** — Lista de platillos con título, descripción opcional y espaciado entre platillos configurable (XS/SM/MD/LG/XL)
+- **Menu note** — Texto suelto (alérgenos, propina, etc.)
+- **Menu footer** — Dirección, horarios, redes
+
+La barra sticky del menú hace deep-link a cada sección vía hash; los clicks se manejan con `scrollIntoView` para evitar problemas de layout shift cuando la barra se vuelve fija.
+
 ## Funcionalidades
 
 - Click en cualquier bloque → abre su formulario a la derecha

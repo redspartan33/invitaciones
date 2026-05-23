@@ -159,6 +159,8 @@ export interface MenuSectionData {
   title: string
   description?: string
   items: MenuItem[]
+  /** Vertical spacing between platillos. Defaults to 'md'. */
+  itemSpacing?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export interface MenuNoteData {
