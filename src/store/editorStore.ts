@@ -8,67 +8,11 @@ import type {
   ViewportMode,
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
-import { isJsonBlobId } from '../utils/jsonblob'
-import { saveToRegistry, deleteFromRegistry } from '../utils/inviteRegistry'
+import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 
 const STORAGE_KEY = 'invitation-builder:draft'
-const BACKEND_KEY = 'invitation-builder:backend'
 
-export interface BackendConfig {
-  baseUrl: string
-  token: string
-}
-
-const DEFAULT_BACKEND_URL = '/api'
-const LEGACY_BACKEND_URLS = [
-  'https://api.lamartinasma.com',
-  'https://api.lamartinasma.com/',
-  '/api/index.php',
-]
-
-function loadBackend(): BackendConfig {
-  if (typeof window === 'undefined') return { baseUrl: DEFAULT_BACKEND_URL, token: '' }
-  try {
-    const raw = window.localStorage.getItem(BACKEND_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<BackendConfig>
-      const merged: BackendConfig = { baseUrl: DEFAULT_BACKEND_URL, token: '', ...parsed }
-      // Auto-migrate legacy Node subdomain URL to the new PHP endpoint.
-      if (LEGACY_BACKEND_URLS.includes((merged.baseUrl || '').trim())) {
-        merged.baseUrl = DEFAULT_BACKEND_URL
-        try { window.localStorage.setItem(BACKEND_KEY, JSON.stringify(merged)) } catch { /* ignore */ }
-      }
-      return merged
-    }
-  } catch {
-    /* ignore */
-  }
-  return { baseUrl: DEFAULT_BACKEND_URL, token: '' }
-}
-
-// Build the URL for a given invitation id, supporting both the PHP entry point
-// (`/api/index.php` → adds `?id=<slug>`) and traditional REST backends
-// (`https://host` → appends `/invitations/<slug>`). Used for GET/PUT/DELETE.
-export function getBackendUrl(baseUrl: string, idOrAction: { id?: string; action?: string }): string {
-  const base = baseUrl.replace(/\/$/, '')
-  const isPhp = /\.php($|\?)/.test(base)
-  if (isPhp) {
-    const params = new URLSearchParams()
-    if (idOrAction.id) params.set('id', idOrAction.id)
-    if (idOrAction.action) params.set('action', idOrAction.action)
-    return `${base}?${params.toString()}`
-  }
-  if (idOrAction.action === 'health') return `${base}/health`
-  return `${base}/invitations/${idOrAction.id}`
-}
-
-function persistBackend(b: BackendConfig) {
-  try {
-    window.localStorage.setItem(BACKEND_KEY, JSON.stringify(b))
-  } catch {
-    /* ignore */
-  }
-}
+export const INVITATION_PREFIX = 'invitation-builder:inv:'
 
 function loadInitial(): Invitation {
   if (typeof window === 'undefined') return createExampleInvitation()
@@ -90,8 +34,7 @@ interface EditorState {
   invitation: Invitation
   selectedBlockId: string | null
   viewport: ViewportMode
-  activePanel: 'block' | 'colors' | 'fonts' | 'music' | 'details' | 'api' | null
-  backend: BackendConfig
+  activePanel: 'block' | 'colors' | 'fonts' | 'music' | 'details' | null
   publishMode: PublishMode
   publishError: string | null
   // actions
@@ -110,17 +53,11 @@ interface EditorState {
   resetDraft: () => void
   loadInvitation: (inv: Invitation) => void
   saveInvitationDraft: () => Promise<void>
-  publishInvitation: () => Promise<string>
+  publishInvitation: () => Promise<string | null>
   unpublishInvitation: () => Promise<void>
-  setBackend: (patch: Partial<BackendConfig>) => void
-  testBackend: () => Promise<{ ok: boolean; message: string }>
 }
 
-export const PUBLISHED_PREFIX = 'invitation-builder:published:'
-export const INVITATION_PREFIX = 'invitation-builder:inv:'
-
-// Slug corto (~9 chars base62, ≈ 53 bits) — no enumerable y mucho más corto
-// que el UUID original. Suficiente para links privados.
+// 9-char base62 slug (~53 bits of entropy). Short to share, not enumerable.
 function generateShortSlug(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   const bytes = new Uint8Array(9)
@@ -135,7 +72,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedBlockId: null,
   viewport: 'desktop',
   activePanel: 'block',
-  backend: loadBackend(),
   publishMode: 'idle',
   publishError: null,
 
@@ -264,7 +200,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       window.localStorage.removeItem(INVITATION_PREFIX + invitation.id)
     }
     const newInv = createExampleInvitation()
-    newInv.id = invitation.id // Mantener el mismo ID para seguir en la misma sesión
+    newInv.id = invitation.id
     set({ invitation: newInv, selectedBlockId: null })
   },
 
@@ -272,30 +208,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   saveInvitationDraft: async () => {
     const { invitation: inv } = get()
-    // Use the invitation's own ID as the blob key for drafts (prefixed to avoid
-    // collisions with published slugs which are short 9-char strings).
-    const draftSlug = `draft-${inv.id}`
     const draft: Invitation = { ...inv, updatedAt: new Date().toISOString() }
-    // Persist locally first (always works)
     try {
       window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(draft))
-    } catch { /* ignore */ }
-    // Persist remotely (best-effort, non-blocking for the UI)
-    saveToRegistry(draftSlug, draft).catch(() => { /* ignore network errors */ })
+    } catch { /* ignore quota errors */ }
+    saveToRegistry(`draft-${inv.id}`, draft).catch(() => { /* best-effort */ })
     set({ invitation: draft })
   },
 
+  // Atomic publish: only marks the invitation as published if the server
+  // actually accepted the write. Otherwise the UI stays in 'error' so the
+  // user knows the link is not valid yet.
   publishInvitation: async () => {
     const { invitation: inv } = get()
-    const now = new Date().toISOString()
     set({ publishMode: 'pushing', publishError: null })
 
-    // Always use a clean 9-char short slug. Reuse it on republish for stable
-    // links. Old UUID slugs (from previous JSONBlob flow) are discarded.
-    const slug =
-      inv.publicSlug && !isJsonBlobId(inv.publicSlug) ? inv.publicSlug : generateShortSlug()
+    const slug = inv.publicSlug && /^[A-Za-z0-9_-]{1,64}$/.test(inv.publicSlug)
+      ? inv.publicSlug
+      : generateShortSlug()
+    const now = new Date().toISOString()
     const sharedLink = `${window.location.origin}/?id=${slug}`
-    const draft: Invitation = {
+    const published: Invitation = {
       ...inv,
       publicSlug: slug,
       status: 'published',
@@ -303,141 +236,43 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sharedLink,
     }
 
-    const ok = await saveToRegistry(slug, draft)
-    if (ok) {
-      set({ publishMode: 'pushed' })
-      setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
-    } else {
-      set({ publishMode: 'error', publishError: 'No se pudo guardar la invitación en el servidor.' })
+    const ok = await saveToRegistry(slug, published)
+    if (!ok) {
+      set({
+        publishMode: 'error',
+        publishError: 'No se pudo guardar la invitación en el servidor. Revisa /api/diag.',
+      })
+      return null
     }
-
-    const published = draft
 
     try {
-      window.localStorage.setItem(PUBLISHED_PREFIX + slug, JSON.stringify(published))
       window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(published))
-    } catch {
-      /* ignore quota errors */
-    }
+    } catch { /* ignore quota errors */ }
 
-    set({ invitation: published })
+    set({ invitation: published, publishMode: 'pushed' })
+    setTimeout(() => set((s) => (s.publishMode === 'pushed' ? { publishMode: 'idle' } : s)), 2000)
     return sharedLink
   },
 
   unpublishInvitation: async () => {
     const { invitation: inv } = get()
-    const key = inv.publicSlug || inv.id
-    try {
-      window.localStorage.removeItem(PUBLISHED_PREFIX + key)
-    } catch {
-      /* ignore */
+    if (inv.publicSlug) await deleteFromRegistry(inv.publicSlug)
+    const updated: Invitation = {
+      ...inv,
+      status: 'draft',
+      sharedLink: undefined,
+      updatedAt: new Date().toISOString(),
     }
-    if (inv.publicSlug) {
-      await deleteFromRegistry(inv.publicSlug)
-    }
-    const updated: Invitation = { ...inv, status: 'draft', sharedLink: undefined, updatedAt: new Date().toISOString() }
     try {
       window.localStorage.setItem(INVITATION_PREFIX + inv.id, JSON.stringify(updated))
-    } catch {
-      /* ignore */
-    }
-    // Also persist the draft state remotely so it shows up from other devices
-    const draftSlug = `draft-${inv.id}`
-    saveToRegistry(draftSlug, updated).catch(() => { /* ignore */ })
+    } catch { /* ignore */ }
+    saveToRegistry(`draft-${inv.id}`, updated).catch(() => { /* best-effort */ })
     set({ invitation: updated })
-  },
-
-  setBackend: (patch) => {
-    const next = { ...get().backend, ...patch }
-    persistBackend(next)
-    set({ backend: next })
-  },
-
-  testBackend: async () => {
-    const { backend } = get()
-    if (!backend.baseUrl) return { ok: false, message: 'Falta la URL base' }
-    try {
-      const res = await fetch(getBackendUrl(backend.baseUrl, { action: 'health' }), {
-        headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
-      })
-      if (res.ok) return { ok: true, message: `Conexión OK (${res.status})` }
-      return { ok: false, message: `HTTP ${res.status}` }
-    } catch (e) {
-      return { ok: false, message: (e as Error).message }
-    }
   },
 }))
 
-export async function fetchPublishedFromBackend(id: string, backend: BackendConfig): Promise<Invitation | null> {
-  if (!backend.baseUrl) return null
-  try {
-    const res = await fetch(getBackendUrl(backend.baseUrl, { id }), {
-      headers: backend.token ? { Authorization: `Bearer ${backend.token}` } : {},
-    })
-    if (!res.ok) return null
-    return (await res.json()) as Invitation
-  } catch {
-    return null
-  }
-}
-
-export { loadBackend }
-
-// Serialize an invitation into a URL-safe base64 string, so it can be shared
-// via link across browsers without a backend.
-export function encodeInvitation(inv: Invitation): string {
-  const json = JSON.stringify(inv)
-  const utf8 = unescape(encodeURIComponent(json))
-  return btoa(utf8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-// Comprime + base64url. Reduce el JSON ~70-80% respecto a base64 plano.
-export async function encodeInvitationCompressed(inv: Invitation): Promise<string> {
-  const json = JSON.stringify(inv)
-  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'))
-  const buf = new Uint8Array(await new Response(stream).arrayBuffer())
-  let bin = ''
-  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i])
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-export async function decodeInvitationCompressed(encoded: string): Promise<Invitation | null> {
-  try {
-    const padded = encoded.replace(/-/g, '+').replace(/_/g, '/')
-    const bin = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
-    const bytes = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
-    const json = await new Response(stream).text()
-    const parsed = JSON.parse(json) as Invitation
-    if (!parsed?.id || !Array.isArray(parsed.blocks)) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-export function decodeInvitation(encoded: string): Invitation | null {
-  try {
-    const padded = encoded.replace(/-/g, '+').replace(/_/g, '/')
-    const utf8 = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
-    const json = decodeURIComponent(escape(utf8))
-    const parsed = JSON.parse(json) as Invitation
-    if (!parsed?.id || !Array.isArray(parsed.blocks)) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-export function loadPublishedById(id: string): Invitation | null {
-  try {
-    const raw = window.localStorage.getItem(PUBLISHED_PREFIX + id)
-    if (!raw) return null
-    return JSON.parse(raw) as Invitation
-  } catch {
-    return null
-  }
+export async function loadPublishedFromServer(slug: string): Promise<Invitation | null> {
+  return loadFromRegistry(slug)
 }
 
 export const EDITOR_STORAGE_KEY = STORAGE_KEY

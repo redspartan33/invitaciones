@@ -12,6 +12,8 @@ export function EditorHeader() {
   const publishInvitation = useEditorStore((s) => s.publishInvitation)
   const unpublishInvitation = useEditorStore((s) => s.unpublishInvitation)
   const invitation = useEditorStore((s) => s.invitation)
+  const publishMode = useEditorStore((s) => s.publishMode)
+  const publishError = useEditorStore((s) => s.publishError)
   const { status: saveStatus, lastSavedAt } = useAutoSave()
   const [shareOpen, setShareOpen] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
@@ -19,16 +21,18 @@ export function EditorHeader() {
 
   const isPublished = status === 'published'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const shareLink = invitation.sharedLink || (invitation.publicSlug ? `${origin}/?inv=${invitation.publicSlug}` : '')
+  const shareLink = invitation.sharedLink || (invitation.publicSlug ? `${origin}/?id=${invitation.publicSlug}` : '')
   const qrSrc = shareLink
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=${encodeURIComponent(shareLink)}`
     : ''
 
   const onPublish = async () => {
-    await publishInvitation()
-    setJustPublished(true)
+    const link = await publishInvitation()
     setShareOpen(true)
-    setTimeout(() => setJustPublished(false), 2500)
+    if (link) {
+      setJustPublished(true)
+      setTimeout(() => setJustPublished(false), 2500)
+    }
   }
 
   const onCopy = async (text: string, field: string) => {
@@ -139,12 +143,26 @@ export function EditorHeader() {
           <div className="absolute right-6 top-14 z-30 w-[420px] rounded border border-ink-200 bg-white p-4 anim-fade-in">
             <div className="mb-2 flex items-center justify-between">
               <h4 className="text-sm font-medium">
-                {isPublished ? 'Invitación publicada' : 'Aún no publicada'}
+                {publishMode === 'error'
+                  ? 'No se pudo publicar'
+                  : isPublished
+                    ? 'Invitación publicada'
+                    : 'Aún no publicada'}
               </h4>
               <button onClick={() => setShareOpen(false)} className="btn-ghost text-xs">
                 Cerrar
               </button>
             </div>
+            {publishMode === 'pushing' && (
+              <p className="mb-3 rounded border border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+                Guardando en el servidor…
+              </p>
+            )}
+            {publishMode === 'error' && (
+              <p className="mb-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                {publishError ?? 'Error desconocido.'} Vuelve a intentar.
+              </p>
+            )}
             {justPublished && (
               <p className="mb-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
                 ¡Invitación publicada! Comparte el link con tus invitados.
@@ -152,8 +170,18 @@ export function EditorHeader() {
             )}
             <label className="label-flat">Enlace de la invitación</label>
             <div className="mb-3 flex items-center gap-2">
-              <input type="text" readOnly value={shareLink} className="input-flat flex-1 text-xs font-mono" />
-              <button onClick={() => onCopy(shareLink, 'simple')} className="btn-flat" title="Copiar">
+              <input
+                type="text"
+                readOnly
+                value={shareLink || '—'}
+                className="input-flat flex-1 text-xs font-mono"
+              />
+              <button
+                onClick={() => onCopy(shareLink, 'simple')}
+                className="btn-flat"
+                title="Copiar"
+                disabled={!shareLink}
+              >
                 <CopyIcon className="h-4 w-4" />
               </button>
             </div>

@@ -53,22 +53,7 @@ export function InvitationBuilder() {
           }
         }
 
-        // 3. Legacy: check published blob by slug
-        const pubKey = 'invitation-builder:published:' + editId
-        const rawPub = window.localStorage.getItem(pubKey)
-        if (rawPub) {
-          try {
-            const inv = JSON.parse(rawPub)
-            window.localStorage.setItem(key, JSON.stringify(inv))
-            loadInvitation(inv)
-            setLoading(false)
-            return
-          } catch (e) {
-            console.error('Failed to parse published invitation', e)
-          }
-        }
-
-        // 4. Nothing found — create fresh with that ID
+        // 3. Nothing found — create fresh with that ID
         const newInv = createExampleInvitation()
         newInv.id = editId
         window.localStorage.setItem(key, JSON.stringify(newInv))

@@ -1,8 +1,8 @@
-import { kv } from '@vercel/kv'
+import { put, list, del } from '@vercel/blob'
 
-// Diagnostic endpoint: reports whether KV is reachable end-to-end by writing
-// a probe key, reading it back, and deleting it. Surfaces the real reason a
-// publish would fail (missing env vars, wrong region, expired token, etc.).
+// Diagnostic endpoint: reports whether Vercel Blob is reachable end-to-end
+// by writing a probe blob, reading it back, and deleting it. Surfaces the
+// real reason a publish would fail.
 //
 // Usage: GET /api/diag
 
@@ -20,37 +20,44 @@ interface VercelResponse {
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store')
 
-  const env = {
-    KV_URL: !!process.env.KV_URL,
-    KV_REST_API_URL: !!process.env.KV_REST_API_URL,
-    KV_REST_API_TOKEN: !!process.env.KV_REST_API_TOKEN,
-    BLOB_READ_WRITE_TOKEN: !!process.env.BLOB_READ_WRITE_TOKEN,
-  }
+  const env = { BLOB_READ_WRITE_TOKEN: !!process.env.BLOB_READ_WRITE_TOKEN }
 
-  const probeKey = '__diag_probe__'
+  const probePath = `inv/__diag_probe__.json`
   const probeValue = { ts: Date.now(), nonce: Math.random().toString(36).slice(2) }
 
   let writeOk = false
   let readOk = false
-  let readValue: unknown = null
   let error: string | null = null
 
   try {
-    await kv.set(probeKey, probeValue)
+    const { url } = await put(probePath, JSON.stringify(probeValue), {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'application/json',
+      allowOverwrite: true,
+    })
     writeOk = true
-    readValue = await kv.get(probeKey)
-    readOk = !!readValue && typeof readValue === 'object'
-    await kv.del(probeKey)
+
+    const r = await fetch(url, { cache: 'no-store' })
+    if (r.ok) {
+      const back = await r.json()
+      readOk = back?.nonce === probeValue.nonce
+    }
+
+    const { blobs } = await list({ prefix: probePath })
+    for (const b of blobs) {
+      if (b.pathname === probePath) await del(b.url)
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : String(e)
   }
 
   return res.status(200).json({
     env,
-    kv: { writeOk, readOk, readValue, error },
+    blob: { writeOk, readOk, error },
     summary:
       writeOk && readOk
-        ? 'KV OK — publish should work end-to-end.'
-        : error ?? 'KV reachable but write/read returned unexpected value.',
+        ? 'Blob OK — publish should work end-to-end.'
+        : error ?? 'Blob reachable but write/read returned unexpected value.',
   })
 }

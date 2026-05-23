@@ -31,8 +31,6 @@ export function ConfigPanel() {
           />
         ) : activePanel === 'details' ? (
           <DetailsPanel />
-        ) : activePanel === 'api' ? (
-          <ApiPanel />
         ) : selected ? (
           <>
             <SelectedHeader />
@@ -54,7 +52,6 @@ function PanelHeader() {
   else if (activePanel === 'fonts') title = 'Fuentes'
   else if (activePanel === 'music') title = 'Música'
   else if (activePanel === 'details') title = 'Detalles'
-  else if (activePanel === 'api') title = 'API / Backend'
   else if (selected) {
     const info = BLOCK_CATALOG.find((b) => b.type === selected.type)
     title = info?.label ?? 'Bloque'
@@ -404,105 +401,6 @@ function MusicPanel({
       <p className="text-[10px] text-ink-400">
         Los navegadores pueden bloquear el autoplay; si no inicia, comenzará al primer toque del invitado.
       </p>
-    </div>
-  )
-}
-
-function ApiPanel() {
-  const backend = useEditorStore((s) => s.backend)
-  const setBackend = useEditorStore((s) => s.setBackend)
-  const testBackend = useEditorStore((s) => s.testBackend)
-  const publishMode = useEditorStore((s) => s.publishMode)
-  const publishError = useEditorStore((s) => s.publishError)
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
-  const [testing, setTesting] = useState(false)
-
-  const onTest = async () => {
-    setTesting(true)
-    setTestResult(null)
-    const result = await testBackend()
-    setTestResult(result)
-    setTesting(false)
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-ink-500">
-        Conecta un backend propio para guardar las invitaciones de verdad. Al publicar,
-        la app envía un <code className="rounded bg-ink-100 px-1 py-0.5 text-[10px]">PUT</code> al endpoint
-        y la vista pública hace <code className="rounded bg-ink-100 px-1 py-0.5 text-[10px]">GET</code>.
-      </p>
-
-      <div>
-        <label className="label-flat">URL base del API</label>
-        <input
-          type="url"
-          value={backend.baseUrl}
-          onChange={(e) => setBackend({ baseUrl: e.target.value })}
-          placeholder="https://api.lamartinasma.com"
-          className="input-flat"
-        />
-        <p className="mt-1 text-xs text-ink-400">
-          Sin slash final. La app llamará a <code>{(backend.baseUrl || 'https://...').replace(/\/$/, '')}/invitations/&lt;id&gt;</code>
-        </p>
-      </div>
-
-      <div>
-        <label className="label-flat">Token / API key (opcional)</label>
-        <input
-          type="password"
-          value={backend.token}
-          onChange={(e) => setBackend({ token: e.target.value })}
-          placeholder="sk_..."
-          className="input-flat"
-        />
-        <p className="mt-1 text-xs text-ink-400">
-          Si lo configuras, se envía como <code>Authorization: Bearer &lt;token&gt;</code>
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button onClick={onTest} className="btn-flat" disabled={testing || !backend.baseUrl}>
-          {testing ? 'Probando…' : 'Probar conexión'}
-        </button>
-        {testResult && (
-          <span className={`text-xs ${testResult.ok ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {testResult.message}
-          </span>
-        )}
-      </div>
-
-      {publishMode !== 'idle' && (
-        <div
-          className={`rounded border p-3 text-xs ${
-            publishMode === 'error'
-              ? 'border-rose-200 bg-rose-50 text-rose-700'
-              : publishMode === 'pushed'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-ink-200 bg-ink-50 text-ink-700'
-          }`}
-        >
-          {publishMode === 'pushing' && 'Enviando al backend…'}
-          {publishMode === 'pushed' && '✓ Invitación enviada al backend'}
-          {publishMode === 'error' && `Error: ${publishError ?? 'desconocido'}`}
-        </div>
-      )}
-
-      <div className="divider" />
-
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Contrato esperado</p>
-        <p className="mt-2 text-xs text-ink-600">El backend debe responder en estos endpoints:</p>
-        <pre className="mt-2 overflow-x-auto rounded border border-ink-200 bg-ink-50 p-3 text-[11px] leading-relaxed text-ink-700">
-{`PUT    /invitations/<id>   { Invitation JSON }
-GET    /invitations/<id>   → Invitation JSON
-DELETE /invitations/<id>
-GET    /health             → 200 OK`}
-        </pre>
-        <p className="mt-2 text-xs text-ink-500">
-          Sin backend, la publicación sigue funcionando con localStorage + link portable.
-        </p>
-      </div>
     </div>
   )
 }

@@ -1,9 +1,7 @@
-import { kv } from '@vercel/kv'
+import { put, list, del } from '@vercel/blob'
 
-// Vercel serverless function: stores each invitation as a JSON value in
-// Vercel KV (Redis) at key `inv:<slug>`.
-//
-// Auth: KV uses `KV_*` env vars auto-injected by Vercel when a KV/Upstash
+// Stores each invitation as a public JSON blob at `inv/<slug>.json`.
+// `BLOB_READ_WRITE_TOKEN` is injected automatically by Vercel when a Blob
 // store is connected to the project.
 
 interface VercelRequest {
@@ -21,7 +19,6 @@ interface VercelResponse {
 }
 
 const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/
-const KEY_PREFIX = 'inv:'
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -37,14 +34,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const idRaw = req.query.id
   const id = Array.isArray(idRaw) ? idRaw[0] : idRaw
   if (!id || !SLUG_RE.test(id)) return res.status(400).json({ error: 'Invalid id' })
-  const key = KEY_PREFIX + id
+  const pathname = `inv/${id}.json`
 
   try {
     if (req.method === 'GET') {
-      const value = await kv.get(key)
-      if (value === null || value === undefined) return res.status(404).json({ error: 'Not found' })
+      const { blobs } = await list({ prefix: pathname })
+      const match = blobs.find((b) => b.pathname === pathname)
+      if (!match) return res.status(404).json({ error: 'Not found' })
+      const r = await fetch(match.url, { cache: 'no-store' })
+      const text = await r.text()
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      return res.status(200).send(typeof value === 'string' ? value : JSON.stringify(value))
+      return res.status(200).send(text)
     }
 
     if (req.method === 'PUT' || req.method === 'POST') {
@@ -52,13 +52,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!payload || payload.length > 2 * 1024 * 1024) {
         return res.status(413).json({ error: 'Payload too large' })
       }
-      const parsed = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-      await kv.set(key, parsed)
+      await put(pathname, payload, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/json',
+        allowOverwrite: true,
+      })
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'DELETE') {
-      await kv.del(key)
+      const { blobs } = await list({ prefix: pathname })
+      for (const b of blobs) {
+        if (b.pathname === pathname) await del(b.url)
+      }
       return res.status(200).json({ ok: true })
     }
 

@@ -99,16 +99,17 @@ su contenido) al `public_html` de Hostinger via File Manager, FTP o SFTP.
 - SPA fallback: cualquier ruta cae en `index.html` para que `/?inv=<id>` funcione
 - Cache largo para los assets hasheados, `no-cache` para el HTML
 
-## Backend en Vercel (Vercel KV / Upstash Redis)
+## Backend en Vercel (Vercel Blob)
 
 El backend vive en este mismo repo como funciones serverless de Vercel y guarda
-cada invitación como un valor JSON en **Vercel KV** (Upstash Redis), bajo la
-clave `inv:<slug>`. No requiere subdominio: comparte el dominio del frontend.
+cada invitación como un blob público JSON en `inv/<slug>.json`. No requiere
+subdominio: comparte el dominio del frontend.
 
 **Endpoints (mismo origen):**
 
 ```
 GET    /api/health                       → { ok: true }
+GET    /api/diag                         → estado vivo del Blob store
 PUT    /api/invitations/<slug>           → { ok: true }    (body: Invitation JSON)
 GET    /api/invitations/<slug>           → Invitation JSON | 404
 DELETE /api/invitations/<slug>           → { ok: true }
@@ -119,29 +120,14 @@ DELETE /api/invitations/index?id=<slug>  → { ok: true }
 ### Setup en Vercel (una sola vez)
 
 1. En el dashboard de Vercel del proyecto, ve a **Storage → Create Database →
-   Marketplace Database Providers → Upstash for Redis** (o **KV**) →
-   **Connect to Project** (elige Production + Preview + Development).
-2. Vercel inyecta automáticamente las variables `KV_URL`, `KV_REST_API_URL`,
-   `KV_REST_API_TOKEN` y `KV_REST_API_READ_ONLY_TOKEN`. No hay que copiar nada.
-3. Redeploy: los endpoints `/api/invitations/*` ya escriben y leen de KV.
+   Blob → Connect to Project** (elige Production + Preview + Development).
+2. Vercel inyecta automáticamente `BLOB_READ_WRITE_TOKEN`. No hay que copiar
+   nada manualmente.
+3. El redeploy automático deja los endpoints listos. Verifica con
+   `/api/diag` que `writeOk` y `readOk` sean `true`.
 
-### Migrar invitaciones existentes desde Vercel Blob
+### Garantía de publicación
 
-Si antes estabas en el backend de Blob, hay un endpoint one-shot que copia
-todos los blobs `inv/*.json` a KV. Es idempotente (puedes correrlo varias
-veces; sobreescribe con el contenido más reciente del blob, no borra blobs):
-
-```
-GET /api/migrate-from-blob?admin=<ADMIN_TOKEN>
-```
-
-Donde `<ADMIN_TOKEN>` es el mismo de `src/admin/adminAuth.ts`. Devuelve un
-JSON con `{ total, migrated, failed }`. Después del primer corrido puedes
-desconectar el Blob Store de Vercel si quieres.
-
-### Sin backend (fallback)
-
-Si la conexión a KV falla en el momento de publicar, `publishInvitation`
-marca `publishMode: 'error'` y muestra el error en el ConfigPanel — el link
-publicado **no** se considera válido en ese caso. Los borradores siguen en
-`localStorage` para no perder trabajo.
+`publishInvitation` es atómico: marca la invitación como `published` **solo**
+si el servidor aceptó el `PUT`. Si falla, el popover de Compartir muestra el
+error y la invitación se queda en `draft`. Nunca generamos links rotos.
