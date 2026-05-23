@@ -1,6 +1,6 @@
-import { put, list, del } from '@vercel/blob'
+import { put, get, del } from '@vercel/blob'
 
-// Stores each invitation as a public JSON blob at `inv/<slug>.json`.
+// Stores each invitation as a private JSON blob at `inv/<slug>.json`.
 // `BLOB_READ_WRITE_TOKEN` is injected automatically by Vercel when a Blob
 // store is connected to the project.
 
@@ -38,11 +38,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const { blobs } = await list({ prefix: pathname })
-      const match = blobs.find((b) => b.pathname === pathname)
-      if (!match) return res.status(404).json({ error: 'Not found' })
-      const r = await fetch(match.url, { cache: 'no-store' })
-      const text = await r.text()
+      const result = await get(pathname, { access: 'private' })
+      if (!result || result.statusCode !== 200) return res.status(404).json({ error: 'Not found' })
+      const text = await new Response(result.stream).text()
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       return res.status(200).send(text)
     }
@@ -53,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(413).json({ error: 'Payload too large' })
       }
       await put(pathname, payload, {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
         contentType: 'application/json',
         allowOverwrite: true,
@@ -62,10 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
-      const { blobs } = await list({ prefix: pathname })
-      for (const b of blobs) {
-        if (b.pathname === pathname) await del(b.url)
-      }
+      await del(pathname)
       return res.status(200).json({ ok: true })
     }
 

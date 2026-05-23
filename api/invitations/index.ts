@@ -1,6 +1,6 @@
-import { list, del } from '@vercel/blob'
+import { list, get, del } from '@vercel/blob'
 
-// Lists / deletes invitations stored as public JSON blobs under `inv/`.
+// Lists / deletes invitations stored as private JSON blobs under `inv/`.
 //
 // Routes:
 //   GET    /api/invitations/index        → array of full Invitation objects
@@ -40,9 +40,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         blobs
           .filter((b) => b.pathname.endsWith('.json'))
           .map(async (b) => {
-            const r = await fetch(b.url, { cache: 'no-store' })
-            if (!r.ok) return null
-            return r.json()
+            const r = await get(b.pathname, { access: 'private' })
+            if (!r || r.statusCode !== 200) return null
+            return JSON.parse(await new Response(r.stream).text())
           }),
       )
       const invitations = results
@@ -55,11 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const idRaw = req.query.id
       const id = Array.isArray(idRaw) ? idRaw[0] : idRaw
       if (!id || !SLUG_RE.test(id)) return res.status(400).json({ error: 'Invalid id' })
-      const pathname = `inv/${id}.json`
-      const { blobs } = await list({ prefix: pathname })
-      for (const b of blobs) {
-        if (b.pathname === pathname) await del(b.url)
-      }
+      await del(`inv/${id}.json`)
       return res.status(200).json({ ok: true })
     }
 

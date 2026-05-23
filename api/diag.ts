@@ -1,8 +1,8 @@
-import { put, list, del } from '@vercel/blob'
+import { put, get, del } from '@vercel/blob'
 
-// Diagnostic endpoint: reports whether Vercel Blob is reachable end-to-end
-// by writing a probe blob, reading it back, and deleting it. Surfaces the
-// real reason a publish would fail.
+// Diagnostic endpoint: writes a probe blob, reads it back, deletes it, and
+// reports the result. Use this when publish fails to know exactly what's
+// wrong with the Blob connection.
 //
 // Usage: GET /api/diag
 
@@ -30,24 +30,21 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   let error: string | null = null
 
   try {
-    const { url } = await put(probePath, JSON.stringify(probeValue), {
-      access: 'public',
+    await put(probePath, JSON.stringify(probeValue), {
+      access: 'private',
       addRandomSuffix: false,
       contentType: 'application/json',
       allowOverwrite: true,
     })
     writeOk = true
 
-    const r = await fetch(url, { cache: 'no-store' })
-    if (r.ok) {
-      const back = await r.json()
+    const result = await get(probePath, { access: 'private' })
+    if (result && result.statusCode === 200) {
+      const back = JSON.parse(await new Response(result.stream).text())
       readOk = back?.nonce === probeValue.nonce
     }
 
-    const { blobs } = await list({ prefix: probePath })
-    for (const b of blobs) {
-      if (b.pathname === probePath) await del(b.url)
-    }
+    await del(probePath)
   } catch (e) {
     error = e instanceof Error ? e.message : String(e)
   }
