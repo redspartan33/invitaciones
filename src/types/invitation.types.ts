@@ -139,6 +139,9 @@ export interface MenuHeaderData {
   backgroundColor?: string
   navBackgroundColor?: string
   navTextColor?: string
+  // Sticky behavior: whole header vs only the nav bar
+  stickyHeader?: boolean
+  stickyNavOnly?: boolean
   showLogo: boolean
   showTitle: boolean
   showTagline: boolean

@@ -104,6 +104,8 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       backgroundColor: '',
       navBackgroundColor: '#0b3d2e',
       navTextColor: '#ffffff',
+      stickyHeader: false,
+      stickyNavOnly: true,
       showLogo: true,
       showTitle: true,
       showTagline: true,

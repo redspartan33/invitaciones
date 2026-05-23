@@ -205,6 +205,8 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
         fields: [
           { name: 'navBackgroundColor', label: 'Color de fondo de la barra', kind: 'color' },
           { name: 'navTextColor', label: 'Color del texto', kind: 'color' },
+          { name: 'stickyHeader', label: 'Sticky: todo el header', kind: 'toggle' },
+          { name: 'stickyNavOnly', label: 'Sticky: solo barra de navegación', kind: 'toggle' },
         ],
       },
       {
