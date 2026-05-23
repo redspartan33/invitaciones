@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { InvitationBlock, RsvpInfoData } from '../../types/invitation.types'
 import { formatDate } from '../../utils/blockValidation'
-import { submitGuestEntry } from '../../utils/guestlistClient'
+import { getSubmittedName, hasSubmitted, submitGuestEntry } from '../../utils/guestlistClient'
 import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
 
@@ -47,6 +47,17 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
     return undefined
   }
   const guestListSlug = getGuestListSlug()
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+  const [submittedName, setSubmittedName] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    if (!guestListSlug) return
+    setAlreadySubmitted(hasSubmitted(guestListSlug))
+    setSubmittedName(getSubmittedName(guestListSlug))
+  }, [guestListSlug])
+  const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
+  // In the editor we always show the controls so the designer can preview the
+  // flow; only the public published view enforces the one-confirmation lock.
+  const locked = alreadySubmitted && !isEditorView
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
@@ -76,7 +87,17 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
         </div>
         {data.useRsvpForm ? (
           <div className="mt-6 space-y-4">
-            {!showForm && !submittedOk && (
+            {locked && (
+              <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <p className="font-medium">
+                  {submittedName ? `¡Gracias, ${submittedName}!` : '¡Gracias!'} Tu confirmación quedó registrada.
+                </p>
+                <p className="mt-1 text-xs opacity-80">
+                  Solo se permite una confirmación por dispositivo.
+                </p>
+              </div>
+            )}
+            {!locked && !showForm && !submittedOk && (
               <button
                 type="button"
                 onClick={() => {
@@ -89,23 +110,12 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                 {buttonLabel}
               </button>
             )}
-            {submittedOk && !showForm && (
+            {!locked && submittedOk && !showForm && (
               <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-medium">¡Gracias! Tu confirmación quedó registrada.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubmittedOk(false)
-                    setSubmitError(null)
-                    setShowForm(true)
-                  }}
-                  className="mt-2 text-xs uppercase tracking-widest underline"
-                >
-                  Confirmar otra persona
-                </button>
               </div>
             )}
-            {submitError && !showForm && (
+            {!locked && submitError && !showForm && (
               <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
                 {submitError}
                 <button
@@ -120,7 +130,7 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                 </button>
               </div>
             )}
-            {showForm && (
+            {!locked && showForm && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault()
@@ -140,6 +150,8 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                   setShowForm(false)
                   if (ok) {
                     setSubmittedOk(true)
+                    setSubmittedName(guestName)
+                    if (!isEditorView) setAlreadySubmitted(true)
                     setGuestName('')
                     setGuestMessage('')
                     try {

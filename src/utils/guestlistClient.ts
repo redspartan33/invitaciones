@@ -10,9 +10,46 @@ export interface GuestEntry {
 }
 
 const LS_PREFIX = 'guestlist:'
+const SUBMITTED_PREFIX = 'guestlist-submitted:'
 
 function lsKey(slug: string) {
   return `${LS_PREFIX}${slug}`
+}
+
+function submittedKey(slug: string) {
+  return `${SUBMITTED_PREFIX}${slug}`
+}
+
+/** True if this browser already submitted a confirmation for this guestlist. */
+export function hasSubmitted(slug: string): boolean {
+  try {
+    return !!window.localStorage.getItem(submittedKey(slug))
+  } catch {
+    return false
+  }
+}
+
+/** Returns the name this browser submitted, or undefined if it hasn't. */
+export function getSubmittedName(slug: string): string | undefined {
+  try {
+    const raw = window.localStorage.getItem(submittedKey(slug))
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.name === 'string' ? parsed.name : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function markSubmitted(slug: string, name: string) {
+  try {
+    window.localStorage.setItem(
+      submittedKey(slug),
+      JSON.stringify({ name, ts: Date.now() }),
+    )
+  } catch {
+    // ignore
+  }
 }
 
 function readLocal(slug: string): GuestEntry[] {
@@ -80,6 +117,7 @@ export async function submitGuestEntry(
     list.push(entry)
     writeLocal(slug, list)
   }
+  markSubmitted(slug, name)
   return true
 }
 
