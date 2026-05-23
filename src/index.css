@@ -20,36 +20,40 @@ html, body, #root {
   text-rendering: optimizeLegibility;
 }
 
-/* Flat UI: no shadows. Use borders + subtle backgrounds for separation. */
-.flat-card {
-  border: 1px solid #e4e4e7;
-  background: #ffffff;
-}
+/* Flat UI: no shadows. Use borders + subtle backgrounds for separation.
+   Custom component classes live inside @layer components so Tailwind
+   utilities (e.g. `hidden`, `md:inline-flex`) defined later in the
+   cascade can still override them. */
+@layer components {
+  .flat-card {
+    border: 1px solid #e4e4e7;
+    background: #ffffff;
+  }
 
-.flat-card-muted {
-  border: 1px solid #e4e4e7;
-  background: #fafafa;
-}
+  .flat-card-muted {
+    border: 1px solid #e4e4e7;
+    background: #fafafa;
+  }
 
-.input-flat {
-  @apply w-full rounded border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 outline-none transition-colors focus:border-ink-900;
-}
+  .input-flat {
+    @apply w-full rounded border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 outline-none transition-colors focus:border-ink-900;
+  }
 
-.label-flat {
-  @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-500;
-}
+  .label-flat {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-500;
+  }
 
-.btn-flat {
-  @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100 disabled:opacity-50;
-}
+  .btn-flat {
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100 disabled:opacity-50;
+  }
 
-.btn-primary {
-  @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-900 bg-ink-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-ink-800 active:bg-black disabled:opacity-50;
-}
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-900 bg-ink-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-ink-800 active:bg-black disabled:opacity-50;
+  }
 
-
-.btn-ghost {
-  @apply inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100;
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100;
+  }
 }
 
 .divider {

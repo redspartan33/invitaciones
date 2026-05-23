@@ -68,42 +68,47 @@ export function EditorHeader() {
   }
 
   return (
-    <header className="relative flex items-center justify-between border-b border-ink-200 bg-white px-6 py-3">
-      <div className="flex items-center gap-4">
+    <header className="relative flex flex-wrap items-center justify-between gap-y-2 border-b border-ink-200 bg-white px-3 py-2 md:flex-nowrap md:gap-y-0 md:px-6 md:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
         <button
           onClick={onBackToAdmin}
-          className="btn-ghost flex items-center gap-1.5 px-2.5 py-1 text-xs hover:bg-ink-100 rounded text-ink-600 transition-colors"
+          className="btn-ghost flex items-center gap-1.5 px-2 py-1 text-xs hover:bg-ink-100 rounded text-ink-600 transition-colors"
           title="Volver al panel"
         >
-          ← Volver
+          ← <span className="hidden sm:inline">Volver</span>
         </button>
-        <span className="h-5 w-px bg-ink-200" />
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-ink-900 text-xs font-bold text-white">D</div>
+        <span className="hidden h-5 w-px bg-ink-200 md:inline-block" />
+        <div className="hidden h-7 w-7 items-center justify-center rounded bg-ink-900 text-xs font-bold text-white md:flex">D</div>
         <input
           type="text"
           value={title}
           onChange={(e) => updateTitle(e.target.value)}
-          className="border-none bg-transparent text-base font-medium outline-none focus:bg-ink-50 px-2 py-1 rounded"
+          className="min-w-0 flex-1 border-none bg-transparent text-sm font-medium outline-none focus:bg-ink-50 px-1.5 py-1 rounded md:flex-initial md:text-base md:px-2"
           placeholder="Nombre de la invitación"
         />
         <StatusBadge status={status} />
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-ink-500">
+      <div className="hidden items-center gap-3 text-xs text-ink-500 md:flex">
         <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 md:gap-2">
         <button
           onClick={() => {
             if (confirm('¿Descartar borrador y empezar de cero?')) resetDraft()
           }}
-          className="btn-ghost"
+          className="btn-ghost hidden md:inline-flex"
         >
           Reiniciar
         </button>
-        <button onClick={() => setShareOpen(true)} className="btn-flat" disabled={!isPublished} title={isPublished ? 'Compartir link' : 'Publica primero para compartir'}>
-          <ShareIcon className="h-4 w-4" /> Compartir
+        <button
+          onClick={() => setShareOpen(true)}
+          className="btn-flat px-2 md:px-3"
+          disabled={!isPublished}
+          title={isPublished ? 'Compartir link' : 'Publica primero para compartir'}
+        >
+          <ShareIcon className="h-4 w-4" /> <span className="hidden md:inline">Compartir</span>
         </button>
         {isPublished ? (
           <>
@@ -116,17 +121,20 @@ export function EditorHeader() {
             >
               {updating ? (
                 <>
-                  <span className="animate-spin inline-block">⏳</span> Guardando…
+                  <span className="animate-spin inline-block">⏳</span> <span className="hidden md:inline">Guardando…</span>
                 </>
               ) : updateSuccess ? (
                 <>
-                  <span>✓</span> ¡Guardado!
+                  <span>✓</span> <span className="hidden md:inline">¡Guardado!</span>
                 </>
               ) : (
-                'Guardar cambios'
+                <><span className="hidden md:inline">Guardar cambios</span><span className="md:hidden">Guardar</span></>
               )}
             </button>
-            <button onClick={() => { if (confirm('¿Despublicar invitación?')) void unpublishInvitation() }} className="btn-flat">
+            <button
+              onClick={() => { if (confirm('¿Despublicar invitación?')) void unpublishInvitation() }}
+              className="btn-flat hidden md:inline-flex"
+            >
               Despublicar
             </button>
           </>
@@ -140,7 +148,7 @@ export function EditorHeader() {
       {shareOpen && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setShareOpen(false)} />
-          <div className="absolute right-6 top-14 z-30 w-[420px] rounded border border-ink-200 bg-white p-4 anim-fade-in">
+          <div className="absolute right-3 left-3 top-14 z-30 rounded border border-ink-200 bg-white p-4 anim-fade-in md:left-auto md:right-6 md:w-[420px]">
             <div className="mb-2 flex items-center justify-between">
               <h4 className="text-sm font-medium">
                 {publishMode === 'error'

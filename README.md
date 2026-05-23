@@ -50,6 +50,19 @@ La barra sticky del menú hace deep-link a cada sección vía hash; los clicks s
 
 En pantallas `< 768px` el `ConfigPanel` queda oculto por defecto y el `Canvas` ocupa todo el ancho. Al tocar un bloque (o un panel del Footbar — Detalles, Colores, Fuentes, Música) el panel aparece **a pantalla completa** con su propio botón **×** en el header y un botón **Listo** al pie. Cerrar regresa al editor con la selección limpiada.
 
+El header del editor también colapsa en móvil: oculta etiquetas redundantes (Volver, Reiniciar, Despublicar, "Guardar cambios" → "Guardar") y deja sólo iconos para Compartir. El popover de compartir ocupa el ancho casi completo en móvil en vez de 420px fijos.
+
+## Importar platillos desde texto plano
+
+En el panel de un bloque **Menu section** hay un botón **Pegar texto** que abre un área para pegar platillos en cualquier formato común. El parser autodetecta:
+
+- Bloques separados por línea vacía (`Nombre / Descripción / $Precio` cada uno)
+- Una línea por platillo con separadores (`—`, `|`, `·`, ` - `)
+- Precios al final, inline (`Nombre $133`) o como columna independiente
+- Monedas opcionales: `$`, `MXN`, `USD`, `EUR`, `pesos`
+
+Muestra un contador en vivo de platillos detectados y permite **Añadir** (append) o **Reemplazar** los actuales.
+
 ## Funcionalidades
 
 - Click en cualquier bloque → abre su formulario a la derecha
