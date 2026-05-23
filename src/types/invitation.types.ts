@@ -145,6 +145,10 @@ export interface MenuHeaderData {
   showLogo: boolean
   showTitle: boolean
   showTagline: boolean
+  /** Size of the sticky nav bar. Defaults to 's'. */
+  navSize?: 's' | 'm' | 'xl'
+  /** Size of the logo in the header. Defaults to 'm'. */
+  logoSize?: 's' | 'm' | 'l' | 'xl'
 }
 
 export interface MenuItem {

@@ -20,17 +20,17 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
   }
 
   return (
-    <footer className="relative flex items-center justify-between border-t border-ink-200 bg-ink-50 px-4 py-2">
-      <div className="flex items-center gap-1">
+    <footer className="relative flex flex-wrap items-center justify-between gap-2 border-t border-ink-200 bg-ink-50 px-3 py-2 md:flex-nowrap md:px-4">
+      <div className="order-2 flex w-full items-center gap-1 overflow-x-auto md:order-1 md:w-auto md:overflow-visible">
         <FootbarBtn label="Detalles" active={activePanel === 'details'} onClick={() => setActivePanel(activePanel === 'details' ? null : 'details')} />
         <FootbarBtn label="Colores" active={activePanel === 'colors'} onClick={() => setActivePanel(activePanel === 'colors' ? null : 'colors')} />
         <FootbarBtn label="Fuentes" active={activePanel === 'fonts'} onClick={() => setActivePanel(activePanel === 'fonts' ? null : 'fonts')} />
         <FootbarBtn label="Música" active={activePanel === 'music'} onClick={() => setActivePanel(activePanel === 'music' ? null : 'music')} />
-        <span className="mx-2 h-5 w-px bg-ink-200" />
+        <span className="mx-2 hidden h-5 w-px bg-ink-200 md:inline-block" />
         <FootbarBtn label="Guía" onClick={onShowGuide} />
       </div>
 
-      <div className="flex items-center gap-1 rounded border border-ink-200 bg-white p-0.5">
+      <div className="order-3 hidden items-center gap-1 rounded border border-ink-200 bg-white p-0.5 md:order-2 md:flex">
         {(['mobile', 'tablet', 'desktop'] as ViewportMode[]).map((v) => (
           <button
             key={v}
@@ -44,9 +44,9 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
         ))}
       </div>
 
-      <div className="relative">
+      <div className="relative order-1 ml-auto md:order-3 md:ml-0">
         <button onClick={() => setAddOpen((v) => !v)} className="btn-primary">
-          <PlusIcon className="h-4 w-4" /> Añadir bloque
+          <PlusIcon className="h-4 w-4" /> <span className="hidden sm:inline">Añadir bloque</span><span className="sm:hidden">+ Bloque</span>
         </button>
         {addOpen && (
           <>

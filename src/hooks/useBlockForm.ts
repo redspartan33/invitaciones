@@ -205,6 +205,27 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
         fields: [
           { name: 'navBackgroundColor', label: 'Color de fondo de la barra', kind: 'color' },
           { name: 'navTextColor', label: 'Color del texto', kind: 'color' },
+          {
+            name: 'navSize',
+            label: 'Tamaño de la barra',
+            kind: 'select',
+            options: [
+              { value: 's', label: 'S' },
+              { value: 'm', label: 'M' },
+              { value: 'xl', label: 'XL' },
+            ],
+          },
+          {
+            name: 'logoSize',
+            label: 'Tamaño del logo',
+            kind: 'select',
+            options: [
+              { value: 's', label: 'S' },
+              { value: 'm', label: 'M' },
+              { value: 'l', label: 'L' },
+              { value: 'xl', label: 'XL' },
+            ],
+          },
           { name: 'stickyHeader', label: 'Sticky: todo el header', kind: 'toggle' },
           { name: 'stickyNavOnly', label: 'Sticky: solo barra de navegación', kind: 'toggle' },
         ],

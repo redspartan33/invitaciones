@@ -44,11 +44,37 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
   const stickyNavOnly = !stickyHeader && data.stickyNavOnly === true
   const isPublicView = publicView === true || sectionsOverride !== undefined
 
+  const navSize = data.navSize ?? 's'
+  const logoSize = data.logoSize ?? 'm'
+
+  const navItemClass =
+    navSize === 'xl'
+      ? 'px-4 py-2.5 text-[15px] tracking-[0.22em]'
+      : navSize === 'm'
+      ? 'px-3.5 py-2 text-[13px] tracking-[0.2em]'
+      : 'px-3 py-1.5 text-[12px] tracking-[0.18em]'
+  const navListClass =
+    navSize === 'xl'
+      ? 'gap-1.5 px-5 py-4'
+      : navSize === 'm'
+      ? 'gap-1.5 px-4 py-3'
+      : 'gap-1 px-4 py-2.5'
+  const logoClass =
+    logoSize === 's'
+      ? 'h-12'
+      : logoSize === 'l'
+      ? 'h-20'
+      : logoSize === 'xl'
+      ? 'h-28'
+      : 'h-16'
+
   const headerRef = useRef<HTMLDivElement | null>(null)
   const navRef = useRef<HTMLDivElement | null>(null)
+  const navListRef = useRef<HTMLUListElement | null>(null)
   const [headerHeight, setHeaderHeight] = useState(0)
   const [navHeight, setNavHeight] = useState(0)
   const [navFixed, setNavFixed] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   useLayoutEffect(() => {
     const headerEl = headerRef.current
@@ -56,7 +82,7 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
     if (!headerEl || !navEl) return
     setHeaderHeight(headerEl.offsetHeight)
     setNavHeight(navEl.offsetHeight)
-  }, [data.title, data.tagline, data.backgroundImage, data.showLogo, data.showTitle, data.showTagline, sections.length])
+  }, [data.title, data.tagline, data.backgroundImage, data.showLogo, data.showTitle, data.showTagline, navSize, logoSize, sections.length])
 
   useEffect(() => {
     if (!isPublicView || !stickyNavOnly || headerHeight <= 0) {
@@ -85,6 +111,55 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
     requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }))
   }, [isPublicView, sections.length])
 
+  // Scrollspy: as the user scrolls, mark the section currently sitting
+  // just under the (possibly fixed) nav bar as active.
+  useEffect(() => {
+    if (!isPublicView || sections.length === 0) {
+      setActiveId(null)
+      return undefined
+    }
+    const stickyOffset =
+      (stickyHeader ? headerHeight + navHeight : stickyNavOnly ? navHeight : 0) + 8
+
+    const update = () => {
+      let current: string | null = null
+      for (const s of sections) {
+        const el = document.getElementById(s.id)
+        if (!el) continue
+        const top = el.getBoundingClientRect().top
+        if (top - stickyOffset <= 0) current = s.id
+        else break
+      }
+      if (current === null && sections[0]) current = sections[0].id
+      setActiveId(current)
+    }
+
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [isPublicView, sections, stickyHeader, stickyNavOnly, headerHeight, navHeight])
+
+  // Auto-scroll the (overflow-x) nav so the active item stays in view.
+  useEffect(() => {
+    if (!activeId) return
+    const list = navListRef.current
+    if (!list) return
+    const active = list.querySelector<HTMLElement>(`a[data-section-id="${activeId}"]`)
+    if (!active) return
+    const scroller = list.parentElement
+    if (!scroller) return
+    const aLeft = active.offsetLeft
+    const aRight = aLeft + active.offsetWidth
+    const sLeft = scroller.scrollLeft
+    const sRight = sLeft + scroller.clientWidth
+    if (aLeft < sLeft) scroller.scrollTo({ left: aLeft - 16, behavior: 'smooth' })
+    else if (aRight > sRight) scroller.scrollTo({ left: aRight - scroller.clientWidth + 16, behavior: 'smooth' })
+  }, [activeId])
+
   const handleNavClick = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
     // Native anchor scrolling is unreliable here because the sticky-nav
     // placeholder mounts on scroll and shifts the layout mid-jump. Drive
@@ -105,7 +180,7 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
   const renderHeaderContent = () => (
     <div style={bgStyle} className="px-6 py-16 text-center" ref={headerRef}>
       {data.showLogo && data.logo && (
-        <img src={data.logo} alt="Logo" className="mx-auto mb-4 h-16 w-auto object-contain" />
+        <img src={data.logo} alt="Logo" className={`mx-auto mb-4 w-auto object-contain ${logoClass}`} />
       )}
       {data.showTitle && data.title && (
         <TextEl block={block} field="title" as="h1" className="font-serif text-5xl font-medium tracking-wide md:text-6xl">
@@ -127,21 +202,31 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
       style={{ backgroundColor: navBg, color: navText }}
     >
       <div className={`mx-auto ${fixed ? 'max-w-[920px]' : ''} overflow-x-auto`}>
-        <ul className="mx-auto flex w-max items-center gap-1 px-4 py-2.5 text-[12px] uppercase tracking-[0.18em]">
+        <ul
+          ref={navListRef}
+          className={`mx-auto flex w-max items-center uppercase ${navListClass}`}
+        >
           {sections.length === 0 ? (
             <li className="opacity-60 px-3 py-1.5">Añade secciones al menú</li>
           ) : (
-            sections.map((s) => (
-              <li key={s.id}>
-                <a
-                  href={`#${s.id}`}
-                  onClick={(e) => handleNavClick(e, s.id)}
-                  className="inline-block whitespace-nowrap rounded-full px-3 py-1.5 transition-colors hover:bg-white/15"
-                >
-                  {s.title}
-                </a>
-              </li>
-            ))
+            sections.map((s) => {
+              const isActive = isPublicView && activeId === s.id
+              return (
+                <li key={s.id}>
+                  <a
+                    href={`#${s.id}`}
+                    data-section-id={s.id}
+                    onClick={(e) => handleNavClick(e, s.id)}
+                    className={`inline-block whitespace-nowrap rounded-full transition-colors ${navItemClass} ${
+                      isActive ? 'bg-white/20 font-semibold' : 'hover:bg-white/15'
+                    }`}
+                    aria-current={isActive ? 'true' : undefined}
+                  >
+                    {s.title}
+                  </a>
+                </li>
+              )
+            })
           )}
         </ul>
       </div>

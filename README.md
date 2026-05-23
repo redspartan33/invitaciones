@@ -39,12 +39,16 @@ src/
 
 ### Bloques de menú (kind = `menu`)
 
-- **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección
+- **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección. Tamaño de barra (S/M/XL) y tamaño de logo (S/M/L/XL) configurables.
 - **Menu section** — Lista de platillos con título, descripción opcional y espaciado entre platillos configurable (XS/SM/MD/LG/XL)
 - **Menu note** — Texto suelto (alérgenos, propina, etc.)
 - **Menu footer** — Dirección, horarios, redes
 
-La barra sticky del menú hace deep-link a cada sección vía hash; los clicks se manejan con `scrollIntoView` para evitar problemas de layout shift cuando la barra se vuelve fija.
+La barra sticky del menú hace deep-link a cada sección vía hash; los clicks se manejan con `scrollIntoView` para evitar problemas de layout shift cuando la barra se vuelve fija. En la vista pública, la barra incluye **scrollspy**: la sección visible al hacer scroll se marca como activa y la barra se auto-desplaza horizontalmente para mantenerla a la vista.
+
+## Editor en móvil
+
+En pantallas `< 768px` el `ConfigPanel` queda oculto por defecto y el `Canvas` ocupa todo el ancho. Al tocar un bloque (o un panel del Footbar — Detalles, Colores, Fuentes, Música) el panel aparece **a pantalla completa** con su propio botón **×** en el header y un botón **Listo** al pie. Cerrar regresa al editor con la selección limpiada.
 
 ## Funcionalidades
 
