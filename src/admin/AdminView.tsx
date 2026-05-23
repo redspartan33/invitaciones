@@ -143,12 +143,12 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
 
   return (
     <div className="min-h-screen bg-ink-50">
-      <header className="border-b border-ink-200 bg-white px-8 py-5 flex items-center justify-between">
+      <header className="border-b border-ink-200 bg-white px-4 py-4 md:px-8 md:py-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-[10px] uppercase tracking-[0.2em] text-ink-400">Panel privado</p>
-          <h1 className="font-serif text-2xl text-ink-900">Mis documentos</h1>
+          <h1 className="font-serif text-xl md:text-2xl text-ink-900">Mis documentos</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={onExport}
             disabled={items.length === 0}
@@ -169,16 +169,16 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
         </div>
       </header>
 
-      <div className={`border-b px-8 py-2.5 text-xs ${banner.cls}`}>
-        <div className="mx-auto max-w-5xl flex items-center justify-between gap-4">
+      <div className={`border-b px-4 md:px-8 py-2.5 text-xs ${banner.cls}`}>
+        <div className="mx-auto max-w-5xl flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <span>{banner.text}</span>
-          <button onClick={refreshDiag} className="underline opacity-70 hover:opacity-100">
+          <button onClick={refreshDiag} className="underline opacity-70 hover:opacity-100 self-start sm:self-auto">
             Re-probar
           </button>
         </div>
       </div>
 
-      <main className="mx-auto max-w-5xl px-8 py-10">
+      <main className="mx-auto max-w-5xl px-4 md:px-8 py-6 md:py-10">
         {!loading && !remoteUnavailable && items.length > 0 && (
           <div className="mb-5 flex items-center gap-1 rounded border border-ink-200 bg-white p-0.5 w-fit">
             {(
@@ -237,25 +237,25 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
               const link = isPub ? `${window.location.origin}/?id=${inv.publicSlug || inv.id}` : ''
               const kind = inferKind(inv)
               return (
-                <li key={inv.id} className="flex items-center justify-between rounded border border-ink-200 bg-white px-5 py-4">
+                <li key={inv.id} className="flex flex-col gap-3 rounded border border-ink-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <KindBadge kind={kind} />
-                      <p className="font-serif text-lg text-ink-900 truncate">{inv.title}</p>
+                      <p className="font-serif text-base md:text-lg text-ink-900 truncate min-w-0">{inv.title}</p>
                       <StatusBadge status={inv.status} />
                     </div>
-                    <p className="mt-0.5 text-xs text-ink-400">
+                    <p className="mt-1 text-xs text-ink-400">
                       {inv.blocks.length} bloques · actualizada {new Date(inv.updatedAt).toLocaleString()}
                     </p>
                     {isPub ? (
-                      <a href={link} target="_blank" rel="noreferrer" className="mt-1.5 inline-block text-xs text-ink-500 underline truncate max-w-md">
+                      <a href={link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-ink-500 underline truncate max-w-full md:max-w-md">
                         {link}
                       </a>
                     ) : (
-                      <p className="mt-1.5 text-xs text-ink-400 italic">No publicada (en borrador)</p>
+                      <p className="mt-1 text-xs text-ink-400 italic">No publicada (en borrador)</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 md:shrink-0">
                     {isPub && (
                       <button
                         onClick={() => navigator.clipboard.writeText(link)}

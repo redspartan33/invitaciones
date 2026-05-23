@@ -37,7 +37,7 @@ src/
 7. **Gallery** — Galería de fotos responsive
 8. **Footer** — Mensaje final + contacto + redes
 
-9. **Map** — Mapa interactivo embebido de Google Maps a partir de una dirección, con link "Abrir en Google Maps"
+9. **Map** — Mapa interactivo embebido a partir de una dirección de texto. La dirección se geocodifica con Nominatim (OpenStreetMap, sin API key) y se renderiza como iframe de OSM — Google Maps bloquea el embed con `X-Frame-Options` en Firefox, OSM no. Las coordenadas se cachean en `localStorage` (`geocode:v1:<address>`) para evitar llamadas repetidas. El botón "Abrir en Google Maps" sigue disponible para direcciones completas.
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 
@@ -73,6 +73,8 @@ La barra sticky del menú hace deep-link a cada sección vía hash; los clicks s
 En pantallas `< 768px` el `ConfigPanel` queda oculto por defecto y el `Canvas` ocupa todo el ancho. Al tocar un bloque (o un panel del Footbar — Detalles, Colores, Fuentes, Música) el panel aparece **a pantalla completa** con su propio botón **×** en el header y un botón **Listo** al pie. Cerrar regresa al editor con la selección limpiada.
 
 El header del editor también colapsa en móvil: oculta etiquetas redundantes (Volver, Reiniciar, Despublicar, "Guardar cambios" → "Guardar") y deja sólo iconos para Compartir. El popover de compartir ocupa el ancho casi completo en móvil en vez de 420px fijos.
+
+**Paridad de features mobile/desktop:** todas las features del editor están disponibles en ambos viewports (no hay funcionalidad oculta solo en desktop). El `AdminView` colapsa header y items a columna en `< 768px`. El `BlockWrapper` usa padding responsivo (`py-12/md:py-20`, `px-5/md:px-8`) para que el contenido respire en pantallas pequeñas sin desperdiciar espacio en grande. La vista pública de invitaciones y menús se renderiza idéntica en móvil y desktop, con sticky nav, scrollspy y mapa funcionando en ambas.
 
 ## Importar platillos desde texto plano
 

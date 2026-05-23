@@ -2,10 +2,10 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { BlockStyle } from '../../types/invitation.types'
 
 const padMap: Record<NonNullable<BlockStyle['paddingY']>, string> = {
-  sm: 'py-8',
-  md: 'py-12',
-  lg: 'py-20',
-  xl: 'py-28',
+  sm: 'py-6 md:py-8',
+  md: 'py-8 md:py-12',
+  lg: 'py-12 md:py-20',
+  xl: 'py-16 md:py-28',
 }
 
 export function BlockWrapper({
@@ -25,7 +25,7 @@ export function BlockWrapper({
     textAlign: align,
   }
   return (
-    <div className={`block-scale-active block-text-${textSize} ${padding} px-8`} style={css}>
+    <div className={`block-scale-active block-text-${textSize} ${padding} px-5 md:px-8`} style={css}>
       <div className="mx-auto max-w-2xl">{children}</div>
     </div>
   )
