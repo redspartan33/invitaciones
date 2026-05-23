@@ -55,7 +55,7 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
           )}
         </div>
         {data.useRsvpForm ? (
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
             <button
               type="button"
               onClick={() => setShowForm(true)}
@@ -64,7 +64,25 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
               {buttonLabel}
             </button>
             {data.guestListLink && (
-              <p className="mt-2 text-xs opacity-70">Link de invitados: <a href={data.guestListLink} target="_blank" rel="noreferrer" className="underline">Ver lista</a></p>
+              <div className="mx-auto flex max-w-lg flex-col gap-3 rounded-3xl border border-ink-200 bg-white/90 p-4 text-left shadow-sm shadow-ink-200/10 text-sm">
+                <p className="text-sm text-ink-700">Comparte este link para que el cliente vea quién ha aceptado.</p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="text"
+                    readOnly
+                    value={data.guestListLink}
+                    className="input-flat flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(data.guestListLink || '')}
+                    className="btn-flat"
+                  >
+                    Copiar link
+                  </button>
+                </div>
+                <a href={data.guestListLink} target="_blank" rel="noreferrer" className="text-sm text-ink-900 underline">Abrir lista</a>
+              </div>
             )}
             {showForm && (
               <form
@@ -89,19 +107,38 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                     setSubmitting(false)
                   }
                 }}
-                className="mx-auto mt-4 max-w-md space-y-3 text-sm"
+                className="mx-auto mt-4 max-w-lg rounded-3xl border border-ink-200 bg-white/95 p-6 shadow-sm shadow-ink-200/10 text-left"
               >
                 {submittedOk ? (
-                  <div className="rounded border border-ink-200 bg-emerald-50 p-3 text-emerald-800">Gracias — tu confirmación quedó registrada.</div>
+                  <div className="rounded border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">Gracias — tu confirmación quedó registrada.</div>
                 ) : (
                   <>
-                    <label className="label-flat">Nombre</label>
-                    <input value={guestName} onChange={(e) => setGuestName(e.target.value)} required className="input-field w-full" />
-                    <label className="label-flat">Mensaje (opcional)</label>
-                    <textarea value={guestMessage} onChange={(e) => setGuestMessage(e.target.value)} className="input-field w-full" />
-                    <div className="flex items-center gap-2">
-                      <button type="submit" disabled={submitting} className="invitation-btn">{submitting ? 'Enviando…' : 'Enviar'}</button>
-                      <button type="button" onClick={() => setShowForm(false)} className="text-sm text-ink-600">Cancelar</button>
+                    <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-ink-500">Confirmación</p>
+                    <div className="space-y-4">
+                      <label className="label-flat">Nombre</label>
+                      <input
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        required
+                        placeholder="Nombre completo"
+                        className="input-flat w-full"
+                      />
+                      <label className="label-flat">Mensaje (opcional)</label>
+                      <textarea
+                        value={guestMessage}
+                        onChange={(e) => setGuestMessage(e.target.value)}
+                        placeholder="Escribe un mensaje breve..."
+                        rows={5}
+                        className="input-flat w-full min-h-[140px] resize-none"
+                      />
+                    </div>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
+                        {submitting ? 'Enviando…' : 'Enviar confirmación'}
+                      </button>
+                      <button type="button" onClick={() => setShowForm(false)} className="btn-flat w-full sm:w-auto">
+                        Cancelar
+                      </button>
                     </div>
                   </>
                 )}
