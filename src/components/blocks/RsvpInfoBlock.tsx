@@ -28,6 +28,24 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   const [submitting, setSubmitting] = useState(false)
   const [submittedOk, setSubmittedOk] = useState(false)
   const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
+
+  const getGuestListSlug = () => {
+    if (data.guestListSlug) return data.guestListSlug
+    try {
+      const link = data.guestListLink
+      if (link) {
+        const url = new URL(link, window.location.origin)
+        return url.searchParams.get('guestlist') || undefined
+      }
+      if (typeof window !== 'undefined') {
+        return new URL(window.location.href).searchParams.get('guestlist') || undefined
+      }
+    } catch {
+      return undefined
+    }
+    return undefined
+  }
+  const guestListSlug = getGuestListSlug()
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
@@ -97,10 +115,10 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
               <form
                 onSubmit={async (e) => {
                   e.preventDefault()
-                  if (!data.guestListSlug) return
+                  if (!guestListSlug) return
                   setSubmitting(true)
                   try {
-                    const res = await fetch(`/api/guestlists/${data.guestListSlug}`, {
+                    const res = await fetch(`/api/guestlists/${guestListSlug}`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ name: guestName, message: guestMessage }),

@@ -35,8 +35,13 @@ export function GuestListView({ slug }: { slug: string }) {
         // ignore invalid events
       }
     }
+    const onFocus = () => loadEntries()
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [slug])
 
   const filtered = useMemo(() => {
