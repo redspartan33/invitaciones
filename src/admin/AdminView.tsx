@@ -96,9 +96,26 @@ async function loadAllInvitations(): Promise<Invitation[]> {
   return merged.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
 }
 
+async function importLocalToRemote(): Promise<{ total: number; imported: number; failed: unknown[] } | { error: string }> {
+  const local = loadLocalInvitations()
+  if (local.length === 0) return { total: 0, imported: 0, failed: [] }
+  try {
+    const res = await fetch(`/api/import-bulk?admin=${ADMIN_TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitations: local }),
+    })
+    if (!res.ok) return { error: `HTTP ${res.status}` }
+    return await res.json()
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'unknown' }
+  }
+}
+
 export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => void }) {
   const [items, setItems] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
+  const [importStatus, setImportStatus] = useState<string | null>(null)
   const unpublish = useEditorStore((s) => s.unpublishInvitation)
   const loadInvitation = useEditorStore((s) => s.loadInvitation)
 
@@ -143,10 +160,34 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
           <p className="text-[10px] uppercase tracking-[0.2em] text-ink-400">Panel privado</p>
           <h1 className="font-serif text-2xl text-ink-900">Mis invitaciones</h1>
         </div>
-        <button onClick={() => onOpenEditor()} className="btn-primary">
-          + Nueva invitación
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              setImportStatus('Importando…')
+              const result = await importLocalToRemote()
+              if ('error' in result) {
+                setImportStatus(`Error: ${result.error}`)
+              } else {
+                setImportStatus(`✓ ${result.imported}/${result.total} importadas a KV`)
+                refresh()
+              }
+              setTimeout(() => setImportStatus(null), 4000)
+            }}
+            className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400"
+            title="Sube todas las invitaciones de este navegador al backend KV"
+          >
+            Importar localStorage → KV
+          </button>
+          <button onClick={() => onOpenEditor()} className="btn-primary">
+            + Nueva invitación
+          </button>
+        </div>
       </header>
+      {importStatus && (
+        <div className="border-b border-ink-200 bg-ink-50 px-8 py-2 text-center text-xs text-ink-600">
+          {importStatus}
+        </div>
+      )}
 
       <main className="mx-auto max-w-5xl px-8 py-10">
         {loading ? (
