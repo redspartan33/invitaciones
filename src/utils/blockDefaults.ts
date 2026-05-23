@@ -5,9 +5,10 @@ import type {
   BlockTypeInfo,
   InvitationBlock,
   Invitation,
+  InvitationKind,
 } from '../types/invitation.types'
 
-export const BLOCK_CATALOG: BlockTypeInfo[] = [
+export const INVITATION_BLOCK_CATALOG: BlockTypeInfo[] = [
   { type: 'hero', label: 'Portada', description: 'Título principal del evento', icon: '✦' },
   { type: 'event-details', label: 'Detalles del evento', description: 'Fecha, hora y ubicación', icon: '◷' },
   { type: 'timeline', label: 'Itinerario', description: 'Cronograma de actividades', icon: '☷' },
@@ -17,6 +18,20 @@ export const BLOCK_CATALOG: BlockTypeInfo[] = [
   { type: 'gallery', label: 'Galería', description: 'Galería de fotos', icon: '▦' },
   { type: 'footer', label: 'Pie / Contacto', description: 'Mensaje final y contacto', icon: '⌂' },
 ]
+
+export const MENU_BLOCK_CATALOG: BlockTypeInfo[] = [
+  { type: 'menu-header', label: 'Header del menú', description: 'Logo, nombre y barra sticky de navegación', icon: '☰' },
+  { type: 'menu-section', label: 'Sección del menú', description: 'Lista de platillos (entradas, postres, etc.)', icon: '◧' },
+  { type: 'menu-note', label: 'Nota / texto', description: 'Aviso o descripción libre', icon: '✎' },
+  { type: 'menu-footer', label: 'Pie del menú', description: 'Dirección, horarios, contacto', icon: '⌂' },
+]
+
+// Backwards compatibility: existing imports of BLOCK_CATALOG still work.
+export const BLOCK_CATALOG: BlockTypeInfo[] = INVITATION_BLOCK_CATALOG
+
+export function blockCatalogFor(kind: InvitationKind): BlockTypeInfo[] {
+  return kind === 'menu' ? MENU_BLOCK_CATALOG : INVITATION_BLOCK_CATALOG
+}
 
 export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] {
   const map: { [K in BlockType]: BlockDataMap[K] } = {
@@ -81,6 +96,38 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       instagram: '',
       whatsapp: '',
     },
+    'menu-header': {
+      title: 'Marulier',
+      tagline: 'Cocina italiana de autor',
+      logo: '',
+      backgroundImage: '',
+      backgroundColor: '',
+      navBackgroundColor: '#0b3d2e',
+      navTextColor: '#ffffff',
+      showLogo: true,
+      showTitle: true,
+      showTagline: true,
+    },
+    'menu-section': {
+      title: 'Entradas',
+      description: '',
+      items: [
+        { id: uuid(), name: 'Carpaccio de res', description: 'Arúgula, parmesano, aceite de trufa', price: '$240' },
+        { id: uuid(), name: 'Burrata', description: 'Tomate cherry, albahaca, balsámico', price: '$220' },
+      ],
+    },
+    'menu-note': {
+      text: 'Servicio no incluido. Consulta por opciones sin gluten.',
+      alignment: 'center',
+    },
+    'menu-footer': {
+      address: 'Av. Reforma 123, CDMX',
+      phone: '+52 55 1234 5678',
+      hours: 'Lun–Dom · 13:00 a 23:00',
+      instagram: '@marulier',
+      whatsapp: '',
+      website: '',
+    },
   }
   return map[type]
 }
@@ -103,6 +150,7 @@ export function createExampleInvitation(): Invitation {
   const types: BlockType[] = ['hero', 'event-details', 'timeline', 'dress-code', 'gift-registry', 'rsvp-info', 'gallery', 'footer']
   return {
     id: uuid(),
+    kind: 'invitation',
     title: 'Boda de Ana y Juan',
     status: 'draft',
     createdAt: now,
@@ -111,6 +159,55 @@ export function createExampleInvitation(): Invitation {
     globalSettings: {
       colorPrimary: '#18181b',
       colorSecondary: '#f4f4f5',
+      colorAccent: '#b08968',
+      fontFamily: 'serif',
+    },
+  }
+}
+
+export function createExampleMenu(): Invitation {
+  const now = new Date().toISOString()
+  const header = createBlock('menu-header', 0)
+  const antojos: InvitationBlock<'menu-section'> = {
+    ...(createBlock('menu-section', 1) as InvitationBlock<'menu-section'>),
+    data: {
+      title: 'Antojos',
+      items: [
+        { id: uuid(), name: 'Aceitunas marinadas', price: '$120' },
+        { id: uuid(), name: 'Pan de la casa', description: 'Con mantequilla de hierbas', price: '$95' },
+      ],
+    },
+  }
+  const entradas: InvitationBlock<'menu-section'> = {
+    ...(createBlock('menu-section', 2) as InvitationBlock<'menu-section'>),
+    data: defaultBlockData('menu-section'),
+  }
+  const pasta: InvitationBlock<'menu-section'> = {
+    ...(createBlock('menu-section', 3) as InvitationBlock<'menu-section'>),
+    data: {
+      title: 'Pasta',
+      items: [
+        { id: uuid(), name: 'Tagliatelle al ragú', description: 'Ragú de res cocido 6 horas', price: '$310' },
+        { id: uuid(), name: 'Cacio e pepe', description: 'Pecorino, pimienta negra', price: '$280' },
+      ],
+    },
+  }
+  const note: InvitationBlock<'menu-note'> = {
+    ...(createBlock('menu-note', 4) as InvitationBlock<'menu-note'>),
+    data: defaultBlockData('menu-note'),
+  }
+  const footer = createBlock('menu-footer', 5)
+  return {
+    id: uuid(),
+    kind: 'menu',
+    title: 'Nuevo menú',
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+    blocks: [header, antojos, entradas, pasta, note, footer],
+    globalSettings: {
+      colorPrimary: '#0b3d2e',
+      colorSecondary: '#fffaf2',
       colorAccent: '#b08968',
       fontFamily: 'serif',
     },

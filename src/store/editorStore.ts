@@ -7,7 +7,7 @@ import type {
   InvitationBlock,
   ViewportMode,
 } from '../types/invitation.types'
-import { createBlock, createExampleInvitation } from '../utils/blockDefaults'
+import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 
 const STORAGE_KEY = 'invitation-builder:draft'
@@ -199,7 +199,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(INVITATION_PREFIX + invitation.id)
     }
-    const newInv = createExampleInvitation()
+    const isMenu = invitation.kind === 'menu'
+    const newInv = isMenu ? createExampleMenu() : createExampleInvitation()
     newInv.id = invitation.id
     set({ invitation: newInv, selectedBlockId: null })
   },

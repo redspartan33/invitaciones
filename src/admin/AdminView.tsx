@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { INVITATION_PREFIX, useEditorStore } from '../store/editorStore'
-import type { Invitation } from '../types/invitation.types'
+import type { Invitation, InvitationKind } from '../types/invitation.types'
 import { ADMIN_TOKEN } from './adminAuth'
 import { listFromRegistry, deleteFromRegistry } from '../utils/inviteRegistry'
 
@@ -46,12 +46,21 @@ function downloadJson(filename: string, data: unknown) {
   URL.revokeObjectURL(url)
 }
 
-export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => void }) {
+function inferKind(inv: Invitation): InvitationKind {
+  if (inv.kind === 'menu' || inv.kind === 'invitation') return inv.kind
+  // Older records without `kind`: infer from block types.
+  return inv.blocks.some((b) => b.type.startsWith('menu-')) ? 'menu' : 'invitation'
+}
+
+type AdminFilter = 'all' | 'invitation' | 'menu'
+
+export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?: InvitationKind) => void }) {
   const [items, setItems] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const [remoteUnavailable, setRemoteUnavailable] = useState(false)
   const [diag, setDiag] = useState<DiagResult | null>(null)
   const [diagLoading, setDiagLoading] = useState(true)
+  const [filter, setFilter] = useState<AdminFilter>('all')
   const unpublish = useEditorStore((s) => s.unpublishInvitation)
   const loadInvitation = useEditorStore((s) => s.loadInvitation)
 
@@ -101,8 +110,23 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
 
   const onEdit = (inv: Invitation) => {
     loadInvitation(inv)
-    onOpenEditor(inv.id)
+    onOpenEditor(inv.id, inferKind(inv))
   }
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return items
+    return items.filter((i) => inferKind(i) === filter)
+  }, [items, filter])
+
+  const counts = useMemo(() => {
+    let menu = 0
+    let invitation = 0
+    for (const i of items) {
+      if (inferKind(i) === 'menu') menu++
+      else invitation++
+    }
+    return { all: items.length, menu, invitation }
+  }, [items])
 
   const onExport = () => {
     downloadJson(`invitations-${new Date().toISOString().slice(0, 10)}.json`, items)
@@ -122,18 +146,24 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
       <header className="border-b border-ink-200 bg-white px-8 py-5 flex items-center justify-between">
         <div>
           <p className="text-[10px] uppercase tracking-[0.2em] text-ink-400">Panel privado</p>
-          <h1 className="font-serif text-2xl text-ink-900">Mis invitaciones</h1>
+          <h1 className="font-serif text-2xl text-ink-900">Mis documentos</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={onExport}
             disabled={items.length === 0}
             className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Descarga el JSON con todas las invitaciones"
+            title="Descarga el JSON con todo"
           >
             Exportar JSON
           </button>
-          <button onClick={() => onOpenEditor()} className="btn-primary">
+          <button
+            onClick={() => onOpenEditor(undefined, 'menu')}
+            className="rounded border border-ink-900 bg-white px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-ink-50"
+          >
+            + Nuevo menú
+          </button>
+          <button onClick={() => onOpenEditor(undefined, 'invitation')} className="btn-primary">
             + Nueva invitación
           </button>
         </div>
@@ -149,6 +179,28 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
       </div>
 
       <main className="mx-auto max-w-5xl px-8 py-10">
+        {!loading && !remoteUnavailable && items.length > 0 && (
+          <div className="mb-5 flex items-center gap-1 rounded border border-ink-200 bg-white p-0.5 w-fit">
+            {(
+              [
+                { id: 'all' as AdminFilter, label: `Todos (${counts.all})` },
+                { id: 'invitation' as AdminFilter, label: `Invitaciones (${counts.invitation})` },
+                { id: 'menu' as AdminFilter, label: `Menús (${counts.menu})` },
+              ]
+            ).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`rounded px-3 py-1.5 text-xs transition-colors ${
+                  filter === f.id ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className="rounded border border-ink-200 bg-white p-12 text-center">
             <p className="text-ink-400 text-sm animate-pulse">Cargando…</p>
@@ -163,21 +215,32 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
           </div>
         ) : items.length === 0 ? (
           <div className="rounded border border-dashed border-ink-300 bg-white p-12 text-center">
-            <p className="font-serif text-2xl text-ink-900">Aún no hay invitaciones</p>
-            <p className="mt-3 text-sm text-ink-500">Crea la primera y compártela con tus invitados.</p>
-            <button onClick={() => onOpenEditor()} className="mt-6 btn-primary">
-              Crear invitación
-            </button>
+            <p className="font-serif text-2xl text-ink-900">Aún no hay nada</p>
+            <p className="mt-3 text-sm text-ink-500">Crea tu primera invitación o menú.</p>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <button onClick={() => onOpenEditor(undefined, 'menu')} className="rounded border border-ink-900 bg-white px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-ink-50">
+                Crear menú
+              </button>
+              <button onClick={() => onOpenEditor(undefined, 'invitation')} className="btn-primary">
+                Crear invitación
+              </button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded border border-dashed border-ink-300 bg-white p-12 text-center">
+            <p className="text-sm text-ink-500">No hay {filter === 'menu' ? 'menús' : 'invitaciones'} aún.</p>
           </div>
         ) : (
           <ul className="space-y-3">
-            {items.map((inv) => {
+            {filtered.map((inv) => {
               const isPub = inv.status === 'published'
               const link = isPub ? `${window.location.origin}/?id=${inv.publicSlug || inv.id}` : ''
+              const kind = inferKind(inv)
               return (
                 <li key={inv.id} className="flex items-center justify-between rounded border border-ink-200 bg-white px-5 py-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2.5">
+                      <KindBadge kind={kind} />
                       <p className="font-serif text-lg text-ink-900 truncate">{inv.title}</p>
                       <StatusBadge status={inv.status} />
                     </div>
@@ -219,6 +282,21 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string) => voi
         </p>
       </main>
     </div>
+  )
+}
+
+function KindBadge({ kind }: { kind: InvitationKind }) {
+  if (kind === 'menu') {
+    return (
+      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-emerald-700">
+        Menú
+      </span>
+    )
+  }
+  return (
+    <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-violet-700">
+      Invitación
+    </span>
   )
 }
 

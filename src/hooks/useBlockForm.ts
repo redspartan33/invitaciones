@@ -188,6 +188,81 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
       },
     ],
   },
+  'menu-header': {
+    sections: [
+      {
+        title: 'Identidad',
+        fields: [
+          { name: 'title', label: 'Nombre del restaurante', kind: 'text' },
+          { name: 'tagline', label: 'Subtítulo / tagline', kind: 'text' },
+          { name: 'logo', label: 'Logo (URL)', kind: 'image' },
+          { name: 'backgroundImage', label: 'Imagen de fondo (URL)', kind: 'image' },
+          { name: 'backgroundColor', label: 'Color de fondo', kind: 'color' },
+        ],
+      },
+      {
+        title: 'Barra sticky',
+        fields: [
+          { name: 'navBackgroundColor', label: 'Color de fondo de la barra', kind: 'color' },
+          { name: 'navTextColor', label: 'Color del texto', kind: 'color' },
+        ],
+      },
+      {
+        title: 'Visibilidad',
+        fields: [
+          { name: 'showLogo', label: 'Mostrar logo', kind: 'toggle' },
+          { name: 'showTitle', label: 'Mostrar nombre', kind: 'toggle' },
+          { name: 'showTagline', label: 'Mostrar subtítulo', kind: 'toggle' },
+        ],
+      },
+    ],
+  },
+  'menu-section': {
+    sections: [
+      {
+        title: 'Sección',
+        fields: [
+          { name: 'title', label: 'Título de la sección', kind: 'text', helper: 'Aparece en la barra sticky' },
+          { name: 'description', label: 'Descripción (opcional)', kind: 'textarea' },
+        ],
+      },
+    ],
+  },
+  'menu-note': {
+    sections: [
+      {
+        title: 'Nota',
+        fields: [
+          { name: 'text', label: 'Texto', kind: 'textarea' },
+          {
+            name: 'alignment',
+            label: 'Alineación',
+            kind: 'select',
+            options: [
+              { value: 'left', label: 'Izquierda' },
+              { value: 'center', label: 'Centro' },
+              { value: 'right', label: 'Derecha' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  'menu-footer': {
+    sections: [
+      {
+        title: 'Contacto',
+        fields: [
+          { name: 'address', label: 'Dirección', kind: 'text' },
+          { name: 'phone', label: 'Teléfono', kind: 'text' },
+          { name: 'hours', label: 'Horarios', kind: 'text' },
+          { name: 'website', label: 'Sitio web', kind: 'url' },
+          { name: 'instagram', label: 'Instagram', kind: 'text' },
+          { name: 'whatsapp', label: 'WhatsApp', kind: 'text' },
+        ],
+      },
+    ],
+  },
 }
 
 export function useBlockForm(type: BlockType): BlockFormSchema {

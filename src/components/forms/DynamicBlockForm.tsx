@@ -6,6 +6,7 @@ import { Field } from './Field'
 import { TimelineItemsForm } from './TimelineItemsForm'
 import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
 import { GalleryImagesForm } from './GalleryImagesForm'
+import { MenuItemsForm } from './MenuItemsForm'
 
 // Field-kinds that render as visible text and therefore expose per-element
 // size/color overrides under the input.
@@ -80,6 +81,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'timeline' && <TimelineItemsForm block={block as InvitationBlock<'timeline'>} />}
       {block.type === 'gift-registry' && <GiftRegistryItemsForm block={block as InvitationBlock<'gift-registry'>} />}
       {block.type === 'gallery' && <GalleryImagesForm block={block as InvitationBlock<'gallery'>} />}
+      {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
 
       {/* Estilos compartidos para campos repetibles (cuando aplica). */}
       {(block.type === 'timeline' || block.type === 'gift-registry') && (
