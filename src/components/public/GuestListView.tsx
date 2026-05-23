@@ -4,18 +4,39 @@ export function GuestListView({ slug }: { slug: string }) {
   const [entries, setEntries] = useState<{ id: string; name: string; message?: string; createdAt: string }[] | undefined>(undefined)
   const [q, setQ] = useState('')
 
-  useEffect(() => {
-    let cancelled = false
+  const loadEntries = async () => {
     setEntries(undefined)
-    fetch(`/api/guestlists/${slug}`).then(async (res) => {
+    try {
+      const res = await fetch(`/api/guestlists/${slug}`)
       if (!res.ok) {
-        if (!cancelled) setEntries([])
+        setEntries([])
         return
       }
       const data = await res.json()
-      if (!cancelled) setEntries(Array.isArray(data) ? data : [])
-    }).catch(() => { if (!cancelled) setEntries([]) })
-    return () => { cancelled = true }
+      setEntries(Array.isArray(data) ? data : [])
+    } catch {
+      setEntries([])
+    }
+  }
+
+  useEffect(() => {
+    loadEntries()
+  }, [slug])
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== 'guestlist-updated' || !event.newValue) return
+      try {
+        const parsed = JSON.parse(event.newValue)
+        if (parsed?.slug === slug) {
+          loadEntries()
+        }
+      } catch {
+        // ignore invalid events
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [slug])
 
   const filtered = useMemo(() => {
