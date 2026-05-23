@@ -40,9 +40,9 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
   const navBg = data.navBackgroundColor || '#0b3d2e'
   const navText = data.navTextColor || '#ffffff'
 
-  const stickyHeader = !!data.stickyHeader
-  const stickyNavOnly = !stickyHeader && !!data.stickyNavOnly
-  const isPublicView = publicView ?? sectionsOverride !== undefined
+  const stickyHeader = data.stickyHeader === true
+  const stickyNavOnly = !stickyHeader && data.stickyNavOnly === true
+  const isPublicView = publicView === true || sectionsOverride !== undefined
 
   const headerRef = useRef<HTMLDivElement | null>(null)
   const navRef = useRef<HTMLDivElement | null>(null)
@@ -59,10 +59,15 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
   }, [data.title, data.tagline, data.backgroundImage, data.showLogo, data.showTitle, data.showTagline, sections.length])
 
   useEffect(() => {
-    if (!isPublicView || !stickyNavOnly) return undefined
+    if (!isPublicView || !stickyNavOnly || headerHeight <= 0) {
+      setNavFixed(false)
+      return undefined
+    }
+
     const update = () => {
       setNavFixed(window.scrollY >= headerHeight)
     }
+
     update()
     window.addEventListener('scroll', update, { passive: true })
     return () => window.removeEventListener('scroll', update)
