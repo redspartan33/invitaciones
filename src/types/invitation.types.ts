@@ -37,6 +37,8 @@ export interface TextElementStyle {
 
 export interface BlockStyle {
   backgroundColor?: string
+  /** Optional background image URL (rendered with cover/center). Sits behind block content. */
+  backgroundImage?: string
   textColor?: string
   paddingY?: 'sm' | 'md' | 'lg' | 'xl'
   textSize?: TextSize
@@ -66,6 +68,12 @@ export interface EventDetailsData {
   address?: string
   description: string
   icon: 'wedding' | 'birthday' | 'corporate' | 'baby' | 'graduation' | 'generic'
+  /** Show or hide the date line. Defaults to true. */
+  showDate?: boolean
+  /** Show or hide the time line. Defaults to true. */
+  showTime?: boolean
+  /** Display the time in 12-hour (AM/PM) or 24-hour format. Defaults to '24h'. */
+  timeFormat?: '12h' | '24h'
 }
 
 export interface TimelineItem {

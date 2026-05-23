@@ -75,6 +75,22 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
         ],
       },
       {
+        title: 'Visibilidad y formato',
+        fields: [
+          { name: 'showDate', label: 'Mostrar fecha', kind: 'toggle' },
+          { name: 'showTime', label: 'Mostrar hora', kind: 'toggle' },
+          {
+            name: 'timeFormat',
+            label: 'Formato de hora',
+            kind: 'select',
+            options: [
+              { value: '24h', label: '24 horas (18:00)' },
+              { value: '12h', label: '12 horas (6:00 PM)' },
+            ],
+          },
+        ],
+      },
+      {
         title: 'Detalles',
         fields: [
           { name: 'description', label: 'Descripción', kind: 'textarea' },

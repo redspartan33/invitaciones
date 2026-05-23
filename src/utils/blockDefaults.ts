@@ -54,6 +54,9 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       address: 'Ciudad de México',
       description: 'Ceremonia seguida de recepción y cena.',
       icon: 'wedding',
+      showDate: true,
+      showTime: true,
+      timeFormat: '24h',
     },
     timeline: {
       title: 'Itinerario',

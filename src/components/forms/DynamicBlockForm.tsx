@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useBlockForm } from '../../hooks/useBlockForm'
 import { useEditorStore } from '../../store/editorStore'
 import type { InvitationBlock, TextSize } from '../../types/invitation.types'
@@ -48,7 +49,13 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
           <div className="space-y-3">
             {section.fields.map((field) => {
               const raw = (block.data as unknown as Record<string, unknown>)[field.name]
-              const value = field.name === 'columns' && typeof raw === 'number' ? String(raw) : raw
+              // Show toggles whose absence means "on" (legacy data) in their
+              // effective state so the UI matches the rendered output.
+              const trueByDefault =
+                block.type === 'event-details' &&
+                (field.name === 'showDate' || field.name === 'showTime')
+              const normalized = trueByDefault && raw === undefined ? true : raw
+              const value = field.name === 'columns' && typeof normalized === 'number' ? String(normalized) : normalized
               const showElementStyle = TEXTUAL_KINDS.has(field.kind) && !!(value as string)
               const override = textStyles[field.name]
               const useRsvpForm = !!((block.data as Record<string, unknown>)['useRsvpForm'])
@@ -276,7 +283,115 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
           ))}
         </div>
       </section>
+
+      <BlockBackgroundSection
+        backgroundColor={block.style?.backgroundColor}
+        backgroundImage={block.style?.backgroundImage}
+        onChange={(patch) => updateBlockStyle(block.id, patch)}
+      />
     </div>
+  )
+}
+
+function BlockBackgroundSection({
+  backgroundColor,
+  backgroundImage,
+  onChange,
+}: {
+  backgroundColor?: string
+  backgroundImage?: string
+  onChange: (patch: { backgroundColor?: string; backgroundImage?: string }) => void
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const onFile = (file: File) => {
+    if (file.size > 3 * 1024 * 1024) {
+      alert('La imagen pesa más de 3 MB. Usa una más ligera o pega una URL.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange({ backgroundImage: String(reader.result) })
+    reader.readAsDataURL(file)
+  }
+  const urlValue = backgroundImage?.startsWith('data:') ? '' : (backgroundImage ?? '')
+  return (
+    <section className="space-y-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Fondo del bloque</h3>
+
+      <div>
+        <label className="label-flat">Color de fondo</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={backgroundColor || '#ffffff'}
+            onChange={(e) => onChange({ backgroundColor: e.target.value })}
+            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
+          />
+          <input
+            type="text"
+            value={backgroundColor ?? ''}
+            onChange={(e) => onChange({ backgroundColor: e.target.value })}
+            placeholder="#ffffff"
+            className="input-flat"
+          />
+          {backgroundColor && (
+            <button
+              type="button"
+              onClick={() => onChange({ backgroundColor: '' })}
+              className="btn-ghost text-rose-600"
+              title="Quitar color"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="label-flat">Imagen de fondo</label>
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={urlValue}
+            onChange={(e) => onChange({ backgroundImage: e.target.value })}
+            placeholder="Pega URL o sube archivo →"
+            className="input-flat flex-1"
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+          >
+            Subir
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onFile(f)
+              e.target.value = ''
+            }}
+          />
+        </div>
+        {backgroundImage && (
+          <div className="relative mt-2 overflow-hidden rounded border border-ink-200 bg-ink-50">
+            <img src={backgroundImage} alt="" className="block h-28 w-full object-cover" />
+            <button
+              type="button"
+              onClick={() => onChange({ backgroundImage: '' })}
+              className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-white"
+            >
+              Quitar
+            </button>
+          </div>
+        )}
+        <p className="mt-1 text-[11px] text-ink-400">
+          La imagen se aplica a todo el bloque (cover / centrado). Si también defines un color, la imagen va encima.
+        </p>
+      </div>
+    </section>
   )
 }
 

@@ -41,6 +41,22 @@ src/
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 
+### Fecha y hora del bloque Event details
+
+En el panel del bloque **Event details**, sección "Visibilidad y formato", hay tres controles:
+
+- **Mostrar fecha** / **Mostrar hora** — toggles independientes para ocultar o mostrar cada línea sin necesidad de borrar los valores.
+- **Formato de hora** — selector entre **24 horas** (`18:00`) y **12 horas** (`6:00 PM`). El valor se guarda como `HH:mm` (input nativo `type="time"`) y se formatea al render según el modo elegido. Los toggles por defecto vienen en `true`; data legacy (sin estos campos) se sigue mostrando como antes y el toggle se renderiza en su estado efectivo.
+
+### Fondo por bloque (color o imagen)
+
+Cada bloque tiene una sección **"Fondo del bloque"** al final de su panel con dos controles:
+
+- **Color de fondo** — picker nativo + input hex, con botón × para limpiar.
+- **Imagen de fondo** — URL o subida de archivo (límite 3 MB, igual que las imágenes de los bloques). Se renderiza con `background-size: cover` / `background-position: center` sobre todo el bloque. Si defines color e imagen, la imagen va encima.
+
+Los valores se guardan en `block.style.backgroundColor` y `block.style.backgroundImage` y se aplican en `BlockWrapper`, por lo que aparecen igual en el canvas del editor y en la vista pública publicada.
+
 ### RSVP — WhatsApp o formulario con guestlist
 
 El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:

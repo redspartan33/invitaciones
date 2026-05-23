@@ -1,25 +1,30 @@
 import type { EventDetailsData, InvitationBlock } from '../../types/invitation.types'
-import { formatDate } from '../../utils/blockValidation'
+import { formatDate, formatTime } from '../../utils/blockValidation'
 import { BlockWrapper } from './BlockWrapper'
 import { EventIcon } from './icons'
 import { TextEl } from './TextEl'
 
 export function EventDetailsBlock({ block }: { block: InvitationBlock<'event-details'> }) {
   const data = block.data as EventDetailsData
+  const showDate = data.showDate !== false
+  const showTime = data.showTime !== false
+  const dateVisible = showDate && !!data.date
+  const timeVisible = showTime && !!data.time
+  const timeFormatted = timeVisible ? formatTime(data.time, data.timeFormat ?? '24h') : ''
   return (
     <BlockWrapper style={block.style}>
       <div className="flex flex-col items-center gap-4 text-center">
         {data.icon && !block.style?.hideIcons && <EventIcon kind={data.icon} className="h-10 w-10 accent" />}
-        {(data.date || data.time) && (
+        {(dateVisible || timeVisible) && (
           <div>
-            {data.date && (
+            {dateVisible && (
               <TextEl block={block} field="date" as="p" className="font-serif text-2xl">
                 {formatDate(data.date, 'DD MMMM YYYY')}
               </TextEl>
             )}
-            {data.time && (
+            {timeVisible && (
               <TextEl block={block} field="time" as="p" className="mt-1 text-sm uppercase tracking-widest opacity-70">
-                {data.time}
+                {timeFormatted}
               </TextEl>
             )}
           </div>

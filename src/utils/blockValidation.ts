@@ -42,3 +42,23 @@ export function formatDate(value: string, format: string): string {
       return `${day}/${month}/${year}`
   }
 }
+
+/**
+ * Format an HH:mm value into 12h (with AM/PM) or 24h display.
+ * Inputs come from <input type="time"> which is always 24h.
+ */
+export function formatTime(value: string, format: '12h' | '24h' = '24h'): string {
+  if (!value) return ''
+  const m = /^(\d{1,2}):(\d{2})/.exec(value)
+  if (!m) return value
+  let h = Number(m[1])
+  const mm = m[2]
+  if (Number.isNaN(h)) return value
+  if (format === '24h') {
+    return `${String(h).padStart(2, '0')}:${mm}`
+  }
+  const period = h >= 12 ? 'PM' : 'AM'
+  h = h % 12
+  if (h === 0) h = 12
+  return `${h}:${mm} ${period}`
+}

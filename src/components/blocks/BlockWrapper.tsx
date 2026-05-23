@@ -19,10 +19,19 @@ export function BlockWrapper({
 }) {
   const padding = padMap[style?.paddingY ?? 'lg']
   const textSize = style?.textSize ?? 'md'
+  const hasImage = !!style?.backgroundImage
   const css: CSSProperties = {
     backgroundColor: style?.backgroundColor || undefined,
     color: style?.textColor || undefined,
     textAlign: align,
+    ...(hasImage
+      ? {
+          backgroundImage: `url(${style!.backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }
+      : undefined),
   }
   return (
     <div className={`block-scale-active block-text-${textSize} ${padding} px-5 md:px-8`} style={css}>
