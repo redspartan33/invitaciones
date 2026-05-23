@@ -119,12 +119,12 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       ))}
 
       {/* Guestlist link preview when RSVP form is active */}
-      {((block.data as Record<string, unknown>)['useRsvpForm']) && (
+      {Boolean((block.data as Record<string, unknown>)['useRsvpForm']) && (
         <section className="space-y-3">
           <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Guestlist público</h3>
           <div>
             <p className="text-sm text-ink-600">Cuando el formulario está activo se genera un link público donde se verán las confirmaciones.</p>
-            {((block.data as Record<string, unknown>)['guestListLink']) ? (
+            {Boolean((block.data as Record<string, unknown>)['guestListLink']) ? (
               <div className="mt-2 flex gap-2">
                 <input readOnly value={String((block.data as Record<string, unknown>)['guestListLink'])} className="input-flat flex-1" />
                 <button type="button" onClick={() => navigator.clipboard.writeText(String((block.data as Record<string, unknown>)['guestListLink']))} className="rounded border px-3 py-2 text-sm">Copiar</button>
