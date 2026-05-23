@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { InvitationBlock, RsvpInfoData } from '../../types/invitation.types'
 import { formatDate } from '../../utils/blockValidation'
+import { submitGuestEntry } from '../../utils/guestlistClient'
 import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
 
@@ -28,7 +29,6 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   const [submitting, setSubmitting] = useState(false)
   const [submittedOk, setSubmittedOk] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
 
   const getGuestListSlug = () => {
     if (data.guestListSlug) return data.guestListSlug
@@ -89,27 +89,6 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                 {buttonLabel}
               </button>
             )}
-            {isEditorView && data.guestListLink && (
-              <div className="mx-auto flex max-w-lg flex-col gap-3 rounded-3xl border border-ink-200 bg-white/90 p-4 text-left shadow-sm shadow-ink-200/10 text-sm">
-                <p className="text-sm text-ink-700">Comparte este link para que el cliente vea quién ha aceptado.</p>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <input
-                    type="text"
-                    readOnly
-                    value={data.guestListLink}
-                    className="input-flat flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard.writeText(data.guestListLink || '')}
-                    className="btn-flat"
-                  >
-                    Copiar link
-                  </button>
-                </div>
-                <a href={data.guestListLink} target="_blank" rel="noreferrer" className="text-sm text-ink-900 underline">Abrir lista</a>
-              </div>
-            )}
             {submittedOk && !showForm && (
               <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-medium">¡Gracias! Tu confirmación quedó registrada.</p>
@@ -153,17 +132,10 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                   }
                   setSubmitting(true)
                   setSubmitError(null)
-                  let ok = false
-                  try {
-                    const res = await fetch(`/api/guestlists/${guestListSlug}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ name: guestName, message: guestMessage }),
-                    })
-                    ok = res.ok
-                  } catch {
-                    ok = false
-                  }
+                  const ok = await submitGuestEntry(guestListSlug, {
+                    name: guestName,
+                    message: guestMessage,
+                  })
                   setSubmitting(false)
                   setShowForm(false)
                   if (ok) {

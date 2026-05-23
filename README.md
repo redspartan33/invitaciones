@@ -50,6 +50,8 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 
 **Link de invitados (`/?guestlist=<slug>`)** — Página pública compartible con el cliente que muestra: contador grande de confirmados, contador adicional de resultados al buscar, buscador por nombre/mensaje, lista con timestamps y botón "Actualizar" para refrescar. Se auto-refresca por evento `storage` cuando otra pestaña confirma y al volver a tener foco.
 
+**Fallback de desarrollo** — `src/utils/guestlistClient.ts` intenta la API serverless (`/api/guestlists/<slug>`) primero y, si no está disponible (ej. `vite dev`), persiste las confirmaciones en `localStorage` con clave `guestlist:<slug>`. Al cargar la lista, mergea entradas remotas + locales (las remotas ganan por id). En producción la fuente de verdad es Vercel Blob; el cliente envía siempre al servidor y solo cae a local si la red falla. Así el editor en local funciona end-to-end sin necesitar `vercel dev`.
+
 ### Favicon y Google Fonts (Detalles / Fuentes)
 
 - **Favicon**: en el panel **Detalles** puedes pegar una URL o subir un PNG/SVG/ICO. Se aplica como `<link rel="icon">` en la vista pública y en el editor.

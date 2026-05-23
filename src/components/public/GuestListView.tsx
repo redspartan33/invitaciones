@@ -1,22 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import { loadGuestList, type GuestEntry } from '../../utils/guestlistClient'
 
 export function GuestListView({ slug }: { slug: string }) {
-  const [entries, setEntries] = useState<{ id: string; name: string; message?: string; createdAt: string }[] | undefined>(undefined)
+  const [entries, setEntries] = useState<GuestEntry[] | undefined>(undefined)
   const [q, setQ] = useState('')
 
   const loadEntries = async () => {
     setEntries(undefined)
-    try {
-      const res = await fetch(`/api/guestlists/${slug}`)
-      if (!res.ok) {
-        setEntries([])
-        return
-      }
-      const data = await res.json()
-      setEntries(Array.isArray(data) ? data : [])
-    } catch {
-      setEntries([])
-    }
+    const list = await loadGuestList(slug)
+    setEntries(list)
   }
 
   useEffect(() => {

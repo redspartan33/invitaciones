@@ -2,6 +2,7 @@ import { useBlockForm } from '../../hooks/useBlockForm'
 import { useEditorStore } from '../../store/editorStore'
 import type { InvitationBlock, TextSize } from '../../types/invitation.types'
 import { validateBlock } from '../../utils/blockValidation'
+import { initGuestList } from '../../utils/guestlistClient'
 import { Field } from './Field'
 import { TimelineItemsForm } from './TimelineItemsForm'
 import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
@@ -85,14 +86,8 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                             }
                             const slug = makeSlug()
                             const link = `${window.location.origin}/?guestlist=${slug}`
-                            // create empty guestlist on the server so the link is ready
-                            try {
-                              await fetch(`/api/guestlists/${slug}`, { method: 'PUT' })
-                              updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
-                            } catch {
-                              // If initialization fails, still store slug/link locally
-                              updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
-                            }
+                            await initGuestList(slug)
+                            updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
                             return
                           }
                         }
