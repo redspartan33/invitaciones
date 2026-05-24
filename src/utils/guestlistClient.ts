@@ -62,7 +62,20 @@ export async function initGuestList(slug: string): Promise<void> {
 
 export type SubmitResult =
   | { ok: true; name: string }
-  | { ok: false; reason: 'invalid-name' | 'network' | 'server' }
+  | { ok: false; reason: 'invalid-name' | 'network' | 'server'; detail?: string }
+
+async function extractErrorDetail(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.json()) as { error?: string }
+    return body.error
+  } catch {
+    try {
+      return (await res.text()).slice(0, 200)
+    } catch {
+      return undefined
+    }
+  }
+}
 
 /**
  * Append a guest entry. Server-only: returns ok:false on any failure.
@@ -81,35 +94,45 @@ export async function submitGuestEntry(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, message: payload.message ?? '' }),
     })
-  } catch {
+  } catch (e) {
+    console.error('[guestlist] submit network error', e)
     return { ok: false, reason: 'network' }
   }
-  if (!res.ok) return { ok: false, reason: 'server' }
+  if (!res.ok) {
+    const detail = await extractErrorDetail(res)
+    console.error('[guestlist] submit failed', res.status, detail)
+    return { ok: false, reason: 'server', detail: `HTTP ${res.status}${detail ? `: ${detail}` : ''}` }
+  }
   markSubmitted(slug, name)
   return { ok: true, name }
 }
 
 export type LoadResult =
   | { ok: true; entries: GuestEntry[] }
-  | { ok: false; reason: 'network' | 'server' | 'not-found' }
+  | { ok: false; reason: 'network' | 'server' | 'not-found'; detail?: string }
 
 /** Read the full guestlist from the server. No local fallback. */
 export async function loadGuestList(slug: string): Promise<LoadResult> {
   let res: Response
   try {
     // Cache-bust so the API response can't be served from a service-worker /
-    // proxy / browser cache. The API itself bypasses the blob CDN cache via
-    // head() + fetch with cache-bust on the storage URL.
+    // proxy / browser cache.
     res = await fetch(`/api/guestlists/${slug}?_=${Date.now()}`, { cache: 'no-store' })
-  } catch {
+  } catch (e) {
+    console.error('[guestlist] load network error', e)
     return { ok: false, reason: 'network' }
   }
   if (res.status === 404) return { ok: true, entries: [] }
-  if (!res.ok) return { ok: false, reason: 'server' }
+  if (!res.ok) {
+    const detail = await extractErrorDetail(res)
+    console.error('[guestlist] load failed', res.status, detail)
+    return { ok: false, reason: 'server', detail: `HTTP ${res.status}${detail ? `: ${detail}` : ''}` }
+  }
   let data: unknown
   try {
     data = await res.json()
-  } catch {
+  } catch (e) {
+    console.error('[guestlist] load JSON parse failed', e)
     return { ok: false, reason: 'server' }
   }
   if (!Array.isArray(data)) return { ok: true, entries: [] }

@@ -1,17 +1,15 @@
-import { head, put } from '@vercel/blob'
+import { list, put } from '@vercel/blob'
 
 // Guest list stored as a public JSON blob at `guests/<slug>.json`.
 //
-// CRITICAL — bypassing the Vercel Blob CDN cache:
-// The blob is `access: 'public'` (no migration needed for existing lists).
-// `useCache: false` is IGNORED for public blobs, so we can't use the
-// shortcut `get()`. Instead we:
-//   1. `head(pathname)` to discover the current blob URL.
-//   2. `fetch(url + '?_=<timestamp>', { cache: 'no-store' })` to defeat
-//      both the browser cache and the edge cache.
-// Without this, two devices that both POST a confirmation would each see
-// the cached snapshot they originally fetched and the lists would
-// diverge until the TTL expired.
+// Reads use `list({ prefix })` + `fetch(blob.url + '?_=<ts>', { cache:
+// 'no-store' })` to bypass the Vercel Blob CDN cache. We avoid `head()`
+// and `get()` here because their error semantics across @vercel/blob
+// versions are inconsistent (different error class names depending on
+// SDK), and the 500s in production came from those errors not matching
+// the `BlobNotFoundError` name we were checking for. `list()` always
+// resolves — empty array means the file doesn't exist, no exception
+// hierarchy to navigate.
 
 interface VercelRequest {
   method?: string
@@ -42,20 +40,11 @@ interface GuestEntry {
 }
 
 async function readList(pathname: string): Promise<GuestEntry[]> {
-  let meta
-  try {
-    meta = await head(pathname)
-  } catch (e) {
-    // head() throws BlobNotFoundError if the file doesn't exist yet — that's
-    // a valid empty list, not an error.
-    const name = (e as { name?: string } | undefined)?.name
-    if (name === 'BlobNotFoundError') return []
-    console.error('[guestlists] head() failed for', pathname, e)
-    throw e
-  }
-  // Append a cache-bust query so the edge CDN can't serve a stale snapshot
-  // of the rewritten file.
-  const cacheBustUrl = `${meta.url}${meta.url.includes('?') ? '&' : '?'}_=${Date.now()}`
+  const { blobs } = await list({ prefix: pathname, limit: 1 })
+  // `prefix` is a *prefix* match — narrow to the exact path.
+  const blob = blobs.find((b) => b.pathname === pathname)
+  if (!blob) return []
+  const cacheBustUrl = `${blob.url}${blob.url.includes('?') ? '&' : '?'}_=${Date.now()}`
   const res = await fetch(cacheBustUrl, { cache: 'no-store' })
   if (!res.ok) {
     console.error('[guestlists] fetch of blob URL failed', res.status, cacheBustUrl)
@@ -71,8 +60,8 @@ async function readList(pathname: string): Promise<GuestEntry[]> {
   return Array.isArray(data) ? (data as GuestEntry[]) : []
 }
 
-async function writeList(pathname: string, list: GuestEntry[]): Promise<void> {
-  await put(pathname, JSON.stringify(list), {
+async function writeList(pathname: string, items: GuestEntry[]): Promise<void> {
+  await put(pathname, JSON.stringify(items), {
     access: 'public',
     addRandomSuffix: false,
     contentType: 'application/json',
@@ -124,16 +113,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'PUT') {
       // Only create the file if it doesn't already exist — never clobber
       // existing confirmations because the editor saved the block again.
-      try {
-        await head(pathname)
-        // File exists, do nothing.
-        return res.status(200).json({ ok: true, existed: true })
-      } catch (e) {
-        const name = (e as { name?: string } | undefined)?.name
-        if (name !== 'BlobNotFoundError') throw e
-      }
-      await writeList(pathname, [])
-      return res.status(200).json({ ok: true, existed: false })
+      const existing = await readList(pathname)
+      if (existing.length === 0) await writeList(pathname, [])
+      return res.status(200).json({ ok: true })
     }
 
     return res.status(405).json({ error: 'Method not allowed' })

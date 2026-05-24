@@ -189,12 +189,17 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                       // ignore
                     }
                   } else {
-                    const messages: Record<typeof result.reason, string> = {
+                    const baseMessages = {
                       'invalid-name': 'Por favor escribe tu nombre.',
                       network: 'No hay conexión con el servidor. Verifica tu internet y vuelve a intentar.',
-                      server: 'El servidor rechazó la confirmación. Intenta de nuevo en unos minutos.',
-                    }
-                    setSubmitError(messages[result.reason])
+                      server: 'El servidor rechazó la confirmación.',
+                    } as const
+                    const base = baseMessages[result.reason]
+                    setSubmitError(
+                      'detail' in result && result.detail
+                        ? `${base} (${result.detail})`
+                        : base,
+                    )
                   }
                 }}
                 className="mx-auto mt-4 max-w-lg rounded-3xl border border-ink-200 bg-white/95 p-6 shadow-sm shadow-ink-200/10 text-left"

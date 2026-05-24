@@ -14,11 +14,10 @@ export function GuestListView({ slug }: { slug: string }) {
       setEntries(result.entries)
     } else {
       setEntries([])
-      setLoadError(
-        result.reason === 'network'
-          ? 'No hay conexión con el servidor.'
-          : 'El servidor no respondió correctamente.',
-      )
+      const base = result.reason === 'network'
+        ? 'No hay conexión con el servidor.'
+        : 'El servidor no respondió correctamente.'
+      setLoadError(result.detail ? `${base} (${result.detail})` : base)
     }
   }
 

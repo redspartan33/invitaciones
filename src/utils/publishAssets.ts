@@ -12,63 +12,29 @@ import type { Invitation, InvitationBlock } from '../types/invitation.types'
 
 const ASSETS_ENDPOINT = '/api/assets'
 
-// 5 MB cap matches the server-side limit in /api/assets. We send raw binary
-// (not base64-in-JSON) so the request body is the literal byte count of the
-// image — no 33% inflation, no JSON parser to overflow.
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
-
-interface DecodedDataUri {
-  bytes: Uint8Array
-  contentType: string
-}
-
-function decodeDataUri(dataUri: string): DecodedDataUri | null {
-  const match = /^data:([^;,]+)(?:;([^,]+))?,(.*)$/.exec(dataUri)
-  if (!match) return null
-  const contentType = (match[1] || 'application/octet-stream').trim()
-  const isBase64 = (match[2] || '').includes('base64')
-  const raw = match[3]
-  try {
-    if (isBase64) {
-      const bin = atob(raw)
-      const bytes = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      return { bytes, contentType }
-    }
-    // url-encoded text payload (rare for images, but supported)
-    const text = decodeURIComponent(raw)
-    const bytes = new TextEncoder().encode(text)
-    return { bytes, contentType }
-  } catch {
-    return null
-  }
-}
+// Soft client-side cap. Vercel Functions accept JSON bodies up to ~4.5 MB.
+// A 2.5 MB raw image is ~3.4 MB base64-encoded, then ~3.5 MB once wrapped
+// in JSON — comfortably under the limit. The picker enforces 5 MB raw, so
+// we warn here for anything above ~2.7 MB which would push the request
+// over the safe ceiling.
+const SAFE_DATA_URI_BYTES = Math.floor(4 * 1024 * 1024)
 
 async function uploadDataUri(
   dataUri: string,
   folder: string,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  const decoded = decodeDataUri(dataUri)
-  if (!decoded) {
-    return { ok: false, error: 'No se pudo interpretar una imagen embebida (formato data: inválido).' }
-  }
-  if (decoded.bytes.length > MAX_IMAGE_BYTES) {
+  if (dataUri.length > SAFE_DATA_URI_BYTES) {
     return {
       ok: false,
-      error: `Una imagen pesa ${(decoded.bytes.length / 1024 / 1024).toFixed(1)} MB (máx 5 MB). Usa una más ligera o pega una URL pública.`,
+      error: `Una imagen ocuparía ${(dataUri.length / 1024 / 1024).toFixed(1)} MB codificada (máx 4 MB). Súbela más ligera o pega una URL pública.`,
     }
   }
-
-  const url = `${ASSETS_ENDPOINT}?folder=${encodeURIComponent(folder)}`
   let res: Response
   try {
-    res = await fetch(url, {
+    res = await fetch(ASSETS_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': decoded.contentType },
-      // Wrap in Blob — Uint8Array's BufferSource overload is awkward with
-      // TS's lib.dom.d.ts (rejects narrow ArrayBufferLike). Blob is always
-      // accepted as fetch body and preserves the raw bytes.
-      body: new Blob([new Uint8Array(decoded.bytes)], { type: decoded.contentType }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataUri, folder }),
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'red sin conexión'
@@ -81,14 +47,19 @@ async function uploadDataUri(
       detail = body.error || ''
     } catch {
       try {
-        detail = await res.text()
+        detail = (await res.text()).slice(0, 200)
       } catch {
         /* ignore */
       }
     }
     return {
       ok: false,
-      error: `El servidor rechazó la imagen (HTTP ${res.status}${detail ? `: ${detail}` : ''}). Si pesa más de 5 MB, redúcela antes de publicar.`,
+      error:
+        res.status === 413
+          ? `Imagen demasiado grande para Vercel (HTTP 413). Usa una más ligera (máx ~3 MB).`
+          : res.status === 404
+          ? `El endpoint /api/assets no responde (HTTP 404). Probablemente el deploy aún no terminó.`
+          : `El servidor rechazó la imagen (HTTP ${res.status}${detail ? `: ${detail}` : ''}).`,
     }
   }
   let data: { url?: string }
