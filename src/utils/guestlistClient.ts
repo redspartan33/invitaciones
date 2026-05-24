@@ -97,7 +97,10 @@ export type LoadResult =
 export async function loadGuestList(slug: string): Promise<LoadResult> {
   let res: Response
   try {
-    res = await fetch(`/api/guestlists/${slug}`, { cache: 'no-store' })
+    // Cache-bust so the API response can't be served from a service-worker /
+    // proxy / browser cache. The API itself bypasses the blob CDN cache via
+    // head() + fetch with cache-bust on the storage URL.
+    res = await fetch(`/api/guestlists/${slug}?_=${Date.now()}`, { cache: 'no-store' })
   } catch {
     return { ok: false, reason: 'network' }
   }

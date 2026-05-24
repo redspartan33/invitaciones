@@ -33,7 +33,9 @@ export async function saveToRegistry(slug: string, inv: Invitation): Promise<boo
 /** Loads a single invitation by its public slug from the remote store. */
 export async function loadFromRegistry(slug: string): Promise<Invitation | null> {
   try {
-    const res = await fetch(invitationUrl(slug), { cache: 'no-store' })
+    // Append a cache-bust query param so intermediate proxies (browser,
+    // service worker, CDN) can't serve a stale version after publish.
+    const res = await fetch(`${invitationUrl(slug)}?_=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return null
     return (await res.json()) as Invitation
   } catch {
@@ -57,7 +59,7 @@ export async function deleteFromRegistry(slug: string): Promise<boolean> {
  */
 export async function listFromRegistry(): Promise<Invitation[] | null> {
   try {
-    const res = await fetch(`${API_BASE}/index`, { cache: 'no-store' })
+    const res = await fetch(`${API_BASE}/index?_=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return null
     const data = (await res.json()) as Invitation[]
     if (!Array.isArray(data)) return null

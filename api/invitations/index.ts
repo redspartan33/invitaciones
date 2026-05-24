@@ -40,7 +40,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         blobs
           .filter((b) => b.pathname.endsWith('.json'))
           .map(async (b) => {
-            const r = await get(b.pathname, { access: 'private' })
+            // useCache:false → bypass the Vercel Blob CDN cache so the admin
+            // list shows the same content on every device immediately after
+            // a publish. Without this the cached snapshot lingers and the
+            // user's mobile + desktop diverged.
+            const r = await get(b.pathname, { access: 'private', useCache: false })
             if (!r || r.statusCode !== 200) return null
             return JSON.parse(await new Response(r.stream).text())
           }),

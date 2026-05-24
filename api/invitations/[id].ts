@@ -1,4 +1,4 @@
-import { put, get, del } from '@vercel/blob'
+import { get, put, del } from '@vercel/blob'
 
 // Stores each invitation as a private JSON blob at `inv/<slug>.json`.
 // `BLOB_READ_WRITE_TOKEN` is injected automatically by Vercel when a Blob
@@ -38,7 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const result = await get(pathname, { access: 'private' })
+      // useCache:false bypasses the Vercel Blob CDN cache. Without this,
+      // after `put({ allowOverwrite:true })` updates an invitation, devices
+      // that previously cached the older version (mobile vs desktop, two
+      // different edge nodes) keep seeing the stale data — that's how the
+      // user's mobile and desktop showed different invitations and how the
+      // published view kept showing the old fonts / missing bg images
+      // immediately after a re-publish.
+      const result = await get(pathname, { access: 'private', useCache: false })
       if (!result || result.statusCode !== 200) return res.status(404).json({ error: 'Not found' })
       const text = await new Response(result.stream).text()
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -63,13 +70,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
-      await del(pathname)
+      try {
+        await del(pathname)
+      } catch (e) {
+        const name = (e as { name?: string } | undefined)?.name
+        if (name !== 'BlobNotFoundError') throw e
+      }
       return res.status(200).json({ ok: true })
     }
 
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown'
+    console.error('[invitations] handler error:', msg, e)
     return res.status(500).json({ error: msg })
   }
 }

@@ -143,35 +143,45 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
 
   return (
     <div className="min-h-screen bg-ink-50">
-      <header className="border-b border-ink-200 bg-white px-4 py-4 md:px-8 md:py-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-400">Panel privado</p>
-          <h1 className="font-serif text-xl md:text-2xl text-ink-900">Mis documentos</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={onExport}
-            disabled={items.length === 0}
-            className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Descarga el JSON con todo"
-          >
-            Exportar JSON
-          </button>
-          <button
-            onClick={() => onOpenEditor(undefined, 'menu')}
-            className="rounded border border-ink-900 bg-white px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-ink-50"
-          >
-            + Nuevo menú
-          </button>
-          <button onClick={() => onOpenEditor(undefined, 'invitation')} className="btn-primary">
-            + Nueva invitación
-          </button>
+      <header className="border-b border-ink-200 bg-white px-4 py-3 md:px-8 md:py-5">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-ink-400">Panel privado</p>
+            <h1 className="font-serif text-xl md:text-2xl text-ink-900">Mis documentos</h1>
+          </div>
+          {/* On mobile the two "Nuevo" buttons take equal width so they're
+              easy to tap; Exportar JSON drops to a small text link below the
+              row to avoid crowding the primary actions. */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onOpenEditor(undefined, 'invitation')}
+                className="btn-primary flex-1 justify-center md:flex-initial"
+              >
+                + Invitación
+              </button>
+              <button
+                onClick={() => onOpenEditor(undefined, 'menu')}
+                className="flex-1 justify-center rounded border border-ink-900 bg-white px-3 py-2 text-xs font-medium text-ink-900 hover:bg-ink-50 md:flex-initial md:py-1.5"
+              >
+                + Menú
+              </button>
+            </div>
+            <button
+              onClick={onExport}
+              disabled={items.length === 0}
+              className="self-end text-[11px] uppercase tracking-widest text-ink-500 hover:text-ink-900 disabled:opacity-40 disabled:cursor-not-allowed md:self-auto md:rounded md:border md:border-ink-200 md:px-3 md:py-1.5 md:text-xs md:tracking-normal md:hover:border-ink-400"
+              title="Descarga el JSON con todo"
+            >
+              Exportar JSON
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className={`border-b px-4 md:px-8 py-2.5 text-xs ${banner.cls}`}>
+      <div className={`border-b px-4 md:px-8 py-2 text-[11px] md:text-xs ${banner.cls}`}>
         <div className="mx-auto max-w-5xl flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <span>{banner.text}</span>
+          <span className="truncate">{banner.text}</span>
           <button onClick={refreshDiag} className="underline opacity-70 hover:opacity-100 self-start sm:self-auto">
             Re-probar
           </button>
@@ -237,37 +247,56 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
               const link = isPub ? `${window.location.origin}/?id=${inv.publicSlug || inv.id}` : ''
               const kind = inferKind(inv)
               return (
-                <li key={inv.id} className="flex flex-col gap-3 rounded border border-ink-200 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                <li
+                  key={inv.id}
+                  className="flex flex-col gap-3 rounded border border-ink-200 bg-white p-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <KindBadge kind={kind} />
-                      <p className="font-serif text-base md:text-lg text-ink-900 truncate min-w-0">{inv.title}</p>
                       <StatusBadge status={inv.status} />
                     </div>
-                    <p className="mt-1 text-xs text-ink-400">
-                      {inv.blocks.length} bloques · actualizada {new Date(inv.updatedAt).toLocaleString()}
+                    <p className="mt-1.5 font-serif text-base text-ink-900 md:text-lg truncate">
+                      {inv.title}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-ink-400">
+                      {inv.blocks.length} bloques · {new Date(inv.updatedAt).toLocaleDateString()}{' '}
+                      {new Date(inv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     {isPub ? (
-                      <a href={link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-ink-500 underline truncate max-w-full md:max-w-md">
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 block break-all text-[11px] text-ink-500 underline md:max-w-md md:truncate md:break-normal"
+                      >
                         {link}
                       </a>
                     ) : (
-                      <p className="mt-1 text-xs text-ink-400 italic">No publicada (en borrador)</p>
+                      <p className="mt-1 text-[11px] italic text-ink-400">No publicada (en borrador)</p>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 md:shrink-0">
-                    {isPub && (
+                  <div className="grid grid-cols-3 gap-2 md:flex md:shrink-0 md:items-center">
+                    {isPub ? (
                       <button
                         onClick={() => navigator.clipboard.writeText(link)}
-                        className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400"
+                        className="rounded border border-ink-200 px-2 py-2 text-xs hover:border-ink-400 md:px-3 md:py-1.5"
                       >
-                        Copiar link
+                        Copiar
                       </button>
+                    ) : (
+                      <span className="rounded border border-transparent px-2 py-2 text-xs text-transparent md:hidden">·</span>
                     )}
-                    <button onClick={() => onEdit(inv)} className="rounded border border-ink-200 px-3 py-1.5 text-xs hover:border-ink-400">
+                    <button
+                      onClick={() => onEdit(inv)}
+                      className="rounded border border-ink-200 px-2 py-2 text-xs font-medium hover:border-ink-400 md:px-3 md:py-1.5"
+                    >
                       Editar
                     </button>
-                    <button onClick={() => onDelete(inv)} className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:border-red-400">
+                    <button
+                      onClick={() => onDelete(inv)}
+                      className="rounded border border-red-200 px-2 py-2 text-xs text-red-600 hover:border-red-400 md:px-3 md:py-1.5"
+                    >
                       Eliminar
                     </button>
                   </div>
