@@ -41,11 +41,24 @@ src/
 
 10. **Image set** — Bloque de 1 a 3 imágenes en una sola fila. La regla de columnas es fija tanto en mobile como en desktop: 1 imagen → centrada en columna única, 2 imágenes → dos columnas, 3 imágenes → tres columnas. Cada cell tiene proporción configurable (cuadrada/vertical/horizontal/original) y pie de foto opcional. El botón "Añadir imagen" se deshabilita al llegar al máximo de 3.
 
+Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
+
 ### Animaciones de entrada por bloque
 
-Cada bloque expone un selector **"Animación de entrada"** en su panel (justo después de los items repetibles y antes de la separación interna). Las animaciones usan [framer-motion](https://www.framer.com/motion/) con `whileInView` para dispararse cuando el bloque entra al viewport del invitado, tanto en el canvas del editor como en la vista pública.
+Cada bloque expone un **selector "Animación de entrada"** en su panel (justo después de los items repetibles y antes de la separación interna). Las animaciones usan [framer-motion](https://www.framer.com/motion/) con `whileInView` para dispararse cuando el bloque entra al viewport del invitado, tanto en el canvas del editor como en la vista pública.
 
-Presets disponibles: **Ninguna**, **Fundido**, **Fundido ↑/↓/←/→**, **Zoom in**, **Zoom out**, **Blur in**, **Flip**, **Rotación** y **Cortina** (clip-path reveal). Se guardan en `block.style.entryAnimation`. El wrapper `AnimatedBlock` envuelve a cada bloque desde `BlockRenderer`, así que aplica uniformemente a todos los tipos (invitación y menú). Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
+El catálogo tiene **42 efectos** agrupados con `<optgroup>`:
+
+- **Fundido** (7): fade básico + 4 direcciones + variantes grandes
+- **Deslizar** (4): up/down/left/right sin fade
+- **Zoom** (6): in/out + combinados con dirección
+- **Blur** (3): blur-in, blur+sube, blur+zoom cinemático
+- **Flip 3D** (4): rotaciones perspectivadas
+- **Rotación** (7): sutil, 4 esquinas, swing y roll-in
+- **Spring / Rebote** (5): bounce, elastic, jelly (squash & stretch)
+- **Cinemático / Especial** (6): cortina con clip-path en 4 direcciones, skew, profundidad 3D
+
+Cada animación define su propia transición (curva o spring). El selector también muestra un botón **"↻ Volver a reproducir"** que retriggerea la animación al instante para previsualizar. Se guarda en `block.style.entryAnimation`. El wrapper `AnimatedBlock` envuelve cada bloque desde `BlockRenderer`, así que aplica uniformemente a todos los tipos (invitación y menú).
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 

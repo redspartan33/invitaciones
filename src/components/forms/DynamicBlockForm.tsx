@@ -12,7 +12,7 @@ import { GalleryImagesForm } from './GalleryImagesForm'
 import { ImageSetImagesForm } from './ImageSetImagesForm'
 import { MenuItemsForm } from './MenuItemsForm'
 import { DragHandle, SortableItem, SortableList } from './SortableItem'
-import { ENTRY_ANIMATIONS } from '../blocks/AnimatedBlock'
+import { ENTRY_ANIMATION_GROUPS } from '../blocks/AnimatedBlock'
 import type { EntryAnimation } from '../../types/invitation.types'
 
 // Field-kinds that render as visible text and therefore expose per-element
@@ -735,31 +735,48 @@ function EntryAnimationSection({
   value: EntryAnimation
   onChange: (v: EntryAnimation) => void
 }) {
+  const totalCount = ENTRY_ANIMATION_GROUPS.reduce(
+    (n, g) => n + g.options.length - (g.options[0]?.value === 'none' ? 1 : 0),
+    0,
+  )
   return (
     <section className="space-y-3">
-      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
-        Animación de entrada
-      </h3>
-      <div className="grid grid-cols-3 gap-2">
-        {ENTRY_ANIMATIONS.map((opt) => {
-          const active = value === opt.value
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange(opt.value)}
-              className={`rounded border px-2 py-2 text-[11px] uppercase tracking-widest transition-colors ${
-                active
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
-              }`}
-              title={opt.label}
-            >
-              {opt.label}
-            </button>
-          )
-        })}
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+          Animación de entrada
+        </h3>
+        <span className="text-[10px] uppercase tracking-widest text-ink-400">
+          {totalCount} efectos
+        </span>
       </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as EntryAnimation)}
+        className="input-flat"
+      >
+        {ENTRY_ANIMATION_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      {value !== 'none' && (
+        <button
+          type="button"
+          onClick={() => {
+            // Replay: toggle to 'none' then back to retrigger the framer key.
+            onChange('none')
+            setTimeout(() => onChange(value), 30)
+          }}
+          className="btn-flat w-full"
+        >
+          ↻ Volver a reproducir
+        </button>
+      )}
       <p className="text-[11px] text-ink-400">
         Se reproduce cuando el bloque entra a la pantalla del invitado.
       </p>

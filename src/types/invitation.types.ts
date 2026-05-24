@@ -91,17 +91,56 @@ export interface BlockStyle {
 
 export type EntryAnimation =
   | 'none'
+  // Fade
   | 'fade'
   | 'fade-up'
   | 'fade-down'
   | 'fade-left'
   | 'fade-right'
+  | 'fade-up-big'
+  | 'fade-down-big'
+  // Slide
+  | 'slide-up'
+  | 'slide-down'
+  | 'slide-left'
+  | 'slide-right'
+  // Zoom
   | 'zoom-in'
   | 'zoom-out'
+  | 'zoom-in-up'
+  | 'zoom-in-down'
+  | 'zoom-in-left'
+  | 'zoom-in-right'
+  // Blur
   | 'blur-in'
+  | 'blur-up'
+  | 'blur-zoom'
+  // Flip 3D
   | 'flip-up'
+  | 'flip-down'
+  | 'flip-left'
+  | 'flip-right'
+  // Rotate
   | 'rotate-in'
+  | 'rotate-in-up-left'
+  | 'rotate-in-up-right'
+  | 'rotate-in-down-left'
+  | 'rotate-in-down-right'
+  | 'swing'
+  | 'roll-in'
+  // Spring / bounce
+  | 'bounce-in'
+  | 'bounce-in-up'
+  | 'bounce-in-down'
+  | 'elastic-in'
+  | 'jelly'
+  // Cinematic / special
   | 'reveal-up'
+  | 'reveal-down'
+  | 'reveal-left'
+  | 'reveal-right'
+  | 'skew-in'
+  | 'depth-in'
 
 export interface HeroData {
   title: string
