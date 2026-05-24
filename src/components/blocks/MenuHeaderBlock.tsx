@@ -1,17 +1,36 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
-import type { InvitationBlock, MenuHeaderData, MenuSectionData } from '../../types/invitation.types'
+import type {
+  InvitationBlock,
+  Language,
+  MenuHeaderData,
+  MenuSectionData,
+} from '../../types/invitation.types'
 import { useEditorStore } from '../../store/editorStore'
 import { TextEl } from './TextEl'
 import { menuSectionAnchor } from '../../utils/menuNav'
+import { LANGUAGE_LABELS } from '../../utils/translation'
 
 interface Props {
   block: InvitationBlock<'menu-header'>
   /** When rendered standalone (e.g. public view) we read sections from props. */
   sectionsOverride?: { id: string; title: string }[]
   publicView?: boolean
+  /** Enabled languages (incl. 'es'). When >1 the language switcher renders. */
+  languages?: Language[]
+  /** Currently selected language; controlled by the parent (public view). */
+  currentLanguage?: Language
+  /** Called when the visitor taps a language pill. */
+  onLanguageChange?: (lang: Language) => void
 }
 
-export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) {
+export function MenuHeaderBlock({
+  block,
+  sectionsOverride,
+  publicView,
+  languages,
+  currentLanguage,
+  onLanguageChange,
+}: Props) {
   const data = block.data as MenuHeaderData
   const sectionsFromStore = useEditorStore((s) =>
     s.invitation.kind === 'menu'
@@ -177,6 +196,8 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
     }
   }
 
+  const showLangSwitcher = !!languages && languages.length > 1
+
   const renderHeaderContent = () => (
     <div style={bgStyle} className="px-6 py-16 text-center" ref={headerRef}>
       {data.showLogo && data.logo && (
@@ -191,6 +212,28 @@ export function MenuHeaderBlock({ block, sectionsOverride, publicView }: Props) 
         <TextEl block={block} field="tagline" as="p" className="mt-3 text-sm uppercase tracking-[0.3em] opacity-90">
           {data.tagline}
         </TextEl>
+      )}
+      {showLangSwitcher && (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {languages!.map((lang) => {
+            const active = currentLanguage === lang
+            return (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => onLanguageChange?.(lang)}
+                className={`rounded-full border px-5 py-2 text-sm font-serif tracking-wide transition-colors ${
+                  active
+                    ? 'border-white bg-white/15 text-white'
+                    : 'border-white/60 text-white/90 hover:bg-white/10'
+                }`}
+                aria-pressed={active}
+              >
+                {LANGUAGE_LABELS[lang]}
+              </button>
+            )
+          })}
+        </div>
       )}
     </div>
   )

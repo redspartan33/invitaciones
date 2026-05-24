@@ -3,7 +3,8 @@ import { useEditorStore } from '../../store/editorStore'
 import { useSelectedBlock } from '../../hooks/useSelectedBlock'
 import { DynamicBlockForm } from '../forms/DynamicBlockForm'
 import { BLOCK_CATALOG } from '../../utils/blockDefaults'
-import type { FontFamily } from '../../types/invitation.types'
+import type { FontFamily, Language } from '../../types/invitation.types'
+import { LANGUAGE_LABELS } from '../../utils/translation'
 
 export function ConfigPanel() {
   const activePanel = useEditorStore((s) => s.activePanel)
@@ -558,12 +559,20 @@ function MusicPanel({
 function DetailsPanel() {
   const inv = useEditorStore((s) => s.invitation)
   const updateGlobalSettings = useEditorStore((s) => s.updateGlobalSettings)
+  const setEnabledLanguages = useEditorStore((s) => s.setEnabledLanguages)
   const totalBlocks = inv.blocks.length
   const visible = inv.blocks.filter((b) => b.visible).length
   const favicon = inv.globalSettings.favicon ?? ''
+  const isMenu = inv.kind === 'menu'
   return (
     <div className="space-y-3 text-sm">
       <FaviconRow value={favicon} onChange={(v) => updateGlobalSettings({ favicon: v })} />
+      {isMenu && (
+        <LanguagesRow
+          enabled={inv.enabledLanguages ?? ['es']}
+          onChange={setEnabledLanguages}
+        />
+      )}
       <div className="rounded border border-ink-200 p-3">
         <p className="text-[11px] uppercase tracking-widest text-ink-400">ID</p>
         <p className="font-mono text-xs text-ink-700">{inv.id}</p>
@@ -586,6 +595,72 @@ function DetailsPanel() {
         <p className="text-[11px] uppercase tracking-widest text-ink-400">Última edición</p>
         <p className="text-xs text-ink-700">{new Date(inv.updatedAt).toLocaleString()}</p>
       </div>
+    </div>
+  )
+}
+
+function LanguagesRow({
+  enabled,
+  onChange,
+}: {
+  enabled: Language[]
+  onChange: (langs: Language[]) => void
+}) {
+  // 'es' is the source language and always on. Only 'en' / 'fr' are toggles.
+  const optional: Language[] = ['en', 'fr']
+  const toggle = (lang: Language) => {
+    const has = enabled.includes(lang)
+    const next = has ? enabled.filter((l) => l !== lang) : [...enabled, lang]
+    onChange(next)
+  }
+  const translationOn = optional.some((l) => enabled.includes(l))
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <p className="text-[11px] uppercase tracking-widest text-ink-400">Traducción</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">
+        Activa los idiomas que ofrecerás. Aparecerán como botones en el header del menú publicado.
+        La traducción se genera automáticamente al publicar.
+      </p>
+
+      <div className="mt-2 space-y-1.5">
+        <div className="flex items-center justify-between rounded border border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-700">
+          <span>
+            <span className="font-medium">{LANGUAGE_LABELS.es}</span>{' '}
+            <span className="text-ink-400">· original</span>
+          </span>
+          <span className="text-[10px] uppercase tracking-widest text-ink-400">Siempre activo</span>
+        </div>
+        {optional.map((lang) => {
+          const on = enabled.includes(lang)
+          return (
+            <label
+              key={lang}
+              className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400"
+            >
+              <span className="font-medium">{LANGUAGE_LABELS[lang]}</span>
+              <button
+                type="button"
+                onClick={() => toggle(lang)}
+                className={`relative h-5 w-9 rounded-full transition-colors ${on ? 'bg-ink-900' : 'bg-ink-200'}`}
+                aria-pressed={on}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                    on ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </label>
+          )
+        })}
+      </div>
+
+      {translationOn && (
+        <p className="mt-2 text-[10px] text-ink-400">
+          Las traducciones se generan al publicar usando MyMemory (gratis). Si algún texto no se traduce
+          bien, edítalo después en su bloque o vuelve a publicar.
+        </p>
+      )}
     </div>
   )
 }

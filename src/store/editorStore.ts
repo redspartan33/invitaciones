@@ -5,11 +5,13 @@ import type {
   GlobalSettings,
   Invitation,
   InvitationBlock,
+  Language,
   ViewportMode,
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
+import { buildTranslations } from '../utils/translation'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 
@@ -50,6 +52,7 @@ interface EditorState {
   duplicateBlock: (id: string) => void
   reorderBlocks: (fromId: string, toId: string) => void
   updateGlobalSettings: (patch: Partial<GlobalSettings>) => void
+  setEnabledLanguages: (langs: Language[]) => void
   updateTitle: (title: string) => void
   resetDraft: () => void
   loadInvitation: (inv: Invitation) => void
@@ -190,6 +193,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       },
     })),
 
+  setEnabledLanguages: (langs) =>
+    set((s) => {
+      // 'es' is always implicitly the source; persist a normalized, de-duped list.
+      const unique = Array.from(new Set<Language>(['es', ...langs]))
+      return {
+        invitation: {
+          ...s.invitation,
+          enabledLanguages: unique,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
   updateTitle: (title) =>
     set((s) => ({
       invitation: { ...s.invitation, title, updatedAt: new Date().toISOString() },
@@ -247,12 +263,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return null
     }
 
+    // Build translations for every non-Spanish language enabled. We swallow
+    // errors here so a flaky translation provider can't block the publish —
+    // the page still works, the buttons just won't show foreign text yet.
+    const targetLangs = (uploaded.enabledLanguages ?? []).filter((l) => l !== 'es')
+    let translations = uploaded.translations
+    if (targetLangs.length > 0) {
+      try {
+        translations = await buildTranslations(uploaded, targetLangs)
+      } catch (e) {
+        console.warn('[publish] translation build failed; continuing without translations', e)
+      }
+    } else {
+      translations = undefined
+    }
+
     const published: Invitation = {
       ...uploaded,
       publicSlug: slug,
       status: 'published',
       updatedAt: now,
       sharedLink,
+      translations,
     }
 
     const ok = await saveToRegistry(slug, published)

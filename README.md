@@ -131,6 +131,20 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 
 La barra sticky del menú hace deep-link a cada sección vía hash; los clicks se manejan con `scrollIntoView` para evitar problemas de layout shift cuando la barra se vuelve fija. En la vista pública, la barra incluye **scrollspy**: la sección visible al hacer scroll se marca como activa y la barra se auto-desplaza horizontalmente para mantenerla a la vista.
 
+### Plantilla por defecto
+
+Al crear un menú nuevo desde el admin el editor abre con un esqueleto mínimo (header + 1 sección con 2 platillos + footer vacío) — sin nombres de marca ni contenido de demo. La intención es que el usuario llene su propio menú desde una base limpia.
+
+### Traducción del menú (ES / EN / FR)
+
+En el panel **Detalles** del editor de menú se puede activar un bloque **"Traducción"** con toggles para `English` y `Français` (el `Español` siempre está activo como idioma original). Cuando hay 2+ idiomas activados:
+
+- Al pulsar **Publicar** todos los textos visibles del menú (titles, descriptions, names, notes, footer, etc.) se traducen automáticamente vía la API gratuita de [MyMemory](https://mymemory.translated.net/) y quedan guardados en `invitation.translations` (un mapa `{ blockId: { lang: { fieldPath: 'translated' } } }`).
+- En la vista pública el `MenuHeaderBlock` muestra las pastillas con los idiomas activados. El visitante elige y todo el bloque renderiza con los strings traducidos — incluyendo los títulos de la barra sticky de navegación.
+- Si la traducción falla (rate-limit, sin red, etc.) el publish no se bloquea: el menú se publica igual y los botones de idioma simplemente no aparecen hasta que se vuelva a publicar.
+
+El whitelist de campos traducibles vive en [`src/utils/translation.ts`](src/utils/translation.ts) (`TRANSLATABLE`), por tipo de bloque — para evitar traducir URLs, hex de colores, fechas o iconos.
+
 ## Editor en móvil
 
 En pantallas `< 768px` el `ConfigPanel` queda oculto por defecto y el `Canvas` ocupa todo el ancho. Al tocar un bloque (o un panel del Footbar — Detalles, Colores, Fuentes, Música) el panel aparece **a pantalla completa** con su propio botón **×** en el header y un botón **Listo** al pie. Cerrar regresa al editor con la selección limpiada.

@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Invitation, InvitationBlock, MenuSectionData } from '../../types/invitation.types'
+import type {
+  Invitation,
+  InvitationBlock,
+  Language,
+  MenuSectionData,
+} from '../../types/invitation.types'
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
+import { applyBlockTranslation } from '../../utils/translation'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
   const { globalSettings, blocks } = invitation
@@ -21,12 +27,29 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   const headingFont = globalSettings.headingFont?.trim()
   const bodyFont = globalSettings.bodyFont?.trim()
 
-  const visible = [...blocks].sort((a, b) => a.order - b.order).filter((b) => b.visible)
+  const rawVisible = [...blocks].sort((a, b) => a.order - b.order).filter((b) => b.visible)
   const isMenu =
-    invitation.kind === 'menu' || visible.some((b) => b.type.startsWith('menu-'))
+    invitation.kind === 'menu' || rawVisible.some((b) => b.type.startsWith('menu-'))
+
+  // Language switcher: only on menus, only when ≥2 languages enabled.
+  const languages = useMemo<Language[]>(() => {
+    const list = invitation.enabledLanguages ?? ['es']
+    return Array.from(new Set<Language>(['es', ...list]))
+  }, [invitation.enabledLanguages])
+  const showLanguageSwitcher = isMenu && languages.length > 1
+  const [currentLanguage, setCurrentLanguage] = useState<Language>(languages[0] ?? 'es')
+
+  // Apply translations to every block based on the selected language. Header
+  // is also translated (title / tagline). When 'es' is selected we just
+  // return the original blocks.
+  const visible = useMemo(() => {
+    if (currentLanguage === 'es' || !invitation.translations) return rawVisible
+    return rawVisible.map((b) => applyBlockTranslation(b, currentLanguage, invitation.translations))
+  }, [rawVisible, currentLanguage, invitation.translations])
 
   // Pre-compute the section list so the public sticky nav reflects exactly
-  // what's about to render (without needing the editor store).
+  // what's about to render (without needing the editor store). Uses the
+  // *translated* titles so the nav also switches language.
   const menuSections = useMemo(() => {
     if (!isMenu) return []
     return visible
@@ -64,6 +87,9 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
                 block={block as InvitationBlock<'menu-header'>}
                 sectionsOverride={menuSections}
                 publicView
+                languages={showLanguageSwitcher ? languages : undefined}
+                currentLanguage={currentLanguage}
+                onLanguageChange={setCurrentLanguage}
               />
             ) : (
               <BlockRenderer block={block} />

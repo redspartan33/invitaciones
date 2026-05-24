@@ -375,6 +375,17 @@ export interface GlobalSettings {
   bodyFontWeight?: string
 }
 
+/** Supported language codes. 'es' is always the original/source language. */
+export type Language = 'es' | 'en' | 'fr'
+
+/**
+ * Map of dot-delimited block path → translated text. Paths are produced by
+ * the translation utility (e.g. "data.title", "data.items[0].name"). One
+ * record per target language. The source language ('es') is never stored
+ * here — it lives directly on the blocks.
+ */
+export type TranslationMap = Partial<Record<Language, Record<string, string>>>
+
 export interface Invitation {
   id: string
   kind?: InvitationKind
@@ -387,6 +398,17 @@ export interface Invitation {
   updatedAt: string
   sharedLink?: string
   publicSlug?: string
+  /**
+   * Languages the menu is offered in. 'es' (Spanish) is the source and is
+   * always implicitly enabled. Add 'en' / 'fr' to surface language buttons
+   * in the published header.
+   */
+  enabledLanguages?: Language[]
+  /**
+   * Per-language translated strings, keyed by block id then by field path.
+   * Populated at publish time by the translation utility.
+   */
+  translations?: Record<string, TranslationMap>
 }
 
 export type ViewportMode = 'mobile' | 'tablet' | 'desktop'
