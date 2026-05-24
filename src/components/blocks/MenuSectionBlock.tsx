@@ -5,7 +5,7 @@ import { menuSectionAnchor } from '../../utils/menuNav'
 
 export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-section'> }) {
   const data = block.data as MenuSectionData
-  const anchor = menuSectionAnchor(block.id, data.title)
+  const anchor = menuSectionAnchor(block.id, data.title, data.customAnchor)
   // style.itemSpacing is the universal control; data.itemSpacing is the legacy
   // value kept for backwards compatibility with already-saved menus.
   // BlockWrapper exposes the chosen spacing as the `--item-gap` CSS variable,

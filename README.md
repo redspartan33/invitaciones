@@ -131,6 +131,22 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 
 La barra sticky del menú hace deep-link a cada sección vía hash; los clicks se manejan con `scrollIntoView` para evitar problemas de layout shift cuando la barra se vuelve fija. En la vista pública, la barra incluye **scrollspy**: la sección visible al hacer scroll se marca como activa y la barra se auto-desplaza horizontalmente para mantenerla a la vista.
 
+### ID personalizado por sección
+
+Cada **Menu section** expone un campo opcional **"ID personalizado"** (`customAnchor`) en su panel. Cuando se define, el anchor en el DOM (`#tu-id`) y el target al que apuntan los items de la nav personalizada usan ese slug en vez del auto-derivado del título. La utilidad `slugifyAnchor` en [src/utils/menuNav.ts](src/utils/menuNav.ts) saneа el input (lowercase, ASCII, guiones). Útil para mantener la URL estable al renombrar el título o para que un item custom de la nav apunte por nombre estable.
+
+### Navegación del menú personalizable
+
+El bloque **Menu header** expone un editor **"Navegación"** ([MenuNavItemsForm](src/components/forms/MenuNavItemsForm.tsx)):
+
+- Por defecto la nav se genera automáticamente con todas las secciones visibles.
+- Al pulsar **Personalizar**, el editor crea una lista editable seedeada con las secciones actuales: puedes renombrar cada item, reordenar con drag&drop, eliminarlo y añadir items custom.
+- Cada item custom apunta a una sección elegida de un **dropdown de secciones disponibles** (se muestra el título + `#anchor` + badge `ID propio` cuando aplica).
+- Si una sección referenciada desaparece, el item se marca con una advertencia y un warning chip "⚠ #anchor (sección no encontrada)".
+- **Restaurar auto** vuelve al modo automático.
+
+El override se guarda en `menuHeaderData.navItems`. Los labels custom se incluyen en el whitelist de traducción (`menu-header` → `navItems[].label`) así que también cambian al elegir EN/FR en el header.
+
 ### Plantilla por defecto
 
 Al crear un menú nuevo desde el admin el editor abre con un esqueleto mínimo (header + 1 sección con 2 platillos + footer vacío) — sin nombres de marca ni contenido de demo. La intención es que el usuario llene su propio menú desde una base limpia.

@@ -36,7 +36,11 @@ const TRANSLATABLE: Partial<Record<BlockType, FieldSpec[]>> = {
   gallery: ['title', { array: 'images', fields: ['caption'] }],
   'image-set': ['title', { array: 'images', fields: ['caption'] }],
   map: ['title', 'address', 'openLinkLabel'],
-  'menu-header': ['title', 'tagline'],
+  'menu-header': [
+    'title',
+    'tagline',
+    { array: 'navItems', fields: ['label'] },
+  ],
   'menu-section': [
     'title',
     'description',

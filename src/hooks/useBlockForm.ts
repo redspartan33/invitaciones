@@ -321,6 +321,12 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
         fields: [
           { name: 'title', label: 'Título de la sección', kind: 'text', helper: 'Aparece en la barra sticky' },
           { name: 'description', label: 'Descripción (opcional)', kind: 'textarea' },
+          {
+            name: 'customAnchor',
+            label: 'ID personalizado (opcional)',
+            kind: 'text',
+            helper: 'Slug del anchor (ej. "entradas"). Si lo defines, la nav personalizada puede apuntar aquí y la URL del menú lleva #tu-id.',
+          },
         ],
       },
     ],
