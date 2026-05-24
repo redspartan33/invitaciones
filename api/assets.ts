@@ -64,17 +64,15 @@ function parseDataUri(dataUri: string): { contentType: string; bytes: Buffer } |
   }
 }
 
-function publicProxyUrl(req: VercelRequest, pathname: string): string {
-  const protoRaw = req.headers['x-forwarded-proto']
-  const hostRaw = req.headers['host']
-  const proto = (Array.isArray(protoRaw) ? protoRaw[0] : protoRaw) || 'https'
-  const host = (Array.isArray(hostRaw) ? hostRaw[0] : hostRaw) || ''
-  // pathname is like "assets/<folder>/<file.ext>". The proxy handler is
-  // `api/asset/[...path].ts`, so the final URL is
-  // `https://<host>/api/asset/<folder>/<file.ext>` — drop the "assets/"
-  // prefix because the route key is /api/asset/... not /api/assets/...
+// Return a SAME-ORIGIN relative URL pointing at the proxy. Relative is
+// safer than absolute here: it works identically on `<host>.vercel.app`,
+// on custom domains, on deploy previews, and on `localhost` — no
+// host-mismatch when an invitation is published from one URL and later
+// viewed from another.
+function publicProxyUrl(_req: VercelRequest, pathname: string): string {
+  // pathname is like "assets/<folder>/<file.ext>"; route is /api/asset/...
   const tail = pathname.startsWith('assets/') ? pathname.slice('assets/'.length) : pathname
-  return `${proto}://${host}/api/asset/${tail}`
+  return `/api/asset/${tail}`
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
