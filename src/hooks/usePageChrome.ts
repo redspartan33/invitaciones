@@ -23,11 +23,25 @@ export function usePageChrome({
   favicon,
   headingFont,
   bodyFont,
+  title,
 }: {
   favicon?: string
   headingFont?: string
   bodyFont?: string
+  title?: string
 }) {
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const next = title?.trim()
+    if (!next) return
+    const original = document.title
+    document.title = next
+    return () => {
+      document.title = original
+    }
+  }, [title])
+
+
   useEffect(() => {
     if (typeof document === 'undefined') return
     const head = document.head

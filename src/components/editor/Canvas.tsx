@@ -133,10 +133,67 @@ export function Canvas() {
 
   return (
     <div
-      className="flex h-full w-full items-start justify-center overflow-auto bg-ink-100 p-6 scroll-thin md:p-10"
+      className="flex h-full w-full flex-col items-center overflow-auto bg-ink-100 p-6 scroll-thin md:p-10"
       onClick={() => selectBlock(null)}
     >
-      {framed}
+      <VariantSwitcher />
+      <div className="flex w-full items-start justify-center">{framed}</div>
+    </div>
+  )
+}
+
+function VariantSwitcher() {
+  const isMenu = useEditorStore((s) => s.invitation.kind === 'menu')
+  const variants = useEditorStore((s) => s.invitation.menuVariants)
+  const editingId = useEditorStore((s) => s.invitation.editingVariantId)
+  const activeId = useEditorStore((s) => s.invitation.activeVariantId)
+  const switchEditing = useEditorStore((s) => s.switchEditingMenuVariant)
+  const addVariant = useEditorStore((s) => s.addMenuVariant)
+
+  if (!isMenu || !variants || variants.length === 0) return null
+
+  return (
+    <div
+      className="mb-4 flex w-full max-w-[1100px] flex-wrap items-center gap-1.5 rounded border border-ink-200 bg-white p-1.5 shadow-sm"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="px-2 text-[10px] font-semibold uppercase tracking-widest text-ink-400">
+        Temporada
+      </span>
+      {variants.map((v) => {
+        const isEditing = v.id === editingId
+        const isActive = v.id === activeId
+        return (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => switchEditing(v.id)}
+            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs transition-colors ${
+              isEditing
+                ? 'bg-ink-900 text-white'
+                : 'bg-white text-ink-700 hover:bg-ink-50'
+            }`}
+            title={isActive ? 'Visible por defecto al público' : 'Editar esta temporada'}
+          >
+            <span>{v.label}</span>
+            {isActive && (
+              <span className={`text-[9px] ${isEditing ? 'text-amber-200' : 'text-amber-500'}`}>★</span>
+            )}
+          </button>
+        )
+      })}
+      <button
+        type="button"
+        onClick={() => {
+          const label = prompt('Nombre de la nueva temporada:', `Temporada ${variants.length + 1}`)
+          if (label === null) return
+          const copy = confirm('¿Duplicar la temporada actual? (Cancelar = empezar vacía)')
+          addVariant(label, copy ? editingId : undefined)
+        }}
+        className="ml-auto rounded border border-dashed border-ink-300 px-2 py-1 text-xs text-ink-500 hover:border-ink-900 hover:text-ink-900"
+      >
+        + Temporada
+      </button>
     </div>
   )
 }

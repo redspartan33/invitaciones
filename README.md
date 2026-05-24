@@ -161,6 +161,51 @@ En el panel **Detalles** del editor de menú se puede activar un bloque **"Tradu
 
 El whitelist de campos traducibles vive en [`src/utils/translation.ts`](src/utils/translation.ts) (`TRANSLATABLE`), por tipo de bloque — para evitar traducir URLs, hex de colores, fechas o iconos.
 
+### Menús por temporada (variantes)
+
+En el panel **Detalles** del editor de menú se puede activar la sección **"Temporadas"** para tener varias versiones del mismo menú (verano, invierno, brunch, navidad…). El modelo extiende `Invitation` con dos campos opcionales:
+
+```ts
+menuVariants?: { id, label, blocks }[]
+activeVariantId?: string   // la que ven los visitantes por defecto
+editingVariantId?: string  // la que se está editando en el canvas
+```
+
+Cuando hay variantes, el campo `invitation.blocks` es un mirror del array de bloques de la variante en edición — el helper `mergeBlocks` en [src/store/editorStore.ts](src/store/editorStore.ts) sincroniza la variante activa cada vez que se toca un bloque, así que todos los renderers y forms existentes siguen funcionando sin cambios.
+
+- **Switcher en el canvas** — arriba del lienzo aparece una barra con una pill por cada temporada. La pill marcada con ★ es la activa para el público; la pill negra es la que estás editando. Botón **+ Temporada** crea una nueva (con prompt para nombre + confirm para duplicar de la actual o empezar vacía).
+- **Gestión en Detalles** — cada temporada se puede renombrar inline, marcar como activa con un radio, o eliminar (mínimo 1). Al apagar el toggle "Temporadas" se consolida a la variante activa y se borran las demás.
+- **Selector público** — en `PublicInvitationView`, si hay 2+ variantes el menú renderiza unas tabs sticky justo antes del primer `menu-section`. Los visitantes pueden cambiar entre temporadas sin recargar; la variante activa es la que abre por defecto. Header y footer son independientes por variante (cada una mantiene su propio array de bloques completo).
+
+### Fondo global de página (imagen o video)
+
+En **Detalles** hay una sección **"Fondo de página"** que aplica un fondo a toda la vista pública detrás del contenido. El campo único es una URL pegada — la utilidad `detectBackgroundKind` ([src/utils/pageBackground.ts](src/utils/pageBackground.ts)) decide el tipo:
+
+- **Imagen** (`.jpg/.png/.webp` u otra URL) → background-image con `fit` (cover/contain/tile/auto) y grid 3×3 de posiciones.
+- **MP4/WebM/MOV** → `<video autoPlay muted loop playsInline>`.
+- **YouTube** (cualquier formato — watch, youtu.be, shorts, embed) → `<iframe>` con `autoplay=1&mute=1&loop=1&controls=0&modestbranding=1&playsinline=1` y `playlist=<id>` para que el loop funcione con un solo video.
+- **Vimeo** → `<iframe>` con `?background=1&autoplay=1&muted=1&loop=1` (modo background nativo de Vimeo).
+
+Los videos **siempre se reproducen silenciados** (requisito de autoplay en navegadores) y se escalan con `max(100vw, 177.78vh) × max(56.25vw, 100vh)` para cubrir el viewport independientemente de su aspecto 16:9.
+
+Configuración adicional en el mismo row: **opacidad** (0–100%), **desenfoque** (0–30px aplicado al layer), **color encima** (overlay con color hex + alpha 0–100%), **comportamiento al scroll** (fijo tipo parallax o scrollea con el contenido). El render vive en [`PageBackgroundLayer`](src/components/public/PageBackgroundLayer.tsx) como dos capas `-z-20` (background) y `-z-10` (overlay) detrás del canvas.
+
+Toggle **"Tarjeta central transparente"** vuelve el wrapper `max-w-[920px]` transparente para que el fondo se vea a través de los bloques (útil con un fondo de baja opacidad). Apagado mantiene la tarjeta sólida con el color secundario encima del fondo.
+
+### Nombre de la pestaña del navegador
+
+En **Detalles** → **"Nombre en la pestaña"** se puede personalizar el `document.title` que ven los invitados en su navegador. Si se deja vacío, se usa el `invitation.title`. Aplicado vía `usePageChrome` ([src/hooks/usePageChrome.ts](src/hooks/usePageChrome.ts)) que guarda/restaura el título original al montar/desmontar.
+
+### Skeletons de carga públicos
+
+Cuando un invitado abre el link público (`?id=<slug>`) ya no se ve el texto "Cargando invitación…". En su lugar se renderiza un skeleton (silueta gris con `animate-pulse`) específico al tipo de documento. Los skeletons viven en [`src/components/public/skeletons.tsx`](src/components/public/skeletons.tsx):
+
+- **InvitationSkeleton** — hero alto con título/subtítulo, tarjeta de event details, 3 items de timeline con bullet circular, área RSVP y footer.
+- **MenuSkeleton** — header con logo redondo + título, barra sticky de nav pills, dos secciones con 4 platillos cada una (nombre + descripción + precio a la derecha), footer.
+- **NeutralSkeleton** — fallback genérico (header + 3 bandas de contenido) para la primerísima visita a un slug que aún no se conoce.
+
+Para decidir qué skeleton mostrar antes de que llegue la data, cacheamos el `kind` por slug en `localStorage` bajo la clave `invitation-builder:kind-cache:<slug>`. La primera vez que `App.tsx` recibe la `Invitation` del servidor, escribe el kind al cache; visitas posteriores muestran el skeleton correcto desde el primer paint. Visitas en frío (sin cache) muestran el `NeutralSkeleton`.
+
 ## Editor en móvil
 
 En pantallas `< 768px` el `ConfigPanel` queda oculto por defecto y el `Canvas` ocupa todo el ancho. Al tocar un bloque (o un panel del Footbar — Detalles, Colores, Fuentes, Música) el panel aparece **a pantalla completa** con su propio botón **×** en el header y un botón **Listo** al pie. Cerrar regresa al editor con la selección limpiada.

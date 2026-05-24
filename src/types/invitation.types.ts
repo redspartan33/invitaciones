@@ -388,6 +388,8 @@ export interface GlobalSettings {
   backgroundMusicAutoplay?: boolean
   /** Image URL used as <link rel="icon"> in the public view. */
   favicon?: string
+  /** Text shown in the browser tab (document.title). Falls back to invitation.title. */
+  pageTitle?: string
   /**
    * Google Fonts name (e.g. "Playfair Display"). When set, overrides the
    * built-in `fontFamily` choice. `headingFont` is used for h1/h2/h3
@@ -398,6 +400,47 @@ export interface GlobalSettings {
   /** Optional CSS custom property weights for the loaded Google Fonts. */
   headingFontWeight?: string
   bodyFontWeight?: string
+  /**
+   * Full-page background — sits behind every block on the public view.
+   * Supports a pasted URL: image (jpg/png/webp), direct video file
+   * (mp4/webm/mov), or a YouTube / Vimeo link (rendered as a muted,
+   * looping iframe).
+   */
+  pageBackground?: PageBackground
+  /** When true, the central canvas card becomes transparent so the page
+   *  background shows through. Defaults to false (keeps the secondary-color
+   *  card on top of the background). Only matters when pageBackground is set. */
+  transparentCanvas?: boolean
+}
+
+export interface PageBackground {
+  /** Pasted URL — image, direct video, YouTube or Vimeo. */
+  url: string
+  /** Override auto-detection. Defaults to 'auto'. */
+  kind?: 'auto' | 'image' | 'video'
+  /** How the background covers the viewport. Defaults to 'cover'. */
+  fit?: 'cover' | 'contain' | 'tile' | 'auto'
+  /** Same enum as BlockStyle.backgroundPosition. */
+  position?:
+    | 'center'
+    | 'top'
+    | 'bottom'
+    | 'left'
+    | 'right'
+    | 'top-left'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-right'
+  /** 0–100. Defaults to 100. */
+  opacity?: number
+  /** Hex color for the overlay layer. Defaults to '#000000'. */
+  overlayColor?: string
+  /** 0–100. Defaults to 0 (no overlay). */
+  overlayOpacity?: number
+  /** Pixel blur applied to the background layer. 0–30. */
+  blur?: number
+  /** 'fixed' = parallax-like, stays on viewport; 'scroll' = scrolls with content. */
+  attachment?: 'fixed' | 'scroll'
 }
 
 /** Supported language codes. 'es' is always the original/source language. */
@@ -410,6 +453,19 @@ export type Language = 'es' | 'en' | 'fr'
  * here — it lives directly on the blocks.
  */
 export type TranslationMap = Partial<Record<Language, Record<string, string>>>
+
+/**
+ * One season/version of a menu. Holds a full, independent block list.
+ * When `invitation.menuVariants` is set, `invitation.blocks` is treated as
+ * an editor-side mirror of the currently-edited variant. The public view
+ * always reads blocks from the variant pointed at by `activeVariantId`
+ * (defaulting to the first variant if absent).
+ */
+export interface MenuVariant {
+  id: string
+  label: string
+  blocks: InvitationBlock[]
+}
 
 export interface Invitation {
   id: string
@@ -434,6 +490,15 @@ export interface Invitation {
    * Populated at publish time by the translation utility.
    */
   translations?: Record<string, TranslationMap>
+  /**
+   * Seasonal menu variants (only used when kind='menu'). When present, the
+   * public view shows tabs to switch between them. `activeVariantId` is
+   * the one shown by default; `editingVariantId` is the one whose blocks
+   * are currently mirrored into `invitation.blocks` for editing.
+   */
+  menuVariants?: MenuVariant[]
+  activeVariantId?: string
+  editingVariantId?: string
 }
 
 export type ViewportMode = 'mobile' | 'tablet' | 'desktop'

@@ -4,19 +4,22 @@ import type {
   InvitationBlock,
   Language,
   MenuSectionData,
+  MenuVariant,
 } from '../../types/invitation.types'
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
+import { PageBackgroundLayer } from './PageBackgroundLayer'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
-  const { globalSettings, blocks } = invitation
+  const { globalSettings } = invitation
   usePageChrome({
     favicon: globalSettings.favicon,
     headingFont: globalSettings.headingFont,
     bodyFont: globalSettings.bodyFont,
+    title: globalSettings.pageTitle?.trim() || invitation.title,
   })
   const fontClass =
     globalSettings.fontFamily === 'serif'
@@ -26,6 +29,18 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
       : 'font-sans'
   const headingFont = globalSettings.headingFont?.trim()
   const bodyFont = globalSettings.bodyFont?.trim()
+
+  // Resolve which blocks to render. When this invitation is a menu with
+  // seasonal variants, blocks come from the currently-selected variant.
+  const hasVariants = !!invitation.menuVariants && invitation.menuVariants.length > 0
+  const variants = hasVariants ? invitation.menuVariants! : []
+  const initialVariantId = hasVariants
+    ? (variants.find((v) => v.id === invitation.activeVariantId)?.id ?? variants[0].id)
+    : null
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(initialVariantId)
+  const blocks = hasVariants
+    ? (variants.find((v) => v.id === selectedVariantId)?.blocks ?? variants[0].blocks)
+    : invitation.blocks
 
   const rawVisible = [...blocks].sort((a, b) => a.order - b.order).filter((b) => b.visible)
   const isMenu =
@@ -70,9 +85,18 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
     : ''
   const autoplay = !!globalSettings.backgroundMusicAutoplay
 
+  const hasPageBackground = !!globalSettings.pageBackground?.url?.trim()
+  const canvasBg =
+    hasPageBackground && globalSettings.transparentCanvas
+      ? 'transparent'
+      : 'var(--color-secondary)'
+
+  const showSeasonTabs = hasVariants && variants.length > 1
+  const firstNonHeaderIdx = visible.findIndex((b) => b.type !== 'menu-header')
+
   return (
     <div
-      className={`invitation-canvas min-h-screen w-full ${fontClass}`}
+      className={`invitation-canvas relative min-h-screen w-full ${fontClass}`}
       style={
         {
           ['--color-accent' as never]: globalSettings.colorAccent,
@@ -84,9 +108,19 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
         } as React.CSSProperties
       }
     >
-      <div className="mx-auto max-w-[920px] border-x border-black/5 bg-[color:var(--color-secondary)]">
-        {visible.map((block) => (
+      <PageBackgroundLayer bg={globalSettings.pageBackground} />
+      <div
+        className="relative mx-auto max-w-[920px] border-x border-black/5"
+        style={{ background: canvasBg }}
+      >
+        {showSeasonTabs && firstNonHeaderIdx === -1 && (
+          <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
+        )}
+        {visible.map((block, idx) => (
           <div key={block.id}>
+            {showSeasonTabs && idx === firstNonHeaderIdx && (
+              <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
+            )}
             {block.type === 'menu-header' ? (
               <MenuHeaderBlock
                 block={block as InvitationBlock<'menu-header'>}
@@ -103,6 +137,40 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
         ))}
       </div>
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
+    </div>
+  )
+}
+
+function SeasonTabs({
+  variants,
+  selectedId,
+  onSelect,
+}: {
+  variants: MenuVariant[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="sticky top-0 z-30 flex justify-center border-y border-black/5 bg-[color:var(--color-secondary)]/95 px-4 py-2 backdrop-blur">
+      <div className="flex max-w-full gap-1.5 overflow-x-auto scroll-thin">
+        {variants.map((v) => {
+          const on = v.id === selectedId
+          return (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => onSelect(v.id)}
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs transition-colors ${
+                on
+                  ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-white'
+                  : 'border-black/10 bg-white/60 text-ink-700 hover:border-ink-400'
+              }`}
+            >
+              {v.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

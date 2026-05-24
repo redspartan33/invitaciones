@@ -3,8 +3,9 @@ import { useEditorStore } from '../../store/editorStore'
 import { useSelectedBlock } from '../../hooks/useSelectedBlock'
 import { DynamicBlockForm } from '../forms/DynamicBlockForm'
 import { BLOCK_CATALOG } from '../../utils/blockDefaults'
-import type { FontFamily, Language } from '../../types/invitation.types'
+import type { FontFamily, Language, PageBackground } from '../../types/invitation.types'
 import { LANGUAGE_LABELS } from '../../utils/translation'
+import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
 
 export function ConfigPanel() {
   const activePanel = useEditorStore((s) => s.activePanel)
@@ -563,10 +564,27 @@ function DetailsPanel() {
   const totalBlocks = inv.blocks.length
   const visible = inv.blocks.filter((b) => b.visible).length
   const favicon = inv.globalSettings.favicon ?? ''
+  const pageTitle = inv.globalSettings.pageTitle ?? ''
   const isMenu = inv.kind === 'menu'
   return (
     <div className="space-y-3 text-sm">
+      <PageTitleRow
+        value={pageTitle}
+        placeholder={inv.title}
+        onChange={(v) => updateGlobalSettings({ pageTitle: v })}
+      />
       <FaviconRow value={favicon} onChange={(v) => updateGlobalSettings({ favicon: v })} />
+      <PageBackgroundRow
+        bg={inv.globalSettings.pageBackground}
+        transparentCanvas={!!inv.globalSettings.transparentCanvas}
+        onChange={(patch) =>
+          updateGlobalSettings({
+            pageBackground: patch === null ? undefined : { ...(inv.globalSettings.pageBackground ?? { url: '' }), ...patch },
+          })
+        }
+        onToggleTransparent={(v) => updateGlobalSettings({ transparentCanvas: v })}
+      />
+      {isMenu && <SeasonsRow />}
       {isMenu && (
         <LanguagesRow
           enabled={inv.enabledLanguages ?? ['es']}
@@ -724,6 +742,366 @@ function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) 
           }}
         />
       </div>
+    </div>
+  )
+}
+
+function PageTitleRow({
+  value,
+  placeholder,
+  onChange,
+}: {
+  value: string
+  placeholder: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <p className="text-[11px] uppercase tracking-widest text-ink-400">Nombre en la pestaña</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">
+        Texto que se muestra en la pestaña del navegador. Si lo dejas vacío, se usa el título del documento.
+      </p>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder || 'Mi invitación'}
+        className="input-flat mt-2"
+        maxLength={80}
+      />
+    </div>
+  )
+}
+
+const BG_POSITIONS: { value: NonNullable<PageBackground['position']>; label: string }[] = [
+  { value: 'top-left', label: '↖' },
+  { value: 'top', label: '↑' },
+  { value: 'top-right', label: '↗' },
+  { value: 'left', label: '←' },
+  { value: 'center', label: '●' },
+  { value: 'right', label: '→' },
+  { value: 'bottom-left', label: '↙' },
+  { value: 'bottom', label: '↓' },
+  { value: 'bottom-right', label: '↘' },
+]
+
+function PageBackgroundRow({
+  bg,
+  transparentCanvas,
+  onChange,
+  onToggleTransparent,
+}: {
+  bg?: PageBackground
+  transparentCanvas: boolean
+  onChange: (patch: Partial<PageBackground> | null) => void
+  onToggleTransparent: (v: boolean) => void
+}) {
+  const url = bg?.url ?? ''
+  const detectedKind = detectBackgroundKind(url)
+  const source = resolveBackgroundSource(bg)
+  const isVideo =
+    source.kind === 'video-file' || source.kind === 'youtube' || source.kind === 'vimeo'
+  const opacity = bg?.opacity ?? 100
+  const blur = bg?.blur ?? 0
+  const overlayOpacity = bg?.overlayOpacity ?? 0
+  const overlayColor = bg?.overlayColor ?? '#000000'
+  const attachment = bg?.attachment ?? 'fixed'
+  const fit = bg?.fit ?? 'cover'
+  const position = bg?.position ?? 'center'
+
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <p className="text-[11px] uppercase tracking-widest text-ink-400">Fondo de página</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">
+        Imagen o link de video (YouTube, Vimeo, MP4). Los videos se reproducen silenciados, en loop.
+      </p>
+
+      <input
+        type="url"
+        value={url}
+        onChange={(e) => onChange({ url: e.target.value })}
+        placeholder="https://…  o  https://youtu.be/…"
+        className="input-flat mt-2"
+      />
+
+      {url && (
+        <>
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-ink-500">
+            <span className="rounded-full border border-ink-200 px-2 py-0.5">
+              {isVideo ? 'Video (mute · loop)' : detectedKind === 'image' ? 'Imagen' : 'Auto'}
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="ml-auto text-ink-500 hover:text-rose-600"
+            >
+              Quitar
+            </button>
+          </div>
+
+          {/* Fit */}
+          <div className="mt-3">
+            <label className="label-flat">Ajuste</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(['cover', 'contain', 'tile', 'auto'] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => onChange({ fit: f })}
+                  className={`rounded border px-2 py-1.5 text-[11px] capitalize transition-colors ${
+                    fit === f
+                      ? 'border-ink-900 bg-ink-900 text-white'
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Position (3x3) — only meaningful for images */}
+          {!isVideo && (
+            <div className="mt-3">
+              <label className="label-flat">Posición</label>
+              <div className="grid w-fit grid-cols-3 gap-1">
+                {BG_POSITIONS.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => onChange({ position: p.value })}
+                    className={`h-7 w-7 rounded border text-xs ${
+                      position === p.value
+                        ? 'border-ink-900 bg-ink-900 text-white'
+                        : 'border-ink-200 bg-white text-ink-500 hover:border-ink-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Attachment */}
+          <div className="mt-3">
+            <label className="label-flat">Comportamiento al scroll</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(['fixed', 'scroll'] as const).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => onChange({ attachment: a })}
+                  className={`rounded border px-2 py-1.5 text-[11px] transition-colors ${
+                    attachment === a
+                      ? 'border-ink-900 bg-ink-900 text-white'
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                  }`}
+                >
+                  {a === 'fixed' ? 'Fijo (parallax)' : 'Scrollea'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Opacity */}
+          <div className="mt-3">
+            <label className="label-flat flex items-center justify-between">
+              <span>Opacidad</span>
+              <span className="text-[10px] text-ink-400">{opacity}%</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={opacity}
+              onChange={(e) => onChange({ opacity: Number(e.target.value) })}
+              className="w-full accent-ink-900"
+            />
+          </div>
+
+          {/* Blur */}
+          <div className="mt-2">
+            <label className="label-flat flex items-center justify-between">
+              <span>Desenfoque</span>
+              <span className="text-[10px] text-ink-400">{blur}px</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={30}
+              value={blur}
+              onChange={(e) => onChange({ blur: Number(e.target.value) })}
+              className="w-full accent-ink-900"
+            />
+          </div>
+
+          {/* Overlay */}
+          <div className="mt-3">
+            <label className="label-flat flex items-center justify-between">
+              <span>Color encima</span>
+              <span className="text-[10px] text-ink-400">{overlayOpacity}%</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={overlayColor}
+                onChange={(e) => onChange({ overlayColor: e.target.value })}
+                className="h-8 w-10 cursor-pointer rounded border border-ink-200 bg-white"
+              />
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={overlayOpacity}
+                onChange={(e) => onChange({ overlayOpacity: Number(e.target.value) })}
+                className="flex-1 accent-ink-900"
+              />
+            </div>
+          </div>
+
+          {/* Canvas transparency */}
+          <label className="mt-3 flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-xs">
+            <span className="text-ink-700">Tarjeta central transparente</span>
+            <button
+              type="button"
+              onClick={() => onToggleTransparent(!transparentCanvas)}
+              className={`relative h-5 w-9 rounded-full transition-colors ${
+                transparentCanvas ? 'bg-ink-900' : 'bg-ink-200'
+              }`}
+              aria-pressed={transparentCanvas}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  transparentCanvas ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </label>
+          <p className="mt-1 text-[10px] text-ink-400">
+            Si está encendido, el fondo se ve a través del lienzo central; si está apagado, queda detrás del color secundario.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function SeasonsRow() {
+  const variants = useEditorStore((s) => s.invitation.menuVariants)
+  const editingId = useEditorStore((s) => s.invitation.editingVariantId)
+  const activeId = useEditorStore((s) => s.invitation.activeVariantId)
+  const enable = useEditorStore((s) => s.enableMenuVariants)
+  const disable = useEditorStore((s) => s.disableMenuVariants)
+  const add = useEditorStore((s) => s.addMenuVariant)
+  const rename = useEditorStore((s) => s.renameMenuVariant)
+  const remove = useEditorStore((s) => s.deleteMenuVariant)
+  const setActive = useEditorStore((s) => s.setActiveMenuVariant)
+  const switchEditing = useEditorStore((s) => s.switchEditingMenuVariant)
+
+  const on = !!variants && variants.length > 0
+
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-ink-400">Temporadas</p>
+          <p className="mt-0.5 text-[11px] text-ink-500">
+            Crea varias versiones del menú (verano, invierno, brunch…). Los visitantes ven la temporada activa por defecto, pero pueden cambiar entre todas.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (on) {
+              if (!confirm('Se conservará solo la temporada activa y se eliminarán las demás. ¿Continuar?')) return
+              disable()
+            } else {
+              enable()
+            }
+          }}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? 'bg-ink-900' : 'bg-ink-200'}`}
+          aria-pressed={on}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+              on ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+
+      {on && variants && (
+        <div className="mt-3 space-y-2">
+          {variants.map((v) => {
+            const isEditing = v.id === editingId
+            const isActive = v.id === activeId
+            return (
+              <div
+                key={v.id}
+                className={`flex flex-col gap-2 rounded border px-2.5 py-2 text-xs ${
+                  isEditing ? 'border-ink-900 bg-ink-50' : 'border-ink-200 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={v.label}
+                    onChange={(e) => rename(v.id, e.target.value)}
+                    className="flex-1 rounded border border-ink-200 bg-white px-2 py-1 text-xs focus:border-ink-400 focus:outline-none"
+                  />
+                  {!isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => switchEditing(v.id)}
+                      className="rounded border border-ink-200 px-2 py-1 text-[10px] uppercase tracking-widest text-ink-500 hover:border-ink-900 hover:text-ink-900"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-1.5 text-[11px] text-ink-600">
+                    <input
+                      type="radio"
+                      name="active-variant"
+                      checked={isActive}
+                      onChange={() => setActive(v.id)}
+                      className="accent-ink-900"
+                    />
+                    Activa para el público
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (variants.length <= 1) return
+                      if (!confirm(`¿Eliminar la temporada "${v.label}"?`)) return
+                      remove(v.id)
+                    }}
+                    disabled={variants.length <= 1}
+                    className="text-[10px] uppercase tracking-widest text-rose-500 hover:text-rose-700 disabled:opacity-30"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+
+          <button
+            type="button"
+            onClick={() => {
+              const label = prompt('Nombre de la nueva temporada:', `Temporada ${variants.length + 1}`)
+              if (label === null) return
+              const copy = confirm('¿Duplicar la temporada actual? (Cancelar = empezar vacía)')
+              add(label, copy ? editingId : undefined)
+            }}
+            className="w-full rounded border border-dashed border-ink-300 px-2 py-2 text-[11px] uppercase tracking-widest text-ink-500 hover:border-ink-900 hover:text-ink-900"
+          >
+            + Añadir temporada
+          </button>
+        </div>
+      )}
     </div>
   )
 }

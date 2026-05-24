@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { InvitationBuilder } from './components/editor/InvitationBuilder'
 import { PublicInvitationView } from './components/public/PublicInvitationView'
 import { GuestListView } from './components/public/GuestListView'
+import { PublicSkeleton, readKindCache, writeKindCache } from './components/public/skeletons'
 import { AdminView, ForbiddenView } from './admin/AdminView'
 import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
 import { loadFromRegistry } from './utils/inviteRegistry'
@@ -49,7 +50,12 @@ export default function App() {
     let cancelled = false
     setPublicInvitation(undefined)
     loadFromRegistry(route.id).then((inv) => {
-      if (!cancelled) setPublicInvitation(inv)
+      if (cancelled) return
+      if (inv) {
+        const kind = inv.kind ?? (inv.blocks?.some((b) => b.type.startsWith('menu-')) ? 'menu' : 'invitation')
+        writeKindCache(route.id, kind)
+      }
+      setPublicInvitation(inv)
     })
     return () => {
       cancelled = true
@@ -58,11 +64,7 @@ export default function App() {
 
   if (route.kind === 'public-id') {
     if (publicInvitation === undefined) {
-      return (
-        <div className="flex min-h-screen items-center justify-center text-sm text-ink-500">
-          Cargando invitación…
-        </div>
-      )
+      return <PublicSkeleton kind={readKindCache(route.id)} />
     }
     return publicInvitation ? <PublicInvitationView invitation={publicInvitation} /> : <ForbiddenView />
   }

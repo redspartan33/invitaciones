@@ -6,6 +6,7 @@ import type {
   Invitation,
   InvitationBlock,
   Language,
+  MenuVariant,
   ViewportMode,
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
@@ -59,6 +60,35 @@ interface EditorState {
   saveInvitationDraft: () => Promise<void>
   publishInvitation: () => Promise<string | null>
   unpublishInvitation: () => Promise<void>
+  // menu variants
+  enableMenuVariants: () => void
+  disableMenuVariants: () => void
+  addMenuVariant: (label: string, copyFromId?: string) => void
+  renameMenuVariant: (id: string, label: string) => void
+  deleteMenuVariant: (id: string) => void
+  setActiveMenuVariant: (id: string) => void
+  switchEditingMenuVariant: (id: string) => void
+}
+
+/** Apply a new `blocks` array to the invitation, syncing the editing
+ *  variant entry too so menuVariants stays in lockstep with what's on
+ *  the canvas. */
+function mergeBlocks(inv: Invitation, blocks: InvitationBlock[]): Invitation {
+  const next: Invitation = { ...inv, blocks, updatedAt: new Date().toISOString() }
+  if (next.menuVariants && next.editingVariantId) {
+    next.menuVariants = next.menuVariants.map((v) =>
+      v.id === next.editingVariantId ? { ...v, blocks } : v,
+    )
+  }
+  return next
+}
+
+function cloneBlocksWithFreshIds(blocks: InvitationBlock[]): InvitationBlock[] {
+  return blocks.map((b) => ({
+    ...b,
+    id: uuid(),
+    metadata: { createdAt: new Date().toISOString(), lastEdited: new Date().toISOString() },
+  }))
 }
 
 // 9-char base62 slug (~53 bits of entropy). Short to share, not enumerable.
@@ -85,10 +115,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   updateBlockData: (id, data) =>
     set((s) => ({
-      invitation: {
-        ...s.invitation,
-        updatedAt: new Date().toISOString(),
-        blocks: s.invitation.blocks.map((b) =>
+      invitation: mergeBlocks(
+        s.invitation,
+        s.invitation.blocks.map((b) =>
           b.id === id
             ? {
                 ...b,
@@ -97,26 +126,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
               }
             : b,
         ),
-      },
+      ),
     })),
 
   updateBlockStyle: (id, style) =>
     set((s) => ({
-      invitation: {
-        ...s.invitation,
-        updatedAt: new Date().toISOString(),
-        blocks: s.invitation.blocks.map((b) =>
+      invitation: mergeBlocks(
+        s.invitation,
+        s.invitation.blocks.map((b) =>
           b.id === id ? { ...b, style: { ...b.style, ...style } } : b,
         ),
-      },
+      ),
     })),
 
   toggleBlockVisibility: (id) =>
     set((s) => ({
-      invitation: {
-        ...s.invitation,
-        blocks: s.invitation.blocks.map((b) => (b.id === id ? { ...b, visible: !b.visible } : b)),
-      },
+      invitation: mergeBlocks(
+        s.invitation,
+        s.invitation.blocks.map((b) => (b.id === id ? { ...b, visible: !b.visible } : b)),
+      ),
     })),
 
   addBlock: (type) =>
@@ -124,11 +152,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const order = s.invitation.blocks.length
       const block = createBlock(type, order)
       return {
-        invitation: {
-          ...s.invitation,
-          updatedAt: new Date().toISOString(),
-          blocks: [...s.invitation.blocks, block],
-        },
+        invitation: mergeBlocks(s.invitation, [...s.invitation.blocks, block]),
         selectedBlockId: block.id,
         activePanel: 'block',
       }
@@ -140,7 +164,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         .filter((b) => b.id !== id)
         .map((b, i) => ({ ...b, order: i }))
       return {
-        invitation: { ...s.invitation, updatedAt: new Date().toISOString(), blocks: remaining },
+        invitation: mergeBlocks(s.invitation, remaining),
         selectedBlockId: s.selectedBlockId === id ? null : s.selectedBlockId,
       }
     }),
@@ -158,11 +182,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const blocks = [...s.invitation.blocks]
       blocks.splice(target.order + 1, 0, clone)
       return {
-        invitation: {
-          ...s.invitation,
-          updatedAt: new Date().toISOString(),
-          blocks: blocks.map((b, i) => ({ ...b, order: i })),
-        },
+        invitation: mergeBlocks(
+          s.invitation,
+          blocks.map((b, i) => ({ ...b, order: i })),
+        ),
         selectedBlockId: clone.id,
       }
     }),
@@ -176,11 +199,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const [moved] = blocks.splice(fromIdx, 1)
       blocks.splice(toIdx, 0, moved)
       return {
-        invitation: {
-          ...s.invitation,
-          updatedAt: new Date().toISOString(),
-          blocks: blocks.map((b, i) => ({ ...b, order: i })),
-        },
+        invitation: mergeBlocks(
+          s.invitation,
+          blocks.map((b, i) => ({ ...b, order: i })),
+        ),
       }
     }),
 
@@ -325,6 +347,139 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     saveToRegistry(`draft-${inv.id}`, updated).catch(() => { /* best-effort */ })
     set({ invitation: updated })
   },
+
+  enableMenuVariants: () =>
+    set((s) => {
+      if (s.invitation.menuVariants && s.invitation.menuVariants.length > 0) return s
+      const first: MenuVariant = {
+        id: uuid(),
+        label: 'Principal',
+        blocks: s.invitation.blocks,
+      }
+      return {
+        invitation: {
+          ...s.invitation,
+          menuVariants: [first],
+          activeVariantId: first.id,
+          editingVariantId: first.id,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  disableMenuVariants: () =>
+    set((s) => {
+      if (!s.invitation.menuVariants || s.invitation.menuVariants.length === 0) return s
+      const active =
+        s.invitation.menuVariants.find((v) => v.id === s.invitation.activeVariantId) ??
+        s.invitation.menuVariants[0]
+      return {
+        invitation: {
+          ...s.invitation,
+          blocks: active.blocks,
+          menuVariants: undefined,
+          activeVariantId: undefined,
+          editingVariantId: undefined,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedBlockId: null,
+      }
+    }),
+
+  addMenuVariant: (label, copyFromId) =>
+    set((s) => {
+      // Persist current edits into the editing variant before adding.
+      const synced = mergeBlocks(s.invitation, s.invitation.blocks)
+      const existing = synced.menuVariants ?? []
+      const source = copyFromId ? existing.find((v) => v.id === copyFromId) : undefined
+      const seed: InvitationBlock[] = source
+        ? cloneBlocksWithFreshIds(source.blocks)
+        : []
+      const v: MenuVariant = {
+        id: uuid(),
+        label: label.trim() || `Temporada ${existing.length + 1}`,
+        blocks: seed,
+      }
+      return {
+        invitation: {
+          ...synced,
+          menuVariants: [...existing, v],
+          editingVariantId: v.id,
+          activeVariantId: synced.activeVariantId ?? v.id,
+          blocks: v.blocks,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedBlockId: null,
+      }
+    }),
+
+  renameMenuVariant: (id, label) =>
+    set((s) => {
+      if (!s.invitation.menuVariants) return s
+      return {
+        invitation: {
+          ...s.invitation,
+          menuVariants: s.invitation.menuVariants.map((v) =>
+            v.id === id ? { ...v, label: label.trim() || v.label } : v,
+          ),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  deleteMenuVariant: (id) =>
+    set((s) => {
+      const variants = s.invitation.menuVariants
+      if (!variants || variants.length <= 1) return s
+      const remaining = variants.filter((v) => v.id !== id)
+      const editingId =
+        s.invitation.editingVariantId === id ? remaining[0].id : s.invitation.editingVariantId
+      const activeId =
+        s.invitation.activeVariantId === id ? remaining[0].id : s.invitation.activeVariantId
+      const editing = remaining.find((v) => v.id === editingId) ?? remaining[0]
+      return {
+        invitation: {
+          ...s.invitation,
+          menuVariants: remaining,
+          editingVariantId: editing.id,
+          activeVariantId: activeId,
+          blocks: editing.blocks,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedBlockId: null,
+      }
+    }),
+
+  setActiveMenuVariant: (id) =>
+    set((s) => {
+      if (!s.invitation.menuVariants?.some((v) => v.id === id)) return s
+      return {
+        invitation: {
+          ...s.invitation,
+          activeVariantId: id,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }),
+
+  switchEditingMenuVariant: (id) =>
+    set((s) => {
+      const variants = s.invitation.menuVariants
+      if (!variants) return s
+      const target = variants.find((v) => v.id === id)
+      if (!target || id === s.invitation.editingVariantId) return s
+      // Commit current edits to the outgoing variant first.
+      const synced = mergeBlocks(s.invitation, s.invitation.blocks)
+      return {
+        invitation: {
+          ...synced,
+          editingVariantId: id,
+          blocks: target.blocks,
+          updatedAt: new Date().toISOString(),
+        },
+        selectedBlockId: null,
+      }
+    }),
 }))
 
 export async function loadPublishedFromServer(slug: string): Promise<Invitation | null> {
