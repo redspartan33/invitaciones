@@ -1,4 +1,4 @@
-import { get, put } from '@vercel/blob'
+import { put, list } from '@vercel/blob'
 
 interface VercelRequest {
   method?: string
@@ -30,13 +30,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!id) return res.status(400).json({ error: 'Invalid id' })
   const pathname = `guests/${id}.json`
 
+  // Read by `list()` + fetch from the latest `url` with no-store. This avoids
+  // the edge/CDN cache that `get()` can hit after `put(... allowOverwrite)`,
+  // which would return stale lists to one device while the other writes new
+  // entries. The blob is unique by `pathname` so list() always returns 0..1.
+  async function readList(): Promise<any[]> {
+    try {
+      const { blobs } = await list({ prefix: pathname, limit: 1 })
+      const blob = blobs.find((b) => b.pathname === pathname)
+      if (!blob) return []
+      const r = await fetch(blob.url, { cache: 'no-store' })
+      if (!r.ok) return []
+      const data = await r.json()
+      return Array.isArray(data) ? data : []
+    } catch {
+      return []
+    }
+  }
+
   try {
     if (req.method === 'GET') {
-      const result = await get(pathname, { access: 'public' })
-      if (!result || result.statusCode !== 200) return res.status(404).json({ error: 'Not found' })
-      const text = await new Response(result.stream).text()
+      const entries = await readList()
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      return res.status(200).send(text)
+      return res.status(200).send(JSON.stringify(entries))
     }
 
     if (req.method === 'POST') {
@@ -47,23 +63,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const name = (parsed.name || '').trim()
       if (!name) return res.status(400).json({ error: 'Missing name' })
 
-      // Load existing list (if any)
-      let list: any[] = []
-      try {
-        const result = await get(pathname, { access: 'public' })
-        if (result && result.statusCode === 200) {
-          const text = await new Response(result.stream).text()
-          list = JSON.parse(text)
-          if (!Array.isArray(list)) list = []
-        }
-      } catch (e) {
-        // ignore
+      const current = await readList()
+      const entry = {
+        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        message: parsed.message || '',
+        createdAt: new Date().toISOString(),
       }
+      current.push(entry)
 
-      const entry = { id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`, name, message: parsed.message || '', createdAt: new Date().toISOString() }
-      list.push(entry)
-
-      await put(pathname, JSON.stringify(list), {
+      await put(pathname, JSON.stringify(current), {
         access: 'public',
         addRandomSuffix: false,
         contentType: 'application/json',

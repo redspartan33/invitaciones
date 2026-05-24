@@ -61,9 +61,6 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
-        <TextEl block={block} field="label" as="p" className="accent mb-2 text-xs uppercase tracking-[0.3em]">
-          RSVP
-        </TextEl>
         <TextEl block={block} field="heading" as="h2" className="font-serif text-3xl">
           Confirma tu asistencia
         </TextEl>
@@ -142,13 +139,13 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                   }
                   setSubmitting(true)
                   setSubmitError(null)
-                  const ok = await submitGuestEntry(guestListSlug, {
+                  const result = await submitGuestEntry(guestListSlug, {
                     name: guestName,
                     message: guestMessage,
                   })
                   setSubmitting(false)
                   setShowForm(false)
-                  if (ok) {
+                  if (result.ok) {
                     setSubmittedOk(true)
                     setSubmittedName(guestName)
                     if (!isEditorView) setAlreadySubmitted(true)
@@ -163,7 +160,12 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                       // ignore
                     }
                   } else {
-                    setSubmitError('No pudimos registrar tu confirmación. Intenta de nuevo en unos momentos.')
+                    const messages: Record<typeof result.reason, string> = {
+                      'invalid-name': 'Por favor escribe tu nombre.',
+                      network: 'No hay conexión con el servidor. Verifica tu internet y vuelve a intentar.',
+                      server: 'El servidor rechazó la confirmación. Intenta de nuevo en unos minutos.',
+                    }
+                    setSubmitError(messages[result.reason])
                   }
                 }}
                 className="mx-auto mt-4 max-w-lg rounded-3xl border border-ink-200 bg-white/95 p-6 shadow-sm shadow-ink-200/10 text-left"

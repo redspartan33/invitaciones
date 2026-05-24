@@ -1,41 +1,14 @@
-import { useEffect, useState } from 'react'
 import type { InvitationBlock, MapData } from '../../types/invitation.types'
 import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
 
-interface LatLng {
-  lat: number
-  lng: number
-}
-
-const GEOCODE_CACHE_PREFIX = 'geocode:v1:'
-
-function readCache(address: string): LatLng | null {
-  try {
-    const raw = window.localStorage.getItem(GEOCODE_CACHE_PREFIX + address)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (typeof parsed?.lat === 'number' && typeof parsed?.lng === 'number') return parsed
-    return null
-  } catch {
-    return null
-  }
-}
-
-function writeCache(address: string, coords: LatLng) {
-  try {
-    window.localStorage.setItem(GEOCODE_CACHE_PREFIX + address, JSON.stringify(coords))
-  } catch {
-    // ignore quota
-  }
-}
-
-function buildOsmEmbed({ lat, lng }: LatLng): string {
-  // OpenStreetMap allows iframe embedding across origins (unlike Google Maps,
-  // which sets X-Frame-Options: SAMEORIGIN and is refused by Firefox).
-  const span = 0.005
-  const bbox = `${lng - span},${lat - span * 0.6},${lng + span},${lat + span * 0.6}`
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`
+// We avoid client-side geocoding (Nominatim rate-limits aggressive browser
+// usage and many networks block it). Google Maps' classic `?output=embed`
+// URL accepts a free-text address as a query parameter and renders an
+// embeddable iframe without any API key — it's the most reliable
+// no-config option available in 2026 for arbitrary addresses.
+function buildGoogleEmbed(address: string): string {
+  return `https://www.google.com/maps?q=${encodeURIComponent(address)}&z=15&output=embed`
 }
 
 function buildGoogleLink(address: string): string {
@@ -48,50 +21,8 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
   const explicitEmbed = data.embedUrl?.trim() || ''
   const height = data.height && data.height > 0 ? data.height : 320
 
-  const [coords, setCoords] = useState<LatLng | null>(() => (address ? readCache(address) : null))
-  const [geocodeError, setGeocodeError] = useState(false)
-
-  useEffect(() => {
-    if (!address) {
-      setCoords(null)
-      setGeocodeError(false)
-      return
-    }
-    const cached = readCache(address)
-    if (cached) {
-      setCoords(cached)
-      setGeocodeError(false)
-      return
-    }
-    setGeocodeError(false)
-    let cancelled = false
-    fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-      { headers: { Accept: 'application/json' } },
-    )
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list) => {
-        if (cancelled) return
-        const first = Array.isArray(list) ? list[0] : null
-        const lat = first ? parseFloat(first.lat) : NaN
-        const lng = first ? parseFloat(first.lon) : NaN
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          const c = { lat, lng }
-          writeCache(address, c)
-          setCoords(c)
-        } else {
-          setGeocodeError(true)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setGeocodeError(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [address])
-
-  const src = explicitEmbed || (coords ? buildOsmEmbed(coords) : '')
+  const src = explicitEmbed || (address ? buildGoogleEmbed(address) : '')
+  const linkLabel = data.openLinkLabel || 'Abrir en Google Maps'
 
   return (
     <BlockWrapper style={block.style}>
@@ -119,11 +50,7 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
           </div>
         ) : (
           <div className="border border-dashed border-current/30 px-6 py-12 text-sm opacity-60">
-            {!address
-              ? 'Añade una dirección para cargar el mapa.'
-              : geocodeError
-              ? 'No pudimos ubicar esa dirección. Verifica que sea correcta o ábrela en Google Maps.'
-              : 'Buscando ubicación…'}
+            Añade una dirección para cargar el mapa.
           </div>
         )}
         {address && (
@@ -131,9 +58,9 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
             href={buildGoogleLink(address)}
             target="_blank"
             rel="noreferrer"
-            className="invitation-link mt-4 inline-block text-xs uppercase tracking-widest underline underline-offset-4"
+            className="invitation-btn mt-5 inline-flex"
           >
-            {data.openLinkLabel || 'Abrir en Google Maps'} ↗
+            {linkLabel} ↗
           </a>
         )}
       </div>

@@ -47,8 +47,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'PUT' || req.method === 'POST') {
       const payload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-      if (!payload || payload.length > 2 * 1024 * 1024) {
-        return res.status(413).json({ error: 'Payload too large' })
+      // 4 MB is the practical max body Vercel will accept for serverless
+      // functions. The client extracts any base64 images via /api/assets
+      // before publishing so the invitation JSON should stay well under this.
+      if (!payload || payload.length > 4 * 1024 * 1024) {
+        return res.status(413).json({ error: 'Payload too large. Las imágenes deben subirse como URL pública.' })
       }
       await put(pathname, payload, {
         access: 'private',

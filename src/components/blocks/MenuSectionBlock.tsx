@@ -3,18 +3,24 @@ import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
 import { menuSectionAnchor } from '../../utils/menuNav'
 
-const itemSpacingClass: Record<NonNullable<MenuSectionData['itemSpacing']>, string> = {
-  xs: 'space-y-1',
-  sm: 'space-y-2',
-  md: 'space-y-4',
-  lg: 'space-y-6',
-  xl: 'space-y-8',
-}
-
 export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-section'> }) {
   const data = block.data as MenuSectionData
   const anchor = menuSectionAnchor(block.id, data.title)
-  const spacing = itemSpacingClass[data.itemSpacing ?? 'md']
+  // style.itemSpacing is the universal control; data.itemSpacing is the legacy
+  // value kept for backwards compatibility with already-saved menus.
+  // BlockWrapper exposes the chosen spacing as the `--item-gap` CSS variable,
+  // but menu-section needs to honor the legacy data field too, so we fall back
+  // to inline space-y when style.itemSpacing isn't set yet.
+  const styleHasSpacing = !!block.style?.itemSpacing
+  const legacyClass = !styleHasSpacing && data.itemSpacing
+    ? {
+        xs: 'space-y-1',
+        sm: 'space-y-2',
+        md: 'space-y-4',
+        lg: 'space-y-6',
+        xl: 'space-y-8',
+      }[data.itemSpacing]
+    : ''
 
   return (
     <div id={anchor} className="scroll-mt-24">
@@ -40,7 +46,10 @@ export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-secti
               </TextEl>
             )}
           </header>
-          <ul className={spacing}>
+          <ul
+            className={legacyClass}
+            style={styleHasSpacing ? { display: 'flex', flexDirection: 'column', gap: 'var(--item-gap)' } : undefined}
+          >
             {data.items.map((item) => (
               <li key={item.id} className="grid grid-cols-[1fr_auto] gap-x-4">
                 <div className="min-w-0">

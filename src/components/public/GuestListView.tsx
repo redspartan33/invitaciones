@@ -3,12 +3,23 @@ import { loadGuestList, type GuestEntry } from '../../utils/guestlistClient'
 
 export function GuestListView({ slug }: { slug: string }) {
   const [entries, setEntries] = useState<GuestEntry[] | undefined>(undefined)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [q, setQ] = useState('')
 
   const loadEntries = async () => {
     setEntries(undefined)
-    const list = await loadGuestList(slug)
-    setEntries(list)
+    setLoadError(null)
+    const result = await loadGuestList(slug)
+    if (result.ok) {
+      setEntries(result.entries)
+    } else {
+      setEntries([])
+      setLoadError(
+        result.reason === 'network'
+          ? 'No hay conexión con el servidor.'
+          : 'El servidor no respondió correctamente.',
+      )
+    }
   }
 
   useEffect(() => {
@@ -84,6 +95,12 @@ export function GuestListView({ slug }: { slug: string }) {
             className="input-field w-full"
           />
         </div>
+
+        {loadError && (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            {loadError} <button type="button" onClick={loadEntries} className="ml-2 underline">Reintentar</button>
+          </div>
+        )}
 
         <div className="mt-6 space-y-3">
           {entries === undefined && <div className="text-sm text-ink-500">Cargando…</div>}

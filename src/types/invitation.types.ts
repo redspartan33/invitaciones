@@ -33,6 +33,8 @@ export type TextSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 export interface TextElementStyle {
   size?: TextSize
   color?: string
+  bold?: boolean
+  italic?: boolean
 }
 
 export interface BlockStyle {
@@ -46,6 +48,26 @@ export interface BlockStyle {
   textStyles?: Record<string, TextElementStyle>
   /** Hide the decorative icons that some invitation blocks render in their cards. */
   hideIcons?: boolean
+  /** Background image positioning when style.backgroundImage is set. */
+  backgroundPosition?:
+    | 'center'
+    | 'top'
+    | 'bottom'
+    | 'left'
+    | 'right'
+    | 'top-left'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-right'
+  /** Background sizing for style.backgroundImage. Defaults to 'cover'. */
+  backgroundSize?: 'cover' | 'contain' | 'auto'
+  /**
+   * Vertical spacing between repeated/internal elements inside the block
+   * (timeline items, gallery photos, gift registry stores, etc.). Mirrors the
+   * existing per-block menu-section `itemSpacing` knob but applies to every
+   * block.
+   */
+  itemSpacing?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export interface HeroData {

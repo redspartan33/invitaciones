@@ -37,7 +37,7 @@ src/
 7. **Gallery** — Galería de fotos responsive
 8. **Footer** — Mensaje final + contacto + redes
 
-9. **Map** — Mapa interactivo embebido a partir de una dirección de texto. La dirección se geocodifica con Nominatim (OpenStreetMap, sin API key) y se renderiza como iframe de OSM — Google Maps bloquea el embed con `X-Frame-Options` en Firefox, OSM no. Las coordenadas se cachean en `localStorage` (`geocode:v1:<address>`) para evitar llamadas repetidas. El botón "Abrir en Google Maps" sigue disponible para direcciones completas.
+9. **Map** — Mapa interactivo embebido a partir de una dirección de texto. Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 
@@ -48,14 +48,38 @@ En el panel del bloque **Event details**, sección "Visibilidad y formato", hay 
 - **Mostrar fecha** / **Mostrar hora** — toggles independientes para ocultar o mostrar cada línea sin necesidad de borrar los valores.
 - **Formato de hora** — selector entre **24 horas** (`18:00`) y **12 horas** (`6:00 PM`). El valor se guarda como `HH:mm` (input nativo `type="time"`) y se formatea al render según el modo elegido. Los toggles por defecto vienen en `true`; data legacy (sin estos campos) se sigue mostrando como antes y el toggle se renderiza en su estado efectivo.
 
-### Fondo por bloque (color o imagen)
+### Fondo por bloque (color, imagen, posición y ajuste)
 
-Cada bloque tiene una sección **"Fondo del bloque"** al final de su panel con dos controles:
+Cada bloque tiene una sección **"Fondo del bloque"** al final de su panel:
 
 - **Color de fondo** — picker nativo + input hex, con botón × para limpiar.
-- **Imagen de fondo** — URL o subida de archivo (límite 3 MB, igual que las imágenes de los bloques). Se renderiza con `background-size: cover` / `background-position: center` sobre todo el bloque. Si defines color e imagen, la imagen va encima.
+- **Imagen de fondo** — URL o subida de archivo (3 MB max). Cuando hay imagen aparecen dos controles extra:
+  - **Ajuste**: `cover` (rellena todo, puede recortar), `contain` (cabe completa), `auto` (tamaño original).
+  - **Posición**: grid de 9 direcciones (↖ ↑ ↗ ← • → ↙ ↓ ↘) para anclar la imagen.
 
-Los valores se guardan en `block.style.backgroundColor` y `block.style.backgroundImage` y se aplican en `BlockWrapper`, por lo que aparecen igual en el canvas del editor y en la vista pública publicada.
+Se guardan en `block.style.backgroundColor / backgroundImage / backgroundSize / backgroundPosition` y se aplican en `BlockWrapper`, así que se ven igual en canvas y link publicado.
+
+### Separación entre elementos internos
+
+Todos los bloques tienen un control **"Separación entre elementos internos"** (xs/sm/md/lg/xl) que define el gap vertical entre items de un mismo bloque (actividades del Timeline, fotos de la galería, regalos del registry, platillos del menú, etc.). Se persiste en `block.style.itemSpacing` y se expone como variable CSS `--item-gap` desde `BlockWrapper`.
+
+### Bold / Italic por texto
+
+Cada campo de texto editable muestra controles inline `B` / `I` junto al picker de tamaño/color para aplicar negrita o cursiva solo a ese elemento. Se persisten en `block.style.textStyles[field].bold/italic` y se aplican en `TextEl`.
+
+### Reordenar elementos desde el sidebar
+
+Las listas dentro de los bloques (timeline, galería, registry, menú) se reordenan con drag-and-drop desde el sidebar — el handle `⋮⋮` aparece a la izquierda de cada item. El orden del formulario es exactamente el que se ve en preview y en el link publicado. Los whole-blocks siguen reordenándose en el canvas.
+
+### Publish con imágenes pesadas
+
+Antes, subir varias imágenes vía FileReader generaba un JSON de invitación con `data:image/...;base64,...` embebidos que excedía el límite de body de Vercel (4.5 MB) y el publish fallaba en silencio — el síntoma reportado era "no se publica" y "no respeta las tipografías" (porque el publish no completó y nada se persistió).
+
+Al publicar, `extractAndUploadAssets` (en `src/utils/publishAssets.ts`) recorre toda la invitación, encuentra cada `data:` URI en campos de imagen conocidos (`backgroundImage`, `logo`, `image`, `inspirationImage`, `url` de galería, `favicon`), los sube al blob público vía `/api/assets` y reemplaza por URLs en el JSON. El payload final queda muy por debajo del límite. Si la subida falla se muestra un error claro y el publish no marca la invitación como publicada.
+
+### Sidebar y viewport realista
+
+El sidebar derecho mantiene **ancho fijo de 380px** en desktop. El canvas central centra la invitación / menú y los tabs `Mobile / Tablet / Desktop` cambian a un preview a escala de dispositivo: marco redondeado tipo iPhone (390×760) para mobile, tipo tablet (820×1080) para tablet, y caja sin marco hasta 1100px para desktop.
 
 ### RSVP — WhatsApp o formulario con guestlist
 
@@ -68,7 +92,9 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 
 **Link de invitados (`/?guestlist=<slug>`)** — Página pública compartible con el cliente que muestra: contador grande de confirmados, contador adicional de resultados al buscar, buscador por nombre/mensaje, lista con timestamps y botón "Actualizar" para refrescar. Se auto-refresca por evento `storage` cuando otra pestaña confirma y al volver a tener foco.
 
-**Fallback de desarrollo** — `src/utils/guestlistClient.ts` intenta la API serverless (`/api/guestlists/<slug>`) primero y, si no está disponible (ej. `vite dev`), persiste las confirmaciones en `localStorage` con clave `guestlist:<slug>`. Al cargar la lista, mergea entradas remotas + locales (las remotas ganan por id). En producción la fuente de verdad es Vercel Blob; el cliente envía siempre al servidor y solo cae a local si la red falla. Así el editor en local funciona end-to-end sin necesitar `vercel dev`.
+**Fuente única de verdad: el servidor (Vercel Blob)** — `src/utils/guestlistClient.ts` ya **no** persiste entradas en `localStorage`. Las confirmaciones se leen y se escriben siempre vía `/api/guestlists/<slug>`, y si el servidor falla se muestra un mensaje de error con botón "Reintentar" en lugar de guardar en local. Esto garantiza que dos dispositivos abriendo el mismo link vean exactamente la misma lista. Lo único que se sigue guardando en local es el marcador `guestlist-submitted:<slug>` para evitar que el mismo navegador confirme dos veces.
+
+**Lecturas frescas** — el endpoint GET usa `list({ prefix })` + `fetch(url, { cache: 'no-store' })` en vez de `get()`, evitando la caché del CDN de Vercel Blob después de un `put(allowOverwrite)`. Sin esto un dispositivo podía ver una lista cacheada mientras otro escribía una nueva entrada.
 
 ### Favicon y Google Fonts (Detalles / Fuentes)
 

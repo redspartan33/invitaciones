@@ -16,7 +16,7 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
             {data.title}
           </TextEl>
         )}
-        <ol className={`relative space-y-6 ${hideIcons ? '' : 'border-l pl-8 accent-border'}`}>
+        <ol className={`relative flex flex-col ${hideIcons ? '' : 'border-l pl-8 accent-border'}`} style={{ gap: 'var(--item-gap)' }}>
           {data.items.map((item) => (
             <li key={item.id} className="relative">
               {!hideIcons && (
@@ -53,7 +53,7 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
           {data.title}
         </TextEl>
       )}
-      <ol className="space-y-5">
+      <ol className="flex flex-col" style={{ gap: 'var(--item-gap)' }}>
         {data.items.map((item) => (
           <li key={item.id} className={`flex flex-col gap-1 ${align === 'right' ? 'items-end' : 'items-center'}`}>
             <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest opacity-70">

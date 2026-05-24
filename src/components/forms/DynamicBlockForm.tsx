@@ -24,7 +24,10 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
 
   const textStyles = block.style?.textStyles ?? {}
 
-  const setElementStyle = (field: string, patch: { size?: TextSize | null; color?: string | null }) => {
+  const setElementStyle = (
+    field: string,
+    patch: { size?: TextSize | null; color?: string | null; bold?: boolean | null; italic?: boolean | null },
+  ) => {
     const current = textStyles[field] ?? {}
     const next = { ...current }
     if ('size' in patch) {
@@ -34,6 +37,14 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
     if ('color' in patch) {
       if (patch.color === null) delete next.color
       else next.color = patch.color
+    }
+    if ('bold' in patch) {
+      if (patch.bold === null || patch.bold === false) delete next.bold
+      else next.bold = true
+    }
+    if ('italic' in patch) {
+      if (patch.italic === null || patch.italic === false) delete next.italic
+      else next.italic = true
     }
     const nextStyles = { ...textStyles }
     if (Object.keys(next).length === 0) delete nextStyles[field]
@@ -111,6 +122,8 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                       override={override}
                       onChangeSize={(s) => setElementStyle(field.name, { size: s })}
                       onChangeColor={(c) => setElementStyle(field.name, { color: c })}
+                      onToggleBold={() => setElementStyle(field.name, { bold: !override?.bold })}
+                      onToggleItalic={() => setElementStyle(field.name, { italic: !override?.italic })}
                     />
                   )}
                 </div>
@@ -153,30 +166,38 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'gallery' && <GalleryImagesForm block={block as InvitationBlock<'gallery'>} />}
       {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
 
-      {block.type === 'menu-section' && (
-        <section className="space-y-3">
-          <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Espaciado entre platillos</h3>
-          <div className="grid grid-cols-5 gap-2">
-            {SIZES.map((s) => {
-              const current = ((block.data as { itemSpacing?: string }).itemSpacing ?? 'md')
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => updateBlockData(block.id, { itemSpacing: s })}
-                  className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
-                    current === s
-                      ? 'border-ink-900 bg-ink-900 text-white'
-                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
-                  }`}
-                >
-                  {s}
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      <section className="space-y-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+          Separación entre elementos internos
+        </h3>
+        <div className="grid grid-cols-5 gap-2">
+          {SIZES.map((s) => {
+            // Read from style.itemSpacing (universal). Fall back to legacy
+            // data.itemSpacing on menu-section blocks so old menus keep their
+            // saved value until the user touches the control.
+            const fromStyle = block.style?.itemSpacing
+            const legacy =
+              block.type === 'menu-section'
+                ? ((block.data as { itemSpacing?: string }).itemSpacing as TextSize | undefined)
+                : undefined
+            const current = fromStyle ?? legacy ?? 'md'
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => updateBlockStyle(block.id, { itemSpacing: s })}
+                className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
+                  current === s
+                    ? 'border-ink-900 bg-ink-900 text-white'
+                    : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                }`}
+              >
+                {s}
+              </button>
+            )
+          })}
+        </div>
+      </section>
 
       {/* Estilos compartidos para campos repetibles (cuando aplica). */}
       {(block.type === 'timeline' || block.type === 'gift-registry') && (
@@ -186,40 +207,38 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
           </h3>
           {block.type === 'timeline' && (
             <>
-              <ItemStyleRow
-                label="Hora del item"
-                override={textStyles['items.time']}
-                onChangeSize={(s) => setElementStyle('items.time', { size: s })}
-                onChangeColor={(c) => setElementStyle('items.time', { color: c })}
-              />
-              <ItemStyleRow
-                label="Título del item"
-                override={textStyles['items.title']}
-                onChangeSize={(s) => setElementStyle('items.title', { size: s })}
-                onChangeColor={(c) => setElementStyle('items.title', { color: c })}
-              />
-              <ItemStyleRow
-                label="Descripción del item"
-                override={textStyles['items.description']}
-                onChangeSize={(s) => setElementStyle('items.description', { size: s })}
-                onChangeColor={(c) => setElementStyle('items.description', { color: c })}
-              />
+              {(['items.time', 'items.title', 'items.description'] as const).map((key) => (
+                <ItemStyleRow
+                  key={key}
+                  label={
+                    key === 'items.time'
+                      ? 'Hora del item'
+                      : key === 'items.title'
+                      ? 'Título del item'
+                      : 'Descripción del item'
+                  }
+                  override={textStyles[key]}
+                  onChangeSize={(s) => setElementStyle(key, { size: s })}
+                  onChangeColor={(c) => setElementStyle(key, { color: c })}
+                  onToggleBold={() => setElementStyle(key, { bold: !textStyles[key]?.bold })}
+                  onToggleItalic={() => setElementStyle(key, { italic: !textStyles[key]?.italic })}
+                />
+              ))}
             </>
           )}
           {block.type === 'gift-registry' && (
             <>
-              <ItemStyleRow
-                label="Nombre de tienda"
-                override={textStyles['items.storeName']}
-                onChangeSize={(s) => setElementStyle('items.storeName', { size: s })}
-                onChangeColor={(c) => setElementStyle('items.storeName', { color: c })}
-              />
-              <ItemStyleRow
-                label="Descripción del regalo"
-                override={textStyles['items.description']}
-                onChangeSize={(s) => setElementStyle('items.description', { size: s })}
-                onChangeColor={(c) => setElementStyle('items.description', { color: c })}
-              />
+              {(['items.storeName', 'items.description'] as const).map((key) => (
+                <ItemStyleRow
+                  key={key}
+                  label={key === 'items.storeName' ? 'Nombre de tienda' : 'Descripción del regalo'}
+                  override={textStyles[key]}
+                  onChangeSize={(s) => setElementStyle(key, { size: s })}
+                  onChangeColor={(c) => setElementStyle(key, { color: c })}
+                  onToggleBold={() => setElementStyle(key, { bold: !textStyles[key]?.bold })}
+                  onToggleItalic={() => setElementStyle(key, { italic: !textStyles[key]?.italic })}
+                />
+              ))}
             </>
           )}
         </section>
@@ -287,20 +306,43 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       <BlockBackgroundSection
         backgroundColor={block.style?.backgroundColor}
         backgroundImage={block.style?.backgroundImage}
+        backgroundPosition={block.style?.backgroundPosition}
+        backgroundSize={block.style?.backgroundSize}
         onChange={(patch) => updateBlockStyle(block.id, patch)}
       />
     </div>
   )
 }
 
+const BG_POSITIONS: { value: NonNullable<import('../../types/invitation.types').BlockStyle['backgroundPosition']>; label: string }[] = [
+  { value: 'top-left', label: '↖' },
+  { value: 'top', label: '↑' },
+  { value: 'top-right', label: '↗' },
+  { value: 'left', label: '←' },
+  { value: 'center', label: '•' },
+  { value: 'right', label: '→' },
+  { value: 'bottom-left', label: '↙' },
+  { value: 'bottom', label: '↓' },
+  { value: 'bottom-right', label: '↘' },
+]
+
 function BlockBackgroundSection({
   backgroundColor,
   backgroundImage,
+  backgroundPosition,
+  backgroundSize,
   onChange,
 }: {
   backgroundColor?: string
   backgroundImage?: string
-  onChange: (patch: { backgroundColor?: string; backgroundImage?: string }) => void
+  backgroundPosition?: import('../../types/invitation.types').BlockStyle['backgroundPosition']
+  backgroundSize?: import('../../types/invitation.types').BlockStyle['backgroundSize']
+  onChange: (patch: {
+    backgroundColor?: string
+    backgroundImage?: string
+    backgroundPosition?: import('../../types/invitation.types').BlockStyle['backgroundPosition']
+    backgroundSize?: import('../../types/invitation.types').BlockStyle['backgroundSize']
+  }) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const onFile = (file: File) => {
@@ -388,9 +430,67 @@ function BlockBackgroundSection({
           </div>
         )}
         <p className="mt-1 text-[11px] text-ink-400">
-          La imagen se aplica a todo el bloque (cover / centrado). Si también defines un color, la imagen va encima.
+          La imagen se aplica a todo el bloque. Si también defines un color, la imagen va encima.
         </p>
       </div>
+
+      {backgroundImage && (
+        <>
+          <div>
+            <label className="label-flat">Ajuste de la imagen</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['cover', 'contain', 'auto'] as const).map((s) => {
+                const active = (backgroundSize ?? 'cover') === s
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onChange({ backgroundSize: s })}
+                    className={`rounded border px-2 py-2 text-[11px] uppercase tracking-widest transition-colors ${
+                      active
+                        ? 'border-ink-900 bg-ink-900 text-white'
+                        : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                    }`}
+                    title={
+                      s === 'cover'
+                        ? 'Rellena todo el bloque (puede recortar)'
+                        : s === 'contain'
+                        ? 'Cabe completa (puede dejar espacio)'
+                        : 'Tamaño original'
+                    }
+                  >
+                    {s}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="label-flat">Posición de la imagen</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {BG_POSITIONS.map((p) => {
+                const active = (backgroundPosition ?? 'center') === p.value
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => onChange({ backgroundPosition: p.value })}
+                    title={p.value}
+                    className={`flex h-9 items-center justify-center rounded border text-base transition-colors ${
+                      active
+                        ? 'border-ink-900 bg-ink-900 text-white'
+                        : 'border-ink-200 bg-white text-ink-500 hover:border-ink-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </section>
   )
 }
@@ -400,15 +500,21 @@ function ElementStyleControls({
   override,
   onChangeSize,
   onChangeColor,
+  onToggleBold,
+  onToggleItalic,
 }: {
   field: string
-  override?: { size?: TextSize; color?: string }
+  override?: { size?: TextSize; color?: string; bold?: boolean; italic?: boolean }
   onChangeSize: (s: TextSize | null) => void
   onChangeColor: (c: string | null) => void
+  onToggleBold?: () => void
+  onToggleItalic?: () => void
 }) {
   const activeSize = override?.size
   const activeColor = override?.color
-  const hasOverride = !!activeSize || !!activeColor
+  const activeBold = !!override?.bold
+  const activeItalic = !!override?.italic
+  const hasOverride = !!activeSize || !!activeColor || activeBold || activeItalic
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded border border-dashed border-ink-200 px-2 py-1.5">
       <span className="mr-1 text-[10px] uppercase tracking-widest text-ink-400">Estilo</span>
@@ -429,6 +535,36 @@ function ElementStyleControls({
           </button>
         ))}
       </div>
+      {onToggleBold && (
+        <button
+          type="button"
+          onClick={onToggleBold}
+          title="Negrita"
+          className={`h-6 w-6 rounded border text-[11px] font-bold transition-colors ${
+            activeBold
+              ? 'border-ink-900 bg-ink-900 text-white'
+              : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+          }`}
+          aria-pressed={activeBold}
+        >
+          B
+        </button>
+      )}
+      {onToggleItalic && (
+        <button
+          type="button"
+          onClick={onToggleItalic}
+          title="Cursiva"
+          className={`h-6 w-6 rounded border text-[11px] italic transition-colors ${
+            activeItalic
+              ? 'border-ink-900 bg-ink-900 text-white'
+              : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+          }`}
+          aria-pressed={activeItalic}
+        >
+          I
+        </button>
+      )}
       <label
         className="ml-1 inline-flex h-6 w-6 cursor-pointer items-center justify-center overflow-hidden rounded border border-ink-200"
         title="Color del texto"
@@ -447,6 +583,8 @@ function ElementStyleControls({
           onClick={() => {
             onChangeSize(null)
             onChangeColor(null)
+            if (activeBold) onToggleBold?.()
+            if (activeItalic) onToggleItalic?.()
           }}
           title="Restablecer"
           className="ml-auto text-[10px] uppercase tracking-widest text-ink-500 hover:text-rose-600"
@@ -463,16 +601,27 @@ function ItemStyleRow({
   override,
   onChangeSize,
   onChangeColor,
+  onToggleBold,
+  onToggleItalic,
 }: {
   label: string
-  override?: { size?: TextSize; color?: string }
+  override?: { size?: TextSize; color?: string; bold?: boolean; italic?: boolean }
   onChangeSize: (s: TextSize | null) => void
   onChangeColor: (c: string | null) => void
+  onToggleBold?: () => void
+  onToggleItalic?: () => void
 }) {
   return (
     <div className="space-y-1">
       <label className="label-flat">{label}</label>
-      <ElementStyleControls field={label} override={override} onChangeSize={onChangeSize} onChangeColor={onChangeColor} />
+      <ElementStyleControls
+        field={label}
+        override={override}
+        onChangeSize={onChangeSize}
+        onChangeColor={onChangeColor}
+        onToggleBold={onToggleBold}
+        onToggleItalic={onToggleItalic}
+      />
     </div>
   )
 }

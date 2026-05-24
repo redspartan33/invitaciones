@@ -41,6 +41,8 @@ export function TextEl({ block, field, className, children, as, style: extraStyl
     if (mult > 1.1) style.lineHeight = '1.15'
   }
   if (override?.color) style.color = override.color
+  if (override?.bold) style.fontWeight = 700
+  if (override?.italic) style.fontStyle = 'italic'
 
   const hasStyle = Object.keys(style).length > 0
   return (

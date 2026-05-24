@@ -9,6 +9,7 @@ import type {
 } from '../types/invitation.types'
 import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
+import { extractAndUploadAssets } from '../utils/publishAssets'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 
@@ -220,6 +221,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Atomic publish: only marks the invitation as published if the server
   // actually accepted the write. Otherwise the UI stays in 'error' so the
   // user knows the link is not valid yet.
+  //
+  // Before saving we upload any embedded base64 images to public blob
+  // storage and swap them for URLs. Without this step the JSON payload
+  // quickly exceeds Vercel's body limit and publish 413s, which the user
+  // experiences as "no se publica y no respeta tipografías" (the publish
+  // failed silently, so nothing — including font settings — persisted).
   publishInvitation: async () => {
     const { invitation: inv } = get()
     set({ publishMode: 'pushing', publishError: null })
@@ -229,8 +236,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       : generateShortSlug()
     const now = new Date().toISOString()
     const sharedLink = `${window.location.origin}/?id=${slug}`
+
+    let uploaded: Invitation
+    try {
+      uploaded = await extractAndUploadAssets({ ...inv, publicSlug: slug })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudieron subir las imágenes.'
+      set({ publishMode: 'error', publishError: msg })
+      return null
+    }
+
     const published: Invitation = {
-      ...inv,
+      ...uploaded,
       publicSlug: slug,
       status: 'published',
       updatedAt: now,

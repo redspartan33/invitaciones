@@ -18,7 +18,7 @@ export function GiftRegistryBlock({ block }: { block: InvitationBlock<'gift-regi
           </TextEl>
         )}
       </div>
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2" style={{ gap: 'var(--item-gap)' }}>
         {data.items.map((item) => (
           <a
             key={item.id}

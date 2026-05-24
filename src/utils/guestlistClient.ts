@@ -1,6 +1,10 @@
-// Client for the public guestlist. Tries the Vercel serverless API first; if
-// that's unavailable (e.g. local `vite dev`), falls back to localStorage so the
-// flow works end-to-end in development.
+// Client for the public guestlist. The server (Vercel Blob via /api) is the
+// SOLE source of truth — entries are never persisted locally. This guarantees
+// every device that opens the same link sees the exact same confirmed list.
+//
+// The only thing kept in localStorage is the per-device "already submitted"
+// marker, which is used to prevent the same browser from submitting twice.
+// That marker is NOT used for showing other people's confirmations.
 
 export interface GuestEntry {
   id: string
@@ -9,12 +13,7 @@ export interface GuestEntry {
   createdAt: string
 }
 
-const LS_PREFIX = 'guestlist:'
 const SUBMITTED_PREFIX = 'guestlist-submitted:'
-
-function lsKey(slug: string) {
-  return `${LS_PREFIX}${slug}`
-}
 
 function submittedKey(slug: string) {
   return `${SUBMITTED_PREFIX}${slug}`
@@ -52,97 +51,71 @@ function markSubmitted(slug: string, name: string) {
   }
 }
 
-function readLocal(slug: string): GuestEntry[] {
-  try {
-    const raw = window.localStorage.getItem(lsKey(slug))
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function writeLocal(slug: string, list: GuestEntry[]) {
-  try {
-    window.localStorage.setItem(lsKey(slug), JSON.stringify(list))
-  } catch {
-    // ignore quota errors
-  }
-}
-
-function makeId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-/** Initialize an empty guestlist on the server (best-effort). Always succeeds locally. */
+/** Initialize an empty guestlist on the server. Resolves silently on failure. */
 export async function initGuestList(slug: string): Promise<void> {
   try {
     await fetch(`/api/guestlists/${slug}`, { method: 'PUT' })
   } catch {
-    // ignore
+    // ignore — the first submission will lazily create the file
   }
-  // Ensure a local entry exists too so the dev fallback works immediately.
-  if (window.localStorage.getItem(lsKey(slug)) === null) writeLocal(slug, [])
 }
 
-/** Append a guest entry. Returns true on any successful write (remote OR local). */
+export type SubmitResult =
+  | { ok: true; name: string }
+  | { ok: false; reason: 'invalid-name' | 'network' | 'server' }
+
+/**
+ * Append a guest entry. Server-only: returns ok:false on any failure.
+ * Caller is responsible for showing an error to the guest.
+ */
 export async function submitGuestEntry(
   slug: string,
   payload: { name: string; message?: string },
-): Promise<boolean> {
+): Promise<SubmitResult> {
   const name = payload.name?.trim()
-  if (!name) return false
-  let remoteOk = false
+  if (!name) return { ok: false, reason: 'invalid-name' }
+  let res: Response
   try {
-    const res = await fetch(`/api/guestlists/${slug}`, {
+    res = await fetch(`/api/guestlists/${slug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, message: payload.message ?? '' }),
     })
-    remoteOk = res.ok
   } catch {
-    remoteOk = false
+    return { ok: false, reason: 'network' }
   }
-  if (!remoteOk) {
-    // Remote unavailable (vite dev, network blip): store locally so the entry
-    // isn't lost and the guestlist view still shows it on this device.
-    const entry: GuestEntry = {
-      id: makeId(),
-      name,
-      message: payload.message?.trim() || '',
-      createdAt: new Date().toISOString(),
-    }
-    const list = readLocal(slug)
-    list.push(entry)
-    writeLocal(slug, list)
-  }
+  if (!res.ok) return { ok: false, reason: 'server' }
   markSubmitted(slug, name)
-  return true
+  return { ok: true, name }
 }
 
-/** Read the full guestlist, merging server + local entries. */
-export async function loadGuestList(slug: string): Promise<GuestEntry[]> {
-  let remote: GuestEntry[] = []
-  let remoteAvailable = false
+export type LoadResult =
+  | { ok: true; entries: GuestEntry[] }
+  | { ok: false; reason: 'network' | 'server' | 'not-found' }
+
+/** Read the full guestlist from the server. No local fallback. */
+export async function loadGuestList(slug: string): Promise<LoadResult> {
+  let res: Response
   try {
-    const res = await fetch(`/api/guestlists/${slug}`, { cache: 'no-store' })
-    if (res.ok) {
-      const data = await res.json()
-      if (Array.isArray(data)) {
-        remote = data
-        remoteAvailable = true
-      }
-    }
+    res = await fetch(`/api/guestlists/${slug}`, { cache: 'no-store' })
   } catch {
-    remoteAvailable = false
+    return { ok: false, reason: 'network' }
   }
-  const local = readLocal(slug)
-  if (!remoteAvailable) return local
-  // Merge by id; remote wins on conflict, append any local-only entries
-  // (entries written while the API was down).
-  const byId = new Map<string, GuestEntry>()
-  for (const e of remote) byId.set(e.id, e)
-  for (const e of local) if (!byId.has(e.id)) byId.set(e.id, e)
-  return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  if (res.status === 404) return { ok: true, entries: [] }
+  if (!res.ok) return { ok: false, reason: 'server' }
+  let data: unknown
+  try {
+    data = await res.json()
+  } catch {
+    return { ok: false, reason: 'server' }
+  }
+  if (!Array.isArray(data)) return { ok: true, entries: [] }
+  const entries = data.filter(
+    (e): e is GuestEntry =>
+      typeof e === 'object' && e !== null &&
+      typeof (e as GuestEntry).id === 'string' &&
+      typeof (e as GuestEntry).name === 'string',
+  )
+  entries.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  return { ok: true, entries }
 }
