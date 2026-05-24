@@ -1,14 +1,16 @@
 import { useRef } from 'react'
-import { useBlockForm } from '../../hooks/useBlockForm'
+import { useBlockForm, type BlockFormField } from '../../hooks/useBlockForm'
 import { useEditorStore } from '../../store/editorStore'
 import type { InvitationBlock, TextSize } from '../../types/invitation.types'
 import { validateBlock } from '../../utils/blockValidation'
+import { resolveFieldOrder } from '../../utils/fieldOrder'
 import { initGuestList } from '../../utils/guestlistClient'
 import { Field } from './Field'
 import { TimelineItemsForm } from './TimelineItemsForm'
 import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
 import { GalleryImagesForm } from './GalleryImagesForm'
 import { MenuItemsForm } from './MenuItemsForm'
+import { DragHandle, SortableItem, SortableList } from './SortableItem'
 
 // Field-kinds that render as visible text and therefore expose per-element
 // size/color overrides under the input.
@@ -52,86 +54,151 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
     updateBlockStyle(block.id, { textStyles: nextStyles })
   }
 
+  // Render the controls (input + element-style toolbar) for a single schema
+  // field. Pulled into a helper so we can render the same field either
+  // standalone or inside a SortableItem wrapper.
+  const renderFieldBody = (field: BlockFormField) => {
+    const raw = (block.data as unknown as Record<string, unknown>)[field.name]
+    const trueByDefault =
+      block.type === 'event-details' && (field.name === 'showDate' || field.name === 'showTime')
+    const normalized = trueByDefault && raw === undefined ? true : raw
+    const value = field.name === 'columns' && typeof normalized === 'number' ? String(normalized) : normalized
+    const showElementStyle = TEXTUAL_KINDS.has(field.kind) && !!(value as string)
+    const override = textStyles[field.name]
+    return (
+      <>
+        <Field
+          field={field}
+          value={value}
+          error={validation.errors[field.name]}
+          onChange={async (v) => {
+            const next = field.name === 'columns' ? Number(v) : v
+            if (field.name === 'stickyHeader' && next === true) {
+              updateBlockData(block.id, { stickyHeader: true, stickyNavOnly: false })
+              return
+            }
+            if (field.name === 'stickyNavOnly' && next === true) {
+              updateBlockData(block.id, { stickyHeader: false, stickyNavOnly: true })
+              return
+            }
+            if (field.name === 'useRsvpForm') {
+              const enabled = !!next
+              if (enabled) {
+                const curr = (block.data as Record<string, unknown>)['guestListSlug'] as string | undefined
+                if (!curr) {
+                  const makeSlug = () => {
+                    const r = Math.random().toString(36).slice(2, 8)
+                    const t = Date.now().toString(36).slice(-4)
+                    return `${r}${t}`
+                  }
+                  const slug = makeSlug()
+                  const link = `${window.location.origin}/?guestlist=${slug}`
+                  await initGuestList(slug)
+                  updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
+                  return
+                }
+              }
+              updateBlockData(block.id, { useRsvpForm: enabled })
+              return
+            }
+            updateBlockData(block.id, { [field.name]: next })
+          }}
+        />
+        {showElementStyle && (
+          <ElementStyleControls
+            field={field.name}
+            override={override}
+            onChangeSize={(s) => setElementStyle(field.name, { size: s })}
+            onChangeColor={(c) => setElementStyle(field.name, { color: c })}
+            onToggleBold={() => setElementStyle(field.name, { bold: !override?.bold })}
+            onToggleItalic={() => setElementStyle(field.name, { italic: !override?.italic })}
+          />
+        )}
+      </>
+    )
+  }
+
+  const useRsvpForm = !!((block.data as Record<string, unknown>)['useRsvpForm'])
+  const whatsappFields = new Set(['rsvpLink', 'whatsappPhone', 'whatsappMessage', 'whatsappButtonLabel'])
+
+  // Reorder a subset of fieldOrder by moving `fromId` to `toId`'s slot. The
+  // section keys outside this slice are kept untouched so reordering one
+  // section doesn't disturb the user's choices in other sections.
+  const reorderInSection = (sectionFieldNames: string[], fromId: string, toId: string) => {
+    const fromIdx = sectionFieldNames.indexOf(fromId)
+    const toIdx = sectionFieldNames.indexOf(toId)
+    if (fromIdx === -1 || toIdx === -1) return
+    const next = [...sectionFieldNames]
+    const [m] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, m)
+    const existing = block.style?.fieldOrder ?? []
+    const otherKept = existing.filter((k) => !sectionFieldNames.includes(k))
+    updateBlockStyle(block.id, { fieldOrder: [...otherKept, ...next] })
+  }
+
   return (
     <div className="space-y-6">
-      {schema.sections.map((section) => (
-        <section key={section.title} className="space-y-3">
-          <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">{section.title}</h3>
-          <div className="space-y-3">
-            {section.fields.map((field) => {
-              const raw = (block.data as unknown as Record<string, unknown>)[field.name]
-              // Show toggles whose absence means "on" (legacy data) in their
-              // effective state so the UI matches the rendered output.
-              const trueByDefault =
-                block.type === 'event-details' &&
-                (field.name === 'showDate' || field.name === 'showTime')
-              const normalized = trueByDefault && raw === undefined ? true : raw
-              const value = field.name === 'columns' && typeof normalized === 'number' ? String(normalized) : normalized
-              const showElementStyle = TEXTUAL_KINDS.has(field.kind) && !!(value as string)
-              const override = textStyles[field.name]
-              const useRsvpForm = !!((block.data as Record<string, unknown>)['useRsvpForm'])
-
-              // Hide WhatsApp fields when RSVP form is active
-              const whatsappFields = new Set(['rsvpLink', 'whatsappPhone', 'whatsappMessage', 'whatsappButtonLabel'])
-              if (useRsvpForm && whatsappFields.has(field.name)) return null
-
-              return (
-                <div key={field.name} className="space-y-1.5">
-                  <Field
-                    field={field}
-                    value={value}
-                    error={validation.errors[field.name]}
-                    onChange={async (v) => {
-                      const next = field.name === 'columns' ? Number(v) : v
-                      if (field.name === 'stickyHeader' && next === true) {
-                        updateBlockData(block.id, { stickyHeader: true, stickyNavOnly: false })
-                        return
-                      }
-                      if (field.name === 'stickyNavOnly' && next === true) {
-                        updateBlockData(block.id, { stickyHeader: false, stickyNavOnly: true })
-                        return
-                      }
-                      // Special handling: when enabling the RSVP form, generate a guestlist slug+link once and initialize the guestlist file.
-                      if (field.name === 'useRsvpForm') {
-                        const enabled = !!next
-                        if (enabled) {
-                          const curr = (block.data as Record<string, unknown>)['guestListSlug'] as string | undefined
-                          if (!curr) {
-                            const makeSlug = () => {
-                              const r = Math.random().toString(36).slice(2, 8)
-                              const t = Date.now().toString(36).slice(-4)
-                              return `${r}${t}`
-                            }
-                            const slug = makeSlug()
-                            const link = `${window.location.origin}/?guestlist=${slug}`
-                            await initGuestList(slug)
-                            updateBlockData(block.id, { useRsvpForm: true, guestListSlug: slug, guestListLink: link })
-                            return
-                          }
-                        }
-                        // If disabling, just update the flag
-                        updateBlockData(block.id, { useRsvpForm: enabled })
-                        return
-                      }
-                      updateBlockData(block.id, { [field.name]: next })
-                    }}
-                  />
-                  {showElementStyle && (
-                    <ElementStyleControls
-                      field={field.name}
-                      override={override}
-                      onChangeSize={(s) => setElementStyle(field.name, { size: s })}
-                      onChangeColor={(c) => setElementStyle(field.name, { color: c })}
-                      onToggleBold={() => setElementStyle(field.name, { bold: !override?.bold })}
-                      onToggleItalic={() => setElementStyle(field.name, { italic: !override?.italic })}
-                    />
-                  )}
+      {schema.sections.map((section) => {
+        const visible = section.fields.filter((f) => !(useRsvpForm && whatsappFields.has(f.name)))
+        const textualFields = visible.filter((f) => TEXTUAL_KINDS.has(f.kind))
+        const nonTextual = visible.filter((f) => !TEXTUAL_KINDS.has(f.kind))
+        const textualNames = textualFields.map((f) => f.name)
+        // Resolve display order from style.fieldOrder for the textual subset.
+        const sortedTextual = resolveFieldOrder(textualNames, block.style?.fieldOrder)
+          .map((name) => textualFields.find((f) => f.name === name))
+          .filter((f): f is BlockFormField => !!f)
+        const canSort = textualFields.length >= 2
+        return (
+          <section key={section.title} className="space-y-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">{section.title}</h3>
+              {canSort && (
+                <span className="text-[10px] uppercase tracking-widest text-ink-400">arrastra ⠿</span>
+              )}
+            </div>
+            {nonTextual.length > 0 && (
+              <div className="space-y-3">
+                {nonTextual.map((field) => (
+                  <div key={field.name} className="space-y-1.5">
+                    {renderFieldBody(field)}
+                  </div>
+                ))}
+              </div>
+            )}
+            {sortedTextual.length > 0 && (
+              canSort ? (
+                <SortableList
+                  ids={sortedTextual.map((f) => f.name)}
+                  onReorder={(fromId, toId) => reorderInSection(sortedTextual.map((f) => f.name), fromId, toId)}
+                >
+                  <div className="space-y-3">
+                    {sortedTextual.map((field) => (
+                      <SortableItem key={field.name} id={field.name}>
+                        {({ handleProps }) => (
+                          <div className="flex items-start gap-2 rounded border border-transparent bg-white p-1">
+                            <DragHandle handleProps={handleProps} />
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              {renderFieldBody(field)}
+                            </div>
+                          </div>
+                        )}
+                      </SortableItem>
+                    ))}
+                  </div>
+                </SortableList>
+              ) : (
+                <div className="space-y-3">
+                  {sortedTextual.map((field) => (
+                    <div key={field.name} className="space-y-1.5">
+                      {renderFieldBody(field)}
+                    </div>
+                  ))}
                 </div>
               )
-            })}
-          </div>
-        </section>
-      ))}
+            )}
+          </section>
+        )
+      })}
 
       {/* Guestlist link preview when RSVP form is active */}
       {Boolean((block.data as Record<string, unknown>)['useRsvpForm']) && (
@@ -346,8 +413,11 @@ function BlockBackgroundSection({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const onFile = (file: File) => {
-    if (file.size > 3 * 1024 * 1024) {
-      alert('La imagen pesa más de 3 MB. Usa una más ligera o pega una URL.')
+    // The publish step uploads images to /api/assets — Vercel rejects bodies
+    // over ~4.5 MB and a base64-encoded image grows ~33%. Keep the source at
+    // 2.5 MB max so the encoded payload fits.
+    if (file.size > 2.5 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2.5 MB). Usa una más ligera o pega una URL pública.`)
       return
     }
     const reader = new FileReader()

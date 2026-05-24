@@ -11,8 +11,8 @@ export function GalleryImagesForm({ block }: { block: InvitationBlock<'gallery'>
   const setImages = (images: GalleryImage[]) => updateBlockData(block.id, { images })
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const onPickFile = (imgId: string, file: File) => {
-    if (file.size > 3 * 1024 * 1024) {
-      alert('La imagen pesa más de 3 MB.')
+    if (file.size > 2.5 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2.5 MB). Usa una más ligera o pega una URL pública.`)
       return
     }
     const reader = new FileReader()

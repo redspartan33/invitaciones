@@ -242,7 +242,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       uploaded = await extractAndUploadAssets({ ...inv, publicSlug: slug })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudieron subir las imágenes.'
-      set({ publishMode: 'error', publishError: msg })
+      console.error('[publish] asset upload failed:', e)
+      set({ publishMode: 'error', publishError: `Publicación fallida: ${msg}` })
       return null
     }
 
@@ -256,9 +257,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     const ok = await saveToRegistry(slug, published)
     if (!ok) {
+      const payloadSize = JSON.stringify(published).length
+      const sizeNote = payloadSize > 1024 * 1024
+        ? ` (la invitación pesa ${(payloadSize / 1024 / 1024).toFixed(1)} MB — quizá tiene una imagen embebida muy grande)`
+        : ''
+      console.error('[publish] saveToRegistry returned not-ok. Payload size:', payloadSize)
       set({
         publishMode: 'error',
-        publishError: 'No se pudo guardar la invitación en el servidor. Revisa /api/diag.',
+        publishError: `No se pudo guardar la invitación en el servidor${sizeNote}. Revisa /api/diag y vuelve a intentar.`,
       })
       return null
     }

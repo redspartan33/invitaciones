@@ -124,8 +124,10 @@ function ImageField({
   const v = value ?? ''
 
   const onFile = (file: File) => {
-    if (file.size > 3 * 1024 * 1024) {
-      alert('La imagen pesa más de 3 MB. Usa una más ligera o pega una URL.')
+    // Keep source under 2.5 MB so the publish-time upload to /api/assets
+    // (base64) fits under Vercel's 4.5 MB serverless body limit.
+    if (file.size > 2.5 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2.5 MB). Usa una más ligera o pega una URL pública.`)
       return
     }
     const reader = new FileReader()

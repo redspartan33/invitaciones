@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { InvitationBlock, RsvpInfoData } from '../../types/invitation.types'
 import { formatDate } from '../../utils/blockValidation'
+import { resolveFieldOrder } from '../../utils/fieldOrder'
 import { getSubmittedName, hasSubmitted, submitGuestEntry } from '../../utils/guestlistClient'
 import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
+
+export const RSVP_FIELD_ORDER = [
+  'heading',
+  'instructions',
+  'deadline',
+  'contactEmail',
+  'contactPhone',
+] as const
 
 /**
  * Build a wa.me deep-link. WhatsApp expects the phone number as digits only
@@ -58,29 +67,49 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   // In the editor we always show the controls so the designer can preview the
   // flow; only the public published view enforces the one-confirmation lock.
   const locked = alreadySubmitted && !isEditorView
+  const order = resolveFieldOrder([...RSVP_FIELD_ORDER], block.style?.fieldOrder)
+  const renderField = (field: string) => {
+    switch (field) {
+      case 'heading':
+        return (
+          <TextEl key="heading" block={block} field="heading" as="h2" className="font-serif text-3xl">
+            Confirma tu asistencia
+          </TextEl>
+        )
+      case 'instructions':
+        return data.instructions ? (
+          <TextEl key="instructions" block={block} field="instructions" as="p" className="mx-auto max-w-md text-sm opacity-80">
+            {data.instructions}
+          </TextEl>
+        ) : null
+      case 'deadline':
+        return data.deadline ? (
+          <TextEl key="deadline" block={block} field="deadline" as="p" className="text-sm">
+            Fecha límite: <span className="font-medium">{formatDate(data.deadline, 'DD MMMM YYYY')}</span>
+          </TextEl>
+        ) : null
+      case 'contactEmail':
+        return data.contactEmail ? (
+          <TextEl key="contactEmail" block={block} field="contactEmail" as="p" className="text-sm opacity-80">
+            ✉ {data.contactEmail}
+          </TextEl>
+        ) : null
+      case 'contactPhone':
+        return data.contactPhone ? (
+          <TextEl key="contactPhone" block={block} field="contactPhone" as="p" className="text-sm opacity-80">
+            ☏ {data.contactPhone}
+          </TextEl>
+        ) : null
+      default:
+        return null
+    }
+  }
+
   return (
     <BlockWrapper style={block.style}>
       <div className="text-center">
-        <TextEl block={block} field="heading" as="h2" className="font-serif text-3xl">
-          Confirma tu asistencia
-        </TextEl>
-        {data.instructions && (
-          <TextEl block={block} field="instructions" as="p" className="mx-auto mt-3 max-w-md text-sm opacity-80">
-            {data.instructions}
-          </TextEl>
-        )}
-        {data.deadline && (
-          <TextEl block={block} field="deadline" as="p" className="mt-4 text-sm">
-            Fecha límite: <span className="font-medium">{formatDate(data.deadline, 'DD MMMM YYYY')}</span>
-          </TextEl>
-        )}
-        <div className="mt-6 flex flex-col items-center gap-2 text-sm opacity-80">
-          {data.contactEmail && (
-            <TextEl block={block} field="contactEmail">✉ {data.contactEmail}</TextEl>
-          )}
-          {data.contactPhone && (
-            <TextEl block={block} field="contactPhone">☏ {data.contactPhone}</TextEl>
-          )}
+        <div className="flex flex-col items-center" style={{ gap: 'var(--item-gap)' }}>
+          {order.map((f) => renderField(f))}
         </div>
         {data.useRsvpForm ? (
           <div className="mt-6 space-y-4">

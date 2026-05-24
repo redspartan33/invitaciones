@@ -68,6 +68,14 @@ export interface BlockStyle {
    * block.
    */
   itemSpacing?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  /**
+   * Ordered list of visible text field names. Blocks that support reordering
+   * (hero, event-details, dress-code, rsvp-info, footer, gift-registry,
+   * menu-header) consult this array at render time so the on-canvas/published
+   * order follows the order the user dragged into in the sidebar. Field
+   * names absent from the array fall back to the block's default ordering.
+   */
+  fieldOrder?: string[]
 }
 
 export interface HeroData {
