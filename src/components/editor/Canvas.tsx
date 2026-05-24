@@ -19,10 +19,13 @@ import { BlockRenderer } from '../blocks/BlockRenderer'
 import { DragIcon, EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
 import { usePageChrome } from '../../hooks/usePageChrome'
 
-const viewportClass: Record<ViewportMode, string> = {
-  mobile: 'max-w-[390px]',
-  tablet: 'max-w-[768px]',
-  desktop: 'max-w-[920px]',
+// Width of the simulated device frame for each viewport mode.
+// Heights mimic common physical dimensions but cap to the available canvas
+// space — the inner area scrolls so all blocks remain reachable.
+const VIEWPORT_DIMS: Record<ViewportMode, { width: number; height: number; chrome: 'phone' | 'tablet' | 'none' }> = {
+  mobile: { width: 390, height: 760, chrome: 'phone' },
+  tablet: { width: 820, height: 1080, chrome: 'tablet' },
+  desktop: { width: 1100, height: 0, chrome: 'none' },
 }
 
 export function Canvas() {
@@ -50,43 +53,90 @@ export function Canvas() {
 
   const fontClass = fontFamily === 'serif' ? 'font-serif' : fontFamily === 'script' ? 'font-script' : 'font-sans'
 
-  return (
-    <div className="h-full overflow-auto bg-ink-100 scroll-thin">
-      <div className="mx-auto p-8" onClick={() => selectBlock(null)}>
-        <div
-          className={`invitation-canvas mx-auto border border-ink-200 transition-all ${viewportClass[viewport]} ${fontClass}`}
-          style={
-            {
-              ['--color-accent' as never]: colorAccent,
-              ['--color-primary' as never]: colorPrimary,
-              ['--color-secondary' as never]: colorSecondary,
-              ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
-              ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
-            } as React.CSSProperties
-          }
-        >
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-              {blocks.map((block, i) => (
-                <SortableCanvasBlock
-                  key={block.id}
-                  block={block}
-                  index={i}
-                  selected={selectedId === block.id}
-                  onSelect={() => selectBlock(block.id)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
+  const dim = VIEWPORT_DIMS[viewport]
+  const isPhone = dim.chrome === 'phone'
+  const isTablet = dim.chrome === 'tablet'
 
-          {blocks.length === 0 && (
-            <div className="flex flex-col items-center justify-center px-8 py-32 text-center">
-              <p className="font-serif text-2xl text-ink-400">Tu invitación está vacía</p>
-              <p className="mt-2 text-sm text-ink-500">Añade tu primer bloque desde la barra inferior</p>
-            </div>
-          )}
+  const cssVars = {
+    ['--color-accent' as never]: colorAccent,
+    ['--color-primary' as never]: colorPrimary,
+    ['--color-secondary' as never]: colorSecondary,
+    ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
+    ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
+  } as React.CSSProperties
+
+  const inner = (
+    <div
+      className={`invitation-canvas h-full ${fontClass}`}
+      style={cssVars}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+          {blocks.map((block, i) => (
+            <SortableCanvasBlock
+              key={block.id}
+              block={block}
+              index={i}
+              selected={selectedId === block.id}
+              onSelect={() => selectBlock(block.id)}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+
+      {blocks.length === 0 && (
+        <div className="flex flex-col items-center justify-center px-8 py-32 text-center">
+          <p className="font-serif text-2xl text-ink-400">Tu invitación está vacía</p>
+          <p className="mt-2 text-sm text-ink-500">Añade tu primer bloque desde la barra inferior</p>
         </div>
+      )}
+    </div>
+  )
+
+  // Phone: rounded device frame with a tiny notch chip. Tablet: rounded tablet
+  // frame, no notch. Desktop: a bordered surface that fills the canvas (the
+  // inner content is capped to `dim.width`).
+  const framed = isPhone ? (
+    <div
+      className="relative rounded-[40px] border border-ink-300 bg-white p-3"
+      style={{ width: dim.width + 24, height: dim.height + 24 }}
+    >
+      <div className="absolute left-1/2 top-3 z-10 h-1 w-12 -translate-x-1/2 rounded-full bg-ink-300" />
+      <div
+        className="h-full w-full overflow-y-auto rounded-[28px] border border-ink-200 bg-white scroll-thin"
+        style={{ width: dim.width, height: dim.height }}
+      >
+        {inner}
       </div>
+    </div>
+  ) : isTablet ? (
+    <div
+      className="rounded-[24px] border border-ink-300 bg-white p-3"
+      style={{ width: dim.width + 24, height: dim.height + 24 }}
+    >
+      <div
+        className="h-full w-full overflow-y-auto rounded-[14px] border border-ink-200 bg-white scroll-thin"
+        style={{ width: dim.width, height: dim.height }}
+      >
+        {inner}
+      </div>
+    </div>
+  ) : (
+    <div
+      className="w-full max-w-full border border-ink-200 bg-white"
+      style={{ maxWidth: dim.width }}
+    >
+      {inner}
+    </div>
+  )
+
+  return (
+    <div
+      className="flex h-full w-full items-start justify-center overflow-auto bg-ink-100 p-6 scroll-thin md:p-10"
+      onClick={() => selectBlock(null)}
+    >
+      {framed}
     </div>
   )
 }

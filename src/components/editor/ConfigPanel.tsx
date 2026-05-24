@@ -33,7 +33,7 @@ export function ConfigPanel() {
     <aside
       className={`flex flex-col bg-white ${
         isMobileOpen ? 'fixed inset-0 z-40' : 'hidden'
-      } md:static md:flex md:h-full md:w-[360px] md:shrink-0 md:border-l md:border-ink-200`}
+      } md:static md:flex md:h-full md:w-[380px] md:shrink-0 md:border-l md:border-ink-200`}
     >
       <PanelHeader onClose={close} />
       <div className="flex-1 overflow-y-auto p-5 scroll-thin">

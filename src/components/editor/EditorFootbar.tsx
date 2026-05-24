@@ -31,15 +31,17 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
       </div>
 
       <div className="order-3 hidden items-center gap-1 rounded border border-ink-200 bg-white p-0.5 md:order-2 md:flex">
-        {(['mobile', 'tablet', 'desktop'] as ViewportMode[]).map((v) => (
+        {VIEWPORT_TABS.map((v) => (
           <button
-            key={v}
-            onClick={() => setViewport(v)}
-            className={`rounded px-3 py-1 text-xs uppercase tracking-widest ${
-              viewport === v ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
+            key={v.value}
+            onClick={() => setViewport(v.value)}
+            title={`${v.label} · ${v.size}`}
+            className={`flex items-center gap-1.5 rounded px-3 py-1 text-[11px] font-medium uppercase tracking-widest transition-colors ${
+              viewport === v.value ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
             }`}
           >
-            {v === 'mobile' ? '📱' : v === 'tablet' ? '▭' : '🖥'} {v}
+            <ViewportIcon kind={v.value} active={viewport === v.value} />
+            <span>{v.label}</span>
           </button>
         ))}
       </div>
@@ -88,5 +90,38 @@ function FootbarBtn({ label, active, onClick }: { label: string; active?: boolea
     >
       {label}
     </button>
+  )
+}
+
+const VIEWPORT_TABS: { value: ViewportMode; label: string; size: string }[] = [
+  { value: 'mobile', label: 'Mobile', size: '390 × 760' },
+  { value: 'tablet', label: 'Tablet', size: '820 × 1080' },
+  { value: 'desktop', label: 'Desktop', size: '1100 ancho' },
+]
+
+function ViewportIcon({ kind, active }: { kind: ViewportMode; active: boolean }) {
+  const cls = `h-3.5 w-3.5 ${active ? 'text-white' : 'text-ink-500'}`
+  if (kind === 'mobile') {
+    return (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="7" y="2.5" width="10" height="19" rx="2.2" />
+        <line x1="11" y1="18.5" x2="13" y2="18.5" />
+      </svg>
+    )
+  }
+  if (kind === 'tablet') {
+    return (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <line x1="11" y1="18" x2="13" y2="18" />
+      </svg>
+    )
+  }
+  return (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="4" width="19" height="12.5" rx="1.5" />
+      <line x1="9" y1="20" x2="15" y2="20" />
+      <line x1="12" y1="16.5" x2="12" y2="20" />
+    </svg>
   )
 }
