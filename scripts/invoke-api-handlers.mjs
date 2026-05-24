@@ -73,6 +73,30 @@ const cases = [
     req: { method: 'POST', headers: {}, query: { slug: 'testslug' }, body: { name: 'Juan' } },
     expect: (out) => out.status === 200 || out.status === 500,
   },
+  {
+    name: 'asset proxy — missing path (400)',
+    file: 'api/asset/[...path].ts',
+    req: { method: 'GET', headers: {}, query: {}, body: null },
+    expect: (out) => out.status === 400,
+  },
+  {
+    name: 'asset proxy — path traversal blocked (400)',
+    file: 'api/asset/[...path].ts',
+    req: { method: 'GET', headers: {}, query: { path: ['..', 'etc', 'passwd'] }, body: null },
+    expect: (out) => out.status === 400,
+  },
+  {
+    name: 'asset proxy — valid-shape path (will 500 without blob, OK)',
+    file: 'api/asset/[...path].ts',
+    req: { method: 'GET', headers: {}, query: { path: ['inv-test', 'abc.png'] }, body: null },
+    expect: (out) => out.status === 200 || out.status === 404 || out.status === 500,
+  },
+  {
+    name: 'asset proxy — POST is rejected (405)',
+    file: 'api/asset/[...path].ts',
+    req: { method: 'POST', headers: {}, query: { path: ['inv-test', 'abc.png'] }, body: null },
+    expect: (out) => out.status === 405,
+  },
 ]
 
 let failures = 0

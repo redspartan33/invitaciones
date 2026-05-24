@@ -1,13 +1,16 @@
 import { put } from '@vercel/blob'
 
-// Uploads a base64-encoded image (data: URI) to public blob storage and
-// returns its public URL. Lets the editor strip large `data:` payloads out
-// of the invitation JSON before publishing.
+// Uploads a base64-encoded image (data: URI) to PRIVATE blob storage and
+// returns a public URL that proxies through `/api/asset/<pathname>` so
+// browsers can fetch it as if it were a normal image.
+//
+// Why private + proxy instead of just public?
+//   The user's Vercel Blob store is configured as private-only ("Cannot
+//   use public access on a private store"), so `access:'public'` always
+//   fails. We store everything privately and serve via a small proxy
+//   endpoint that uses BLOB_READ_WRITE_TOKEN to fetch the bytes.
 //
 // Body: { dataUri: "data:image/...;base64,...", folder: "inv-<slug>" }
-//
-// Vercel Functions accept JSON bodies up to ~4.5 MB by default. The
-// editor's file pickers cap at 3 MB raw → ~4 MB base64-in-JSON → fits.
 
 interface VercelRequest {
   method?: string
@@ -45,11 +48,6 @@ function sanitizeSegment(s: string): string {
   return (s || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'misc'
 }
 
-/**
- * Parse a data: URI without regex (regex on multi-MB strings can be slow
- * or hit unexpected limits). Returns { contentType, bytes } or null if the
- * URI is malformed.
- */
 function parseDataUri(dataUri: string): { contentType: string; bytes: Buffer } | null {
   if (!dataUri.startsWith('data:')) return null
   const commaIdx = dataUri.indexOf(',')
@@ -66,6 +64,19 @@ function parseDataUri(dataUri: string): { contentType: string; bytes: Buffer } |
   }
 }
 
+function publicProxyUrl(req: VercelRequest, pathname: string): string {
+  const protoRaw = req.headers['x-forwarded-proto']
+  const hostRaw = req.headers['host']
+  const proto = (Array.isArray(protoRaw) ? protoRaw[0] : protoRaw) || 'https'
+  const host = (Array.isArray(hostRaw) ? hostRaw[0] : hostRaw) || ''
+  // pathname is like "assets/<folder>/<file.ext>". The proxy handler is
+  // `api/asset/[...path].ts`, so the final URL is
+  // `https://<host>/api/asset/<folder>/<file.ext>` — drop the "assets/"
+  // prefix because the route key is /api/asset/... not /api/assets/...
+  const tail = pathname.startsWith('assets/') ? pathname.slice('assets/'.length) : pathname
+  return `${proto}://${host}/api/asset/${tail}`
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res)
   if (req.method === 'OPTIONS') return res.status(204).end()
@@ -73,7 +84,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   console.info('[assets] received POST')
 
-  // Step 1: read and parse body
   let payload: { dataUri?: string; folder?: string } = {}
   try {
     if (typeof req.body === 'string') {
@@ -81,33 +91,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (req.body && typeof req.body === 'object') {
       payload = req.body as { dataUri?: string; folder?: string }
     } else {
-      console.warn('[assets] missing JSON body, got:', typeof req.body)
       return res.status(400).json({ error: 'Missing JSON body' })
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'parse error'
-    console.error('[assets] JSON parse failed:', msg)
     return res.status(400).json({ error: `Invalid JSON body: ${msg}` })
   }
 
   const dataUri = payload.dataUri
   const folder = sanitizeSegment(payload.folder || '')
   if (!dataUri || typeof dataUri !== 'string') {
-    console.warn('[assets] missing dataUri')
     return res.status(400).json({ error: 'Missing dataUri' })
   }
 
-  console.info(`[assets] payload received: folder=${folder}, dataUri.length=${dataUri.length}`)
+  console.info(`[assets] payload: folder=${folder}, dataUri.length=${dataUri.length}`)
 
-  // Step 2: decode
   const decoded = parseDataUri(dataUri)
   if (!decoded) {
-    console.warn('[assets] could not parse data URI')
     return res.status(400).json({ error: 'Could not parse data URI' })
   }
-  if (decoded.bytes.length === 0) {
-    return res.status(400).json({ error: 'Empty image' })
-  }
+  if (decoded.bytes.length === 0) return res.status(400).json({ error: 'Empty image' })
   if (decoded.bytes.length > 5 * 1024 * 1024) {
     return res.status(413).json({ error: `Image too large: ${decoded.bytes.length} bytes (max 5 MB)` })
   }
@@ -118,14 +121,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   console.info(`[assets] decoded: contentType=${decoded.contentType}, bytes=${decoded.bytes.length}, pathname=${pathname}`)
 
-  // Step 3: upload to blob
   try {
-    const { url } = await put(pathname, decoded.bytes, {
-      access: 'public',
+    await put(pathname, decoded.bytes, {
+      access: 'private',
       addRandomSuffix: false,
       contentType: decoded.contentType,
       allowOverwrite: true,
     })
+    const url = publicProxyUrl(req, pathname)
     console.info(`[assets] uploaded → ${url}`)
     return res.status(200).json({ url })
   } catch (e) {

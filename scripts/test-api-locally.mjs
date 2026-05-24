@@ -33,6 +33,7 @@ async function callHandler(handlerPath, req) {
 
 const targets = [
   'api/assets.ts',
+  'api/asset/[...path].ts',
   'api/guestlists/[slug].ts',
   'api/invitations/[id].ts',
   'api/invitations/index.ts',

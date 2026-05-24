@@ -1,12 +1,15 @@
 import { get, put } from '@vercel/blob'
 
-// Guest list stored as a public JSON blob at `guests/<slug>.json`.
+// Guest list stored as a private JSON blob at `guests/<slug>.json`.
 //
-// This restores the original simple pattern (get + put) that was working
-// in production. The cache-bust attempts via list/head 500'd because the
-// SDK's error semantics around missing blobs aren't stable enough to
-// special-case. Slight cache staleness is acceptable here — the GuestList
-// view auto-refreshes on focus and the user can pull-to-refresh.
+// The Vercel Blob store is configured as private-only, so EVERY blob we
+// write must use `access: 'private'`. Reads use `useCache: false` to
+// bypass the CDN cache — important so two devices that both POST see the
+// latest list instead of their own cached snapshot.
+//
+// Browsers never touch the blob URL directly; the public-facing
+// `/api/guestlists/<slug>` endpoint proxies the read using the
+// `BLOB_READ_WRITE_TOKEN`.
 
 interface VercelRequest {
   method?: string
@@ -42,7 +45,7 @@ async function readListSafe(pathname: string): Promise<GuestEntry[]> {
   // "doesn't exist" from "couldn't read" — both should yield an empty list so
   // POSTs can still write and GETs report 0 confirmations rather than 500.
   try {
-    const result = await get(pathname, { access: 'public' })
+    const result = await get(pathname, { access: 'private', useCache: false })
     if (!result || result.statusCode !== 200) return []
     const text = await new Response(result.stream).text()
     const parsed = JSON.parse(text)
@@ -56,8 +59,11 @@ async function readListSafe(pathname: string): Promise<GuestEntry[]> {
 }
 
 async function writeList(pathname: string, items: GuestEntry[]): Promise<void> {
+  // Blob store is configured as private-only — every write must use
+  // access:'private'. Browsers never touch this URL directly; reads always
+  // go through this API which authenticates via BLOB_READ_WRITE_TOKEN.
   await put(pathname, JSON.stringify(items), {
-    access: 'public',
+    access: 'private',
     addRandomSuffix: false,
     contentType: 'application/json',
     allowOverwrite: true,
