@@ -11,6 +11,7 @@ import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
 import { GalleryImagesForm } from './GalleryImagesForm'
 import { ImageSetImagesForm } from './ImageSetImagesForm'
 import { MenuItemsForm } from './MenuItemsForm'
+import { MenuNavItemsForm } from './MenuNavItemsForm'
 import { DragHandle, SortableItem, SortableList } from './SortableItem'
 import { ENTRY_ANIMATION_GROUPS } from '../blocks/AnimatedBlock'
 import type { EntryAnimation } from '../../types/invitation.types'
@@ -236,6 +237,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'gallery' && <GalleryImagesForm block={block as InvitationBlock<'gallery'>} />}
       {block.type === 'image-set' && <ImageSetImagesForm block={block as InvitationBlock<'image-set'>} />}
       {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
+      {block.type === 'menu-header' && <MenuNavItemsForm block={block as InvitationBlock<'menu-header'>} />}
 
       <EntryAnimationSection
         value={block.style?.entryAnimation ?? 'none'}

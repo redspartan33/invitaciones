@@ -37,13 +37,23 @@ export function MenuHeaderBlock({
       ? s.invitation.blocks
           .filter((b) => b.type === 'menu-section' && b.visible)
           .sort((a, b) => a.order - b.order)
-          .map((b) => ({
-            id: menuSectionAnchor(b.id, (b.data as MenuSectionData).title),
-            title: (b.data as MenuSectionData).title || 'Sección',
-          }))
+          .map((b) => {
+            const d = b.data as MenuSectionData
+            return {
+              id: menuSectionAnchor(b.id, d.title, d.customAnchor),
+              title: d.title || 'Sección',
+            }
+          })
       : [],
   )
-  const sections = sectionsOverride ?? sectionsFromStore
+  // When the menu-header has custom navItems, those take precedence over
+  // the auto-generated list — letting the user hide / rename / reorder /
+  // add custom links by anchor.
+  const navOverride =
+    data.navItems && data.navItems.length > 0
+      ? data.navItems.map((it) => ({ id: it.targetAnchor, title: it.label }))
+      : null
+  const sections = navOverride ?? sectionsOverride ?? sectionsFromStore
   const usingImage = !!data.backgroundImage
   const bgStyle = usingImage
     ? {

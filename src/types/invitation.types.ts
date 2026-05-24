@@ -293,6 +293,13 @@ export interface MenuHeaderData {
   navSize?: 's' | 'm' | 'xl'
   /** Size of the logo in the header. Defaults to 'm'. */
   logoSize?: 's' | 'm' | 'l' | 'xl'
+  /**
+   * Override the auto-generated nav. When undefined or empty, the nav lists
+   * every visible menu-section block automatically. When set, only these
+   * items render — letting you hide auto entries, rename them, reorder, or
+   * add custom ones that point to a section by its anchor.
+   */
+  navItems?: MenuNavItem[]
 }
 
 export interface MenuItem {
@@ -309,6 +316,24 @@ export interface MenuSectionData {
   items: MenuItem[]
   /** Vertical spacing between platillos. Defaults to 'md'. */
   itemSpacing?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+  /**
+   * Optional custom anchor / DOM id for this section. When set, the section
+   * is reachable at `#<customAnchor>` and a custom MenuHeader nav item can
+   * target it. When empty, the anchor is auto-derived from the title.
+   * The renderer slugifies it (lowercase, dashes, ASCII).
+   */
+  customAnchor?: string
+}
+
+/** A single entry in the menu-header sticky nav when the user overrides the
+ *  default auto-generated list. */
+export interface MenuNavItem {
+  id: string
+  /** Display label shown in the nav pill. */
+  label: string
+  /** Anchor id (without leading #) that this item links to. Matches a
+   *  section's customAnchor or auto-derived anchor. */
+  targetAnchor: string
 }
 
 export interface MenuNoteData {

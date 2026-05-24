@@ -49,15 +49,20 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
 
   // Pre-compute the section list so the public sticky nav reflects exactly
   // what's about to render (without needing the editor store). Uses the
-  // *translated* titles so the nav also switches language.
+  // *translated* titles so the nav also switches language. customAnchor
+  // (when set on a section) drives the anchor id so custom-nav links can
+  // hit it.
   const menuSections = useMemo(() => {
     if (!isMenu) return []
     return visible
       .filter((b) => b.type === 'menu-section')
-      .map((b) => ({
-        id: menuSectionAnchor(b.id, (b.data as MenuSectionData).title),
-        title: (b.data as MenuSectionData).title || 'Sección',
-      }))
+      .map((b) => {
+        const d = b.data as MenuSectionData
+        return {
+          id: menuSectionAnchor(b.id, d.title, d.customAnchor),
+          title: d.title || 'Sección',
+        }
+      })
   }, [visible, isMenu])
 
   const musicUrl = globalSettings.backgroundMusic && /^https?:\/\//i.test(globalSettings.backgroundMusic)
