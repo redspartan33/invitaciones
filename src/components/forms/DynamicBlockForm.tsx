@@ -413,11 +413,9 @@ function BlockBackgroundSection({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const onFile = (file: File) => {
-    // The publish step uploads images to /api/assets — Vercel rejects bodies
-    // over ~4.5 MB and a base64-encoded image grows ~33%. Keep the source at
-    // 2.5 MB max so the encoded payload fits.
-    if (file.size > 2.5 * 1024 * 1024) {
-      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2.5 MB). Usa una más ligera o pega una URL pública.`)
+    // /api/assets accepts up to 5 MB of raw bytes (no base64 inflation now).
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 5 MB). Usa una más ligera o pega una URL pública.`)
       return
     }
     const reader = new FileReader()

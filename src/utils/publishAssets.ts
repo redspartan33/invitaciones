@@ -12,25 +12,63 @@ import type { Invitation, InvitationBlock } from '../types/invitation.types'
 
 const ASSETS_ENDPOINT = '/api/assets'
 
-// Vercel serverless functions reject bodies above ~4.5 MB. The asset upload
-// body is roughly `dataUri.length + ~50 bytes` of JSON wrapping, so the data
-// URI itself must stay comfortably below 4 MB. We cap at 3.5 MB on the client
-// to leave headroom for slow networks / proxies.
-const MAX_DATA_URI_BYTES = Math.floor(3.5 * 1024 * 1024)
+// 5 MB cap matches the server-side limit in /api/assets. We send raw binary
+// (not base64-in-JSON) so the request body is the literal byte count of the
+// image — no 33% inflation, no JSON parser to overflow.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
-async function uploadDataUri(dataUri: string, folder: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  if (dataUri.length > MAX_DATA_URI_BYTES) {
+interface DecodedDataUri {
+  bytes: Uint8Array
+  contentType: string
+}
+
+function decodeDataUri(dataUri: string): DecodedDataUri | null {
+  const match = /^data:([^;,]+)(?:;([^,]+))?,(.*)$/.exec(dataUri)
+  if (!match) return null
+  const contentType = (match[1] || 'application/octet-stream').trim()
+  const isBase64 = (match[2] || '').includes('base64')
+  const raw = match[3]
+  try {
+    if (isBase64) {
+      const bin = atob(raw)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      return { bytes, contentType }
+    }
+    // url-encoded text payload (rare for images, but supported)
+    const text = decodeURIComponent(raw)
+    const bytes = new TextEncoder().encode(text)
+    return { bytes, contentType }
+  } catch {
+    return null
+  }
+}
+
+async function uploadDataUri(
+  dataUri: string,
+  folder: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const decoded = decodeDataUri(dataUri)
+  if (!decoded) {
+    return { ok: false, error: 'No se pudo interpretar una imagen embebida (formato data: inválido).' }
+  }
+  if (decoded.bytes.length > MAX_IMAGE_BYTES) {
     return {
       ok: false,
-      error: `Una imagen pesa ${(dataUri.length / 1024 / 1024).toFixed(1)} MB (máx 3.5 MB). Usa una más ligera o pega una URL.`,
+      error: `Una imagen pesa ${(decoded.bytes.length / 1024 / 1024).toFixed(1)} MB (máx 5 MB). Usa una más ligera o pega una URL pública.`,
     }
   }
+
+  const url = `${ASSETS_ENDPOINT}?folder=${encodeURIComponent(folder)}`
   let res: Response
   try {
-    res = await fetch(ASSETS_ENDPOINT, {
+    res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dataUri, folder }),
+      headers: { 'Content-Type': decoded.contentType },
+      // Wrap in Blob — Uint8Array's BufferSource overload is awkward with
+      // TS's lib.dom.d.ts (rejects narrow ArrayBufferLike). Blob is always
+      // accepted as fetch body and preserves the raw bytes.
+      body: new Blob([new Uint8Array(decoded.bytes)], { type: decoded.contentType }),
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'red sin conexión'
@@ -42,11 +80,15 @@ async function uploadDataUri(dataUri: string, folder: string): Promise<{ ok: tru
       const body = (await res.json()) as { error?: string }
       detail = body.error || ''
     } catch {
-      // ignore non-JSON error bodies
+      try {
+        detail = await res.text()
+      } catch {
+        /* ignore */
+      }
     }
     return {
       ok: false,
-      error: `El servidor rechazó la imagen (HTTP ${res.status}${detail ? `: ${detail}` : ''}).`,
+      error: `El servidor rechazó la imagen (HTTP ${res.status}${detail ? `: ${detail}` : ''}). Si pesa más de 5 MB, redúcela antes de publicar.`,
     }
   }
   let data: { url?: string }
@@ -65,9 +107,10 @@ function isDataUri(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('data:')
 }
 
-// Keys we know are meant to hold image URLs across the entire invitation tree.
-// `url` is included because gallery images use it; we still gate on isDataUri()
-// so we won't touch ordinary links like rsvpLink/guestListLink.
+// Keys we know are meant to hold image URLs across the entire invitation
+// tree. `url` is included because gallery images use it; we still gate on
+// isDataUri() so we won't touch ordinary links like rsvpLink / embedUrl /
+// guestListLink.
 const IMAGE_KEYS = new Set([
   'backgroundImage',
   'inspirationImage',
@@ -86,11 +129,10 @@ const IMAGE_KEYS = new Set([
  * to the user so they understand publish couldn't complete.
  */
 export async function extractAndUploadAssets(inv: Invitation): Promise<Invitation> {
-  const folder = `inv-${inv.publicSlug || inv.id}`
+  const folder = `inv-${inv.publicSlug || inv.id}`.replace(/[^a-zA-Z0-9_-]/g, '')
 
-  // Deep-clone the parts we may mutate so we never modify the editor state in
-  // place. (Cheap because we only clone objects we walk; large strings are
-  // shared by reference.)
+  // Deep-clone the parts we may mutate so we never modify the editor state
+  // in place.
   const deepClone = <T,>(v: T): T => (v == null || typeof v !== 'object' ? v : (JSON.parse(JSON.stringify(v)) as T))
 
   const settings = deepClone(inv.globalSettings)
@@ -100,8 +142,7 @@ export async function extractAndUploadAssets(inv: Invitation): Promise<Invitatio
     style: b.style ? deepClone(b.style) : undefined,
   }))
 
-  // Collect every (parent, key) pair that needs uploading first so we can
-  // report a precise count for logging.
+  // Collect every (parent, key) pair that needs uploading first.
   const targets: { obj: Record<string, unknown>; key: string }[] = []
   const stack: unknown[] = [settings]
   for (const b of newBlocks) {
@@ -128,24 +169,25 @@ export async function extractAndUploadAssets(inv: Invitation): Promise<Invitatio
   }
 
   if (targets.length === 0) {
+    console.info('[publish] no embedded images — JSON has only URL references')
     return { ...inv, globalSettings: settings, blocks: newBlocks }
   }
 
   console.info(`[publish] uploading ${targets.length} embedded image(s) to /api/assets`)
 
-  // Upload in parallel, but fail fast on the first error so the user gets a
-  // single clear message instead of a stampede of toasts.
-  await Promise.all(
-    targets.map(async ({ obj, key }) => {
-      const dataUri = obj[key] as string
-      const result = await uploadDataUri(dataUri, folder)
-      if (!result.ok) {
-        console.error(`[publish] upload failed for "${key}":`, result.error)
-        throw new Error(result.error)
-      }
-      obj[key] = result.url
-    }),
-  )
+  // Sequential upload: makes the failure point obvious in logs, and
+  // protects against rate limits when there are many photos.
+  for (let i = 0; i < targets.length; i++) {
+    const { obj, key } = targets[i]
+    const dataUri = obj[key] as string
+    const result = await uploadDataUri(dataUri, folder)
+    if (!result.ok) {
+      console.error(`[publish] upload ${i + 1}/${targets.length} failed for "${key}":`, result.error)
+      throw new Error(result.error)
+    }
+    obj[key] = result.url
+    console.info(`[publish] uploaded ${i + 1}/${targets.length}: ${key} → ${result.url}`)
+  }
 
   console.info(`[publish] all ${targets.length} image(s) uploaded successfully`)
   return { ...inv, globalSettings: settings, blocks: newBlocks }

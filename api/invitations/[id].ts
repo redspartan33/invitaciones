@@ -4,6 +4,16 @@ import { get, put, del } from '@vercel/blob'
 // `BLOB_READ_WRITE_TOKEN` is injected automatically by Vercel when a Blob
 // store is connected to the project.
 
+// Vercel Functions default body parser cap is ~1 MB; raise it so we can
+// accept invitations up to 4 MB (we still gate at 4 MB inside the handler).
+// Without this, PUT/POST silently 413s before our handler runs and the user
+// sees publish failures with no explanation.
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: '5mb' },
+  },
+}
+
 interface VercelRequest {
   method?: string
   query: Record<string, string | string[] | undefined>
