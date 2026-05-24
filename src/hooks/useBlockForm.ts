@@ -223,6 +223,27 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
       },
     ],
   },
+  'image-set': {
+    sections: [
+      {
+        title: 'Set de imágenes',
+        fields: [
+          { name: 'title', label: 'Título (opcional)', kind: 'text' },
+          {
+            name: 'aspect',
+            label: 'Proporción de las imágenes',
+            kind: 'select',
+            options: [
+              { value: 'square', label: 'Cuadrada (1:1)' },
+              { value: 'portrait', label: 'Vertical (3:4)' },
+              { value: 'landscape', label: 'Horizontal (4:3)' },
+              { value: 'auto', label: 'Original' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
   map: {
     sections: [
       {

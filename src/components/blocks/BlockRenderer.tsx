@@ -1,10 +1,12 @@
 import type { InvitationBlock } from '../../types/invitation.types'
+import { AnimatedBlock } from './AnimatedBlock'
 import { DressCodeBlock } from './DressCodeBlock'
 import { EventDetailsBlock } from './EventDetailsBlock'
 import { FooterBlock } from './FooterBlock'
 import { GalleryBlock } from './GalleryBlock'
 import { GiftRegistryBlock } from './GiftRegistryBlock'
 import { HeroBlock } from './HeroBlock'
+import { ImageSetBlock } from './ImageSetBlock'
 import { RsvpInfoBlock } from './RsvpInfoBlock'
 import { TimelineBlock } from './TimelineBlock'
 import { MapBlock } from './MapBlock'
@@ -14,6 +16,11 @@ import { MenuNoteBlock } from './MenuNoteBlock'
 import { MenuFooterBlock } from './MenuFooterBlock'
 
 export function BlockRenderer({ block }: { block: InvitationBlock }) {
+  const inner = renderInner(block)
+  return <AnimatedBlock animation={block.style?.entryAnimation}>{inner}</AnimatedBlock>
+}
+
+function renderInner(block: InvitationBlock) {
   switch (block.type) {
     case 'hero':
       return <HeroBlock block={block as InvitationBlock<'hero'>} />
@@ -31,6 +38,8 @@ export function BlockRenderer({ block }: { block: InvitationBlock }) {
       return <FooterBlock block={block as InvitationBlock<'footer'>} />
     case 'gallery':
       return <GalleryBlock block={block as InvitationBlock<'gallery'>} />
+    case 'image-set':
+      return <ImageSetBlock block={block as InvitationBlock<'image-set'>} />
     case 'map':
       return <MapBlock block={block as InvitationBlock<'map'>} />
     case 'menu-header':

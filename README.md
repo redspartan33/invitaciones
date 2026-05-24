@@ -37,7 +37,15 @@ src/
 7. **Gallery** — Galería de fotos responsive
 8. **Footer** — Mensaje final + contacto + redes
 
-9. **Map** — Mapa interactivo embebido a partir de una dirección de texto. Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
+9. **Map** — Mapa interactivo embebido a partir de una dirección de texto.
+
+10. **Image set** — Bloque de 1 a 3 imágenes en una sola fila. La regla de columnas es fija tanto en mobile como en desktop: 1 imagen → centrada en columna única, 2 imágenes → dos columnas, 3 imágenes → tres columnas. Cada cell tiene proporción configurable (cuadrada/vertical/horizontal/original) y pie de foto opcional. El botón "Añadir imagen" se deshabilita al llegar al máximo de 3.
+
+### Animaciones de entrada por bloque
+
+Cada bloque expone un selector **"Animación de entrada"** en su panel (justo después de los items repetibles y antes de la separación interna). Las animaciones usan [framer-motion](https://www.framer.com/motion/) con `whileInView` para dispararse cuando el bloque entra al viewport del invitado, tanto en el canvas del editor como en la vista pública.
+
+Presets disponibles: **Ninguna**, **Fundido**, **Fundido ↑/↓/←/→**, **Zoom in**, **Zoom out**, **Blur in**, **Flip**, **Rotación** y **Cortina** (clip-path reveal). Se guardan en `block.style.entryAnimation`. El wrapper `AnimatedBlock` envuelve a cada bloque desde `BlockRenderer`, así que aplica uniformemente a todos los tipos (invitación y menú). Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 

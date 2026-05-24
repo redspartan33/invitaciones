@@ -16,6 +16,7 @@ export const INVITATION_BLOCK_CATALOG: BlockTypeInfo[] = [
   { type: 'gift-registry', label: 'Mesa de regalos', description: 'Tiendas y links', icon: '✿' },
   { type: 'rsvp-info', label: 'RSVP', description: 'Confirmación de asistencia', icon: '✉' },
   { type: 'gallery', label: 'Galería', description: 'Galería de fotos', icon: '▦' },
+  { type: 'image-set', label: 'Set de imágenes', description: '1, 2 o 3 imágenes en columnas', icon: '◫' },
   { type: 'map', label: 'Mapa', description: 'Ubicación con mapa interactivo', icon: '◉' },
   { type: 'footer', label: 'Pie / Contacto', description: 'Mensaje final y contacto', icon: '⌂' },
 ]
@@ -91,6 +92,14 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
         { id: uuid(), url: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600' },
         { id: uuid(), url: 'https://images.unsplash.com/photo-1525772764200-be829a350797?w=600' },
         { id: uuid(), url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600' },
+      ],
+    },
+    'image-set': {
+      title: '',
+      aspect: 'square',
+      images: [
+        { id: uuid(), url: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600' },
+        { id: uuid(), url: 'https://images.unsplash.com/photo-1525772764200-be829a350797?w=600' },
       ],
     },
     map: {

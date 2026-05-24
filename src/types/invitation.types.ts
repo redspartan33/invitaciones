@@ -9,6 +9,7 @@ export type InvitationBlockType =
   | 'rsvp-info'
   | 'footer'
   | 'gallery'
+  | 'image-set'
   | 'map'
 
 export type MenuBlockType =
@@ -81,7 +82,26 @@ export interface BlockStyle {
    * by the map iframe inside MapBlock so the map itself has rounded corners.
    */
   borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full'
+  /**
+   * Entry animation played when the block scrolls into view. Powered by
+   * framer-motion's `whileInView`. Defaults to 'none' (no animation).
+   */
+  entryAnimation?: EntryAnimation
 }
+
+export type EntryAnimation =
+  | 'none'
+  | 'fade'
+  | 'fade-up'
+  | 'fade-down'
+  | 'fade-left'
+  | 'fade-right'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'blur-in'
+  | 'flip-up'
+  | 'rotate-in'
+  | 'reveal-up'
 
 export interface HeroData {
   title: string
@@ -200,6 +220,20 @@ export interface GalleryData {
   columns: 2 | 3 | 4
 }
 
+export interface ImageSetImage {
+  id: string
+  url: string
+  caption?: string
+}
+
+export interface ImageSetData {
+  title?: string
+  /** 1 to 3 images. 1 = centered, 2 = two columns, 3 = three columns (both mobile and desktop). */
+  images: ImageSetImage[]
+  /** Aspect ratio for each image cell. Defaults to 'square'. */
+  aspect?: 'square' | 'portrait' | 'landscape' | 'auto'
+}
+
 // ── Menu block data ─────────────────────────────────────────────────────────
 
 export interface MenuHeaderData {
@@ -261,6 +295,7 @@ export type BlockDataMap = {
   'rsvp-info': RsvpInfoData
   footer: FooterData
   gallery: GalleryData
+  'image-set': ImageSetData
   map: MapData
   'menu-header': MenuHeaderData
   'menu-section': MenuSectionData

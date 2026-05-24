@@ -9,8 +9,11 @@ import { Field } from './Field'
 import { TimelineItemsForm } from './TimelineItemsForm'
 import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
 import { GalleryImagesForm } from './GalleryImagesForm'
+import { ImageSetImagesForm } from './ImageSetImagesForm'
 import { MenuItemsForm } from './MenuItemsForm'
 import { DragHandle, SortableItem, SortableList } from './SortableItem'
+import { ENTRY_ANIMATIONS } from '../blocks/AnimatedBlock'
+import type { EntryAnimation } from '../../types/invitation.types'
 
 // Field-kinds that render as visible text and therefore expose per-element
 // size/color overrides under the input.
@@ -231,7 +234,13 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'timeline' && <TimelineItemsForm block={block as InvitationBlock<'timeline'>} />}
       {block.type === 'gift-registry' && <GiftRegistryItemsForm block={block as InvitationBlock<'gift-registry'>} />}
       {block.type === 'gallery' && <GalleryImagesForm block={block as InvitationBlock<'gallery'>} />}
+      {block.type === 'image-set' && <ImageSetImagesForm block={block as InvitationBlock<'image-set'>} />}
       {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
+
+      <EntryAnimationSection
+        value={block.style?.entryAnimation ?? 'none'}
+        onChange={(v) => updateBlockStyle(block.id, { entryAnimation: v })}
+      />
 
       <section className="space-y-3">
         <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
@@ -716,6 +725,45 @@ function ElementStyleControls({
         </button>
       )}
     </div>
+  )
+}
+
+function EntryAnimationSection({
+  value,
+  onChange,
+}: {
+  value: EntryAnimation
+  onChange: (v: EntryAnimation) => void
+}) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+        Animación de entrada
+      </h3>
+      <div className="grid grid-cols-3 gap-2">
+        {ENTRY_ANIMATIONS.map((opt) => {
+          const active = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={`rounded border px-2 py-2 text-[11px] uppercase tracking-widest transition-colors ${
+                active
+                  ? 'border-ink-900 bg-ink-900 text-white'
+                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+              }`}
+              title={opt.label}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[11px] text-ink-400">
+        Se reproduce cuando el bloque entra a la pantalla del invitado.
+      </p>
+    </section>
   )
 }
 
