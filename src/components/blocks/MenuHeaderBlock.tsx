@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import type {
   InvitationBlock,
   Language,
@@ -9,6 +9,8 @@ import { useEditorStore } from '../../store/editorStore'
 import { TextEl } from './TextEl'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { LANGUAGE_LABELS } from '../../utils/translation'
+
+const EMPTY_BLOCKS: InvitationBlock[] = []
 
 interface Props {
   block: InvitationBlock<'menu-header'>
@@ -32,27 +34,41 @@ export function MenuHeaderBlock({
   onLanguageChange,
 }: Props) {
   const data = block.data as MenuHeaderData
-  const sectionsFromStore = useEditorStore((s) =>
-    s.invitation.kind === 'menu'
-      ? s.invitation.blocks
-          .filter((b) => b.type === 'menu-section' && b.visible)
-          .sort((a, b) => a.order - b.order)
-          .map((b) => {
-            const d = b.data as MenuSectionData
-            return {
-              id: menuSectionAnchor(b.id, d.title, d.customAnchor),
-              title: d.title || 'Sección',
-            }
-          })
-      : [],
+  // Subscribe to the raw blocks array (stable reference across unrelated
+  // store updates) and derive the nav list with useMemo. A prior version
+  // mapped to fresh `{id, title}` objects inside the selector — with
+  // zustand's Object.is equality that meant every unrelated store change
+  // re-rendered this component with a brand-new `sections` array, which
+  // re-fired the scrollspy/layout effects on every render and tripped
+  // React's "Maximum update depth exceeded" guard.
+  const storeBlocks = useEditorStore((s) =>
+    s.invitation.kind === 'menu' ? s.invitation.blocks : EMPTY_BLOCKS,
+  )
+  const sectionsFromStore = useMemo(
+    () =>
+      storeBlocks
+        .filter((b) => b.type === 'menu-section' && b.visible)
+        .sort((a, b) => a.order - b.order)
+        .map((b) => {
+          const d = b.data as MenuSectionData
+          return {
+            id: menuSectionAnchor(b.id, d.title, d.customAnchor),
+            title: d.title || 'Sección',
+          }
+        }),
+    [storeBlocks],
   )
   // When the menu-header has custom navItems, those take precedence over
   // the auto-generated list — letting the user hide / rename / reorder /
-  // add custom links by anchor.
-  const navOverride =
-    data.navItems && data.navItems.length > 0
-      ? data.navItems.map((it) => ({ id: it.targetAnchor, title: it.label }))
-      : null
+  // add custom links by anchor. Memoize so `sections` keeps a stable
+  // reference across renders (otherwise the scrollspy effect re-fires).
+  const navOverride = useMemo(
+    () =>
+      data.navItems && data.navItems.length > 0
+        ? data.navItems.map((it) => ({ id: it.targetAnchor, title: it.label }))
+        : null,
+    [data.navItems],
+  )
   const sections = navOverride ?? sectionsOverride ?? sectionsFromStore
   const usingImage = !!data.backgroundImage
   const bgStyle = usingImage
