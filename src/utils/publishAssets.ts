@@ -13,10 +13,9 @@ import type { Invitation, InvitationBlock } from '../types/invitation.types'
 const ASSETS_ENDPOINT = '/api/assets'
 
 // Soft client-side cap. Vercel Functions accept JSON bodies up to ~4.5 MB.
-// A 2.5 MB raw image is ~3.4 MB base64-encoded, then ~3.5 MB once wrapped
-// in JSON — comfortably under the limit. The picker enforces 5 MB raw, so
-// we warn here for anything above ~2.7 MB which would push the request
-// over the safe ceiling.
+// File pickers cap at 2 MB raw → ~2.7 MB base64 → ~2.8 MB JSON body, well
+// under the limit. This second guard catches anything that slipped through
+// (e.g. an unusually large data URI stored in the invitation).
 const SAFE_DATA_URI_BYTES = Math.floor(4 * 1024 * 1024)
 
 async function uploadDataUri(
@@ -56,7 +55,7 @@ async function uploadDataUri(
       ok: false,
       error:
         res.status === 413
-          ? `Imagen demasiado grande para Vercel (HTTP 413). Usa una más ligera (máx ~3 MB).`
+          ? `Imagen demasiado grande para Vercel (HTTP 413). Usa una más ligera (máx 2 MB).`
           : res.status === 404
           ? `El endpoint /api/assets no responde (HTTP 404). Probablemente el deploy aún no terminó.`
           : `El servidor rechazó la imagen (HTTP ${res.status}${detail ? `: ${detail}` : ''}).`,

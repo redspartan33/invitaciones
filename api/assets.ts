@@ -2,14 +2,12 @@ import { put } from '@vercel/blob'
 
 // Uploads a base64-encoded image (data: URI) to public blob storage and
 // returns its public URL. Lets the editor strip large `data:` payloads out
-// of the invitation JSON before publishing so the body stays under the
-// platform's request-size limit.
+// of the invitation JSON before publishing.
 //
-// Body shape: { dataUri: "data:image/...;base64,...", folder: "inv-<slug>" }
+// Body: { dataUri: "data:image/...;base64,...", folder: "inv-<slug>" }
 //
-// We don't disable the body parser — Vercel Functions auto-parses JSON
-// bodies up to ~4.5 MB, which is enough for our 2.5 MB raw image cap
-// (raw 2.5 MB → base64 ~3.4 MB → JSON-wrapped ~3.5 MB < 4.5 MB).
+// Vercel Functions accept JSON bodies up to ~4.5 MB by default. The
+// editor's file pickers cap at 3 MB raw → ~4 MB base64-in-JSON → fits.
 
 interface VercelRequest {
   method?: string
@@ -44,7 +42,28 @@ const EXT_BY_TYPE: Record<string, string> = {
 }
 
 function sanitizeSegment(s: string): string {
-  return s.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'misc'
+  return (s || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'misc'
+}
+
+/**
+ * Parse a data: URI without regex (regex on multi-MB strings can be slow
+ * or hit unexpected limits). Returns { contentType, bytes } or null if the
+ * URI is malformed.
+ */
+function parseDataUri(dataUri: string): { contentType: string; bytes: Buffer } | null {
+  if (!dataUri.startsWith('data:')) return null
+  const commaIdx = dataUri.indexOf(',')
+  if (commaIdx < 6) return null
+  const meta = dataUri.slice(5, commaIdx)
+  const isBase64 = meta.endsWith(';base64')
+  const contentType = (isBase64 ? meta.slice(0, -7) : meta).trim() || 'application/octet-stream'
+  const rawBody = dataUri.slice(commaIdx + 1)
+  try {
+    const bytes = isBase64 ? Buffer.from(rawBody, 'base64') : Buffer.from(decodeURIComponent(rawBody), 'utf8')
+    return { contentType: contentType.toLowerCase(), bytes }
+  } catch {
+    return null
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -52,57 +71,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  console.info('[assets] received POST')
+
+  // Step 1: read and parse body
+  let payload: { dataUri?: string; folder?: string } = {}
   try {
-    // Body may come in already-parsed (Vercel default) or as a string —
-    // handle both shapes.
-    let payload: { dataUri?: string; folder?: string } = {}
     if (typeof req.body === 'string') {
-      try {
-        payload = JSON.parse(req.body)
-      } catch {
-        return res.status(400).json({ error: 'Body is not valid JSON' })
-      }
+      payload = JSON.parse(req.body)
     } else if (req.body && typeof req.body === 'object') {
       payload = req.body as { dataUri?: string; folder?: string }
     } else {
+      console.warn('[assets] missing JSON body, got:', typeof req.body)
       return res.status(400).json({ error: 'Missing JSON body' })
     }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'parse error'
+    console.error('[assets] JSON parse failed:', msg)
+    return res.status(400).json({ error: `Invalid JSON body: ${msg}` })
+  }
 
-    const dataUri = payload.dataUri
-    const folder = sanitizeSegment(payload.folder || '')
-    if (!dataUri || typeof dataUri !== 'string' || !dataUri.startsWith('data:')) {
-      return res.status(400).json({ error: 'Missing or invalid dataUri' })
-    }
+  const dataUri = payload.dataUri
+  const folder = sanitizeSegment(payload.folder || '')
+  if (!dataUri || typeof dataUri !== 'string') {
+    console.warn('[assets] missing dataUri')
+    return res.status(400).json({ error: 'Missing dataUri' })
+  }
 
-    const match = /^data:([^;,]+)(;base64)?,(.*)$/.exec(dataUri)
-    if (!match) return res.status(400).json({ error: 'Could not parse data URI' })
-    const contentType = (match[1] || 'application/octet-stream').toLowerCase()
-    const isBase64 = !!match[2]
-    const rawBody = match[3]
-    const ext = EXT_BY_TYPE[contentType] || 'bin'
+  console.info(`[assets] payload received: folder=${folder}, dataUri.length=${dataUri.length}`)
 
-    const buf = isBase64
-      ? Buffer.from(rawBody, 'base64')
-      : Buffer.from(decodeURIComponent(rawBody), 'utf8')
+  // Step 2: decode
+  const decoded = parseDataUri(dataUri)
+  if (!decoded) {
+    console.warn('[assets] could not parse data URI')
+    return res.status(400).json({ error: 'Could not parse data URI' })
+  }
+  if (decoded.bytes.length === 0) {
+    return res.status(400).json({ error: 'Empty image' })
+  }
+  if (decoded.bytes.length > 5 * 1024 * 1024) {
+    return res.status(413).json({ error: `Image too large: ${decoded.bytes.length} bytes (max 5 MB)` })
+  }
 
-    if (buf.length === 0) {
-      return res.status(400).json({ error: 'Empty image' })
-    }
+  const ext = EXT_BY_TYPE[decoded.contentType] || 'bin'
+  const name = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const pathname = `assets/${folder}/${name}`
 
-    const name = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const pathname = `assets/${folder}/${name}`
+  console.info(`[assets] decoded: contentType=${decoded.contentType}, bytes=${decoded.bytes.length}, pathname=${pathname}`)
 
-    const { url } = await put(pathname, buf, {
+  // Step 3: upload to blob
+  try {
+    const { url } = await put(pathname, decoded.bytes, {
       access: 'public',
       addRandomSuffix: false,
-      contentType,
+      contentType: decoded.contentType,
       allowOverwrite: true,
     })
-
+    console.info(`[assets] uploaded → ${url}`)
     return res.status(200).json({ url })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'unknown'
-    console.error('[assets] handler error:', msg, e)
-    return res.status(500).json({ error: msg })
+    const msg = e instanceof Error ? e.message : 'unknown blob error'
+    console.error('[assets] put() failed:', msg, e)
+    return res.status(500).json({ error: `Blob put failed: ${msg}` })
   }
 }

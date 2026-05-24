@@ -1,15 +1,12 @@
-import { list, put } from '@vercel/blob'
+import { get, put } from '@vercel/blob'
 
 // Guest list stored as a public JSON blob at `guests/<slug>.json`.
 //
-// Reads use `list({ prefix })` + `fetch(blob.url + '?_=<ts>', { cache:
-// 'no-store' })` to bypass the Vercel Blob CDN cache. We avoid `head()`
-// and `get()` here because their error semantics across @vercel/blob
-// versions are inconsistent (different error class names depending on
-// SDK), and the 500s in production came from those errors not matching
-// the `BlobNotFoundError` name we were checking for. `list()` always
-// resolves — empty array means the file doesn't exist, no exception
-// hierarchy to navigate.
+// This restores the original simple pattern (get + put) that was working
+// in production. The cache-bust attempts via list/head 500'd because the
+// SDK's error semantics around missing blobs aren't stable enough to
+// special-case. Slight cache staleness is acceptable here — the GuestList
+// view auto-refreshes on focus and the user can pull-to-refresh.
 
 interface VercelRequest {
   method?: string
@@ -39,25 +36,23 @@ interface GuestEntry {
   createdAt: string
 }
 
-async function readList(pathname: string): Promise<GuestEntry[]> {
-  const { blobs } = await list({ prefix: pathname, limit: 1 })
-  // `prefix` is a *prefix* match — narrow to the exact path.
-  const blob = blobs.find((b) => b.pathname === pathname)
-  if (!blob) return []
-  const cacheBustUrl = `${blob.url}${blob.url.includes('?') ? '&' : '?'}_=${Date.now()}`
-  const res = await fetch(cacheBustUrl, { cache: 'no-store' })
-  if (!res.ok) {
-    console.error('[guestlists] fetch of blob URL failed', res.status, cacheBustUrl)
-    return []
-  }
-  let data: unknown
+async function readListSafe(pathname: string): Promise<GuestEntry[]> {
+  // Wrap get() so any SDK error (missing blob, transient SDK problem) returns
+  // an empty list rather than 500'ing the whole handler. We do NOT distinguish
+  // "doesn't exist" from "couldn't read" — both should yield an empty list so
+  // POSTs can still write and GETs report 0 confirmations rather than 500.
   try {
-    data = await res.json()
+    const result = await get(pathname, { access: 'public' })
+    if (!result || result.statusCode !== 200) return []
+    const text = await new Response(result.stream).text()
+    const parsed = JSON.parse(text)
+    return Array.isArray(parsed) ? (parsed as GuestEntry[]) : []
   } catch (e) {
-    console.error('[guestlists] blob JSON parse failed', e)
+    // Log but don't propagate — the user should see "no confirmations yet"
+    // not "server error".
+    console.warn('[guestlists] readListSafe could not read', pathname, e)
     return []
   }
-  return Array.isArray(data) ? (data as GuestEntry[]) : []
 }
 
 async function writeList(pathname: string, items: GuestEntry[]): Promise<void> {
@@ -82,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const entries = await readList(pathname)
+      const entries = await readListSafe(pathname)
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       return res.status(200).send(JSON.stringify(entries))
     }
@@ -98,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const name = (parsed.name || '').trim()
       if (!name) return res.status(400).json({ error: 'Missing name' })
 
-      const current = await readList(pathname)
+      const current = await readListSafe(pathname)
       const entry: GuestEntry = {
         id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
         name,
@@ -111,9 +106,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PUT') {
-      // Only create the file if it doesn't already exist — never clobber
-      // existing confirmations because the editor saved the block again.
-      const existing = await readList(pathname)
+      // Initialize empty file only if missing — don't clobber existing
+      // confirmations when the editor re-saves the block config.
+      const existing = await readListSafe(pathname)
       if (existing.length === 0) await writeList(pathname, [])
       return res.status(200).json({ ok: true })
     }

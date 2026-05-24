@@ -413,10 +413,11 @@ function BlockBackgroundSection({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const onFile = (file: File) => {
-    // 3 MB raw → ~4 MB base64 once wrapped in JSON, which fits comfortably
-    // under Vercel's 4.5 MB serverless body limit on /api/assets.
-    if (file.size > 3 * 1024 * 1024) {
-      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 3 MB). Usa una más ligera o pega una URL pública.`)
+    // 2 MB raw → ~2.7 MB base64 → ~2.8 MB JSON body, well under Vercel's
+    // 4.5 MB body limit. Conservative on purpose because production has
+    // been rejecting larger payloads with opaque 500s.
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2 MB). Usa una más ligera o pega una URL pública.`)
       return
     }
     const reader = new FileReader()

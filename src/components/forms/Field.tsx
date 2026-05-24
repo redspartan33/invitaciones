@@ -124,8 +124,8 @@ function ImageField({
   const v = value ?? ''
 
   const onFile = (file: File) => {
-    if (file.size > 3 * 1024 * 1024) {
-      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 3 MB). Usa una más ligera o pega una URL pública.`)
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2 MB). Usa una más ligera o pega una URL pública.`)
       return
     }
     const reader = new FileReader()
