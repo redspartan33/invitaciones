@@ -38,7 +38,10 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
           </TextEl>
         )}
         {src ? (
-          <div className="overflow-hidden border accent-border" style={{ height }}>
+          <div
+            className="overflow-hidden border accent-border"
+            style={{ height, borderRadius: 'var(--block-radius, 0)' }}
+          >
             <iframe
               title={data.title || address || 'Mapa'}
               src={src}

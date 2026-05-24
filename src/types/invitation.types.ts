@@ -76,6 +76,11 @@ export interface BlockStyle {
    * names absent from the array fall back to the block's default ordering.
    */
   fieldOrder?: string[]
+  /**
+   * Rounded-corner radius applied to the block container — also picked up
+   * by the map iframe inside MapBlock so the map itself has rounded corners.
+   */
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full'
 }
 
 export interface HeroData {

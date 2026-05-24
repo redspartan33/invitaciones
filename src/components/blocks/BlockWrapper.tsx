@@ -19,6 +19,16 @@ const ITEM_GAP_PX: Record<NonNullable<BlockStyle['itemSpacing']>, string> = {
   xl: '2.75rem',
 }
 
+const BORDER_RADIUS_PX: Record<NonNullable<BlockStyle['borderRadius']>, string> = {
+  none: '0',
+  sm: '6px',
+  md: '12px',
+  lg: '20px',
+  xl: '32px',
+  '2xl': '48px',
+  full: '9999px',
+}
+
 const BG_POSITION_CSS: Record<NonNullable<BlockStyle['backgroundPosition']>, string> = {
   center: 'center',
   top: 'top',
@@ -43,10 +53,17 @@ export function BlockWrapper({
   const padding = padMap[style?.paddingY ?? 'lg']
   const textSize = style?.textSize ?? 'md'
   const hasImage = !!style?.backgroundImage
+  const radiusPx = BORDER_RADIUS_PX[style?.borderRadius ?? 'none']
   const css: CSSProperties = {
     backgroundColor: style?.backgroundColor || undefined,
     color: style?.textColor || undefined,
     textAlign: align,
+    // Apply borderRadius to the block container. `overflow: hidden` ensures
+    // the bg image is clipped by the rounded corners (otherwise it would
+    // spill out of the rounded box on browsers that don't auto-clip).
+    ...(style?.borderRadius && style.borderRadius !== 'none'
+      ? { borderRadius: radiusPx, overflow: 'hidden' }
+      : undefined),
     ...(hasImage
       ? {
           backgroundImage: `url(${style!.backgroundImage})`,
@@ -57,6 +74,7 @@ export function BlockWrapper({
       : undefined),
   }
   ;(css as Record<string, string>)['--item-gap'] = ITEM_GAP_PX[style?.itemSpacing ?? 'md']
+  ;(css as Record<string, string>)['--block-radius'] = radiusPx
   return (
     <div className={`block-scale-active block-text-${textSize} ${padding} px-5 md:px-8`} style={css}>
       <div className="mx-auto max-w-2xl">{children}</div>

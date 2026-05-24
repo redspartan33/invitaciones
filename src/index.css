@@ -84,14 +84,19 @@ html, body, #root {
   color: var(--color-primary);
 }
 /* Google Fonts overrides: when --font-heading / --font-body are set on the
-   .invitation-canvas root, route headings and body text to them. When the
-   custom property is unset the declaration becomes invalid and the cascade
-   falls back to the Tailwind font-* class on the same element. */
+   .invitation-canvas root we route headings and body text to them. With
+   the var fallback set to `inherit`, an unset custom property falls back
+   to the Tailwind font-* family on the wrapping element (font-serif /
+   font-sans / font-script), so the user's font choice still applies even
+   when no Google Font is selected. Without `inherit` as fallback the
+   declaration becomes invalid and the browser defaults to its
+   system font, ignoring the Tailwind stack entirely (the bug that made
+   "tipografías no se respetan" in the published view). */
 .invitation-canvas h1,
 .invitation-canvas h2,
 .invitation-canvas h3,
 .invitation-canvas .font-serif {
-  font-family: var(--font-heading);
+  font-family: var(--font-heading, inherit);
 }
 .invitation-canvas p,
 .invitation-canvas li,
@@ -99,7 +104,7 @@ html, body, #root {
 .invitation-canvas a,
 .invitation-canvas input,
 .invitation-canvas button {
-  font-family: var(--font-body);
+  font-family: var(--font-body, inherit);
 }
 .invitation-canvas .accent {
   color: var(--color-accent);

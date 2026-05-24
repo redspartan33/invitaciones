@@ -377,7 +377,60 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
         backgroundSize={block.style?.backgroundSize}
         onChange={(patch) => updateBlockStyle(block.id, patch)}
       />
+
+      <BorderRadiusSection
+        value={block.style?.borderRadius ?? 'none'}
+        onChange={(v) => updateBlockStyle(block.id, { borderRadius: v })}
+      />
     </div>
+  )
+}
+
+const RADIUS_OPTIONS: { value: NonNullable<import('../../types/invitation.types').BlockStyle['borderRadius']>; label: string }[] = [
+  { value: 'none', label: 'Recto' },
+  { value: 'sm', label: 'S' },
+  { value: 'md', label: 'M' },
+  { value: 'lg', label: 'L' },
+  { value: 'xl', label: 'XL' },
+  { value: '2xl', label: '2XL' },
+]
+
+function BorderRadiusSection({
+  value,
+  onChange,
+}: {
+  value: NonNullable<import('../../types/invitation.types').BlockStyle['borderRadius']>
+  onChange: (v: NonNullable<import('../../types/invitation.types').BlockStyle['borderRadius']>) => void
+}) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+        Esquinas redondeadas
+      </h3>
+      <div className="grid grid-cols-6 gap-2">
+        {RADIUS_OPTIONS.map((opt) => {
+          const active = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={`rounded border px-1.5 py-2 text-[10px] uppercase tracking-widest transition-colors ${
+                active
+                  ? 'border-ink-900 bg-ink-900 text-white'
+                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+              }`}
+              title={opt.value}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[11px] text-ink-400">
+        Aplica al contenedor del bloque. En el bloque de mapa también redondea el iframe del mapa.
+      </p>
+    </section>
   )
 }
 

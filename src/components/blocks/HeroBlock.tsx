@@ -10,12 +10,14 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
   const data = block.data as HeroData
   const align = data.alignment ?? 'center'
   const usingImage = !!data.backgroundImage
+  // Render the bg image as-is: no dark overlay, no forced text color. If
+  // the resulting contrast is too low the user can pick text color per
+  // element via the per-text Color picker in the sidebar.
   const bgStyle = usingImage
     ? {
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(${data.backgroundImage})`,
+        backgroundImage: `url(${data.backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        color: '#fff',
       }
     : data.backgroundColor
     ? { backgroundColor: data.backgroundColor }
@@ -32,7 +34,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
             block={block}
             field="subtitle"
             as="p"
-            className={`text-sm uppercase tracking-[0.3em] ${usingImage ? 'opacity-90' : 'accent'}`}
+            className="accent text-sm uppercase tracking-[0.3em]"
           >
             {data.subtitle}
           </TextEl>
@@ -56,7 +58,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
             block={block}
             field="eventDate"
             as="p"
-            className={`text-sm uppercase tracking-[0.3em] ${usingImage ? 'opacity-90' : ''}`}
+            className="text-sm uppercase tracking-[0.3em]"
           >
             {formatDate(data.eventDate, data.dateFormat)}
           </TextEl>
