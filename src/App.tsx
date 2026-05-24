@@ -22,10 +22,7 @@ function resolveRoute(url: URL): Route {
   const inv = url.searchParams.get('id') || url.searchParams.get('inv') || undefined
   if (inv) return { kind: 'public-id', id: inv }
 
-  // Admin auth gate (currently relaxed; flip ADMIN_AUTH_ENABLED back to true
-  // before production to require the token).
-  const ADMIN_AUTH_ENABLED = false
-  if (!ADMIN_AUTH_ENABLED || isAdminUrl(url)) {
+  if (isAdminUrl(url)) {
     if (url.searchParams.get('edit') || url.searchParams.get('new')) return { kind: 'editor' }
     return { kind: 'admin' }
   }
@@ -90,5 +87,18 @@ export default function App() {
 
   if (route.kind === 'editor') return <InvitationBuilder />
 
-  return <ForbiddenView />
+  return <AccessDeniedView />
+}
+
+function AccessDeniedView() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 p-8 text-center">
+      <div>
+        <p className="font-serif text-5xl leading-none text-ink-900">Acceso no permitido</p>
+        <p className="mt-6 max-w-md text-sm text-ink-500">
+          No tienes autorización para ver esta página.
+        </p>
+      </div>
+    </div>
+  )
 }
