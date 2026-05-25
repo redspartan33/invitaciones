@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { InvitationBuilder } from './components/editor/InvitationBuilder'
 import { PublicInvitationView } from './components/public/PublicInvitationView'
+import { PageBackgroundLayer } from './components/public/PageBackgroundLayer'
 import { GuestListView } from './components/public/GuestListView'
 import { PublicSkeleton, readKindCache, writeKindCache } from './components/public/skeletons'
 import { AdminView, ForbiddenView } from './admin/AdminView'
@@ -63,7 +64,16 @@ export default function App() {
     if (publicInvitation === undefined) {
       return <PublicSkeleton kind={readKindCache(route.id)} />
     }
-    return publicInvitation ? <PublicInvitationView invitation={publicInvitation} /> : <ForbiddenView />
+    if (!publicInvitation) return <ForbiddenView />
+    return (
+      <>
+        {/* Render the page background at root level so it sits outside every
+            stacking context and its fixed/absolute positioning reaches the
+            actual viewport — not the clipped area of a relative ancestor. */}
+        <PageBackgroundLayer bg={publicInvitation.globalSettings.pageBackground} />
+        <PublicInvitationView invitation={publicInvitation} />
+      </>
+    )
   }
 
   if (route.kind === 'public-guestlist') {

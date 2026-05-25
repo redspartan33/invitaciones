@@ -18,6 +18,7 @@ import type { InvitationBlock, ViewportMode } from '../../types/invitation.types
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { DragIcon, EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
 import { usePageChrome } from '../../hooks/usePageChrome'
+import { PageBackgroundLayer } from '../public/PageBackgroundLayer'
 
 // Width of the simulated device frame for each viewport mode.
 // Heights mimic common physical dimensions but cap to the available canvas
@@ -41,7 +42,11 @@ export function Canvas() {
   const colorAccent = useEditorStore((s) => s.invitation.globalSettings.colorAccent)
   const colorPrimary = useEditorStore((s) => s.invitation.globalSettings.colorPrimary)
   const colorSecondary = useEditorStore((s) => s.invitation.globalSettings.colorSecondary)
+  const pageBackground = useEditorStore((s) => s.invitation.globalSettings.pageBackground)
+  const transparentCanvas = useEditorStore((s) => s.invitation.globalSettings.transparentCanvas)
   usePageChrome({ favicon, headingFont, bodyFont })
+
+  const hasPageBackground = !!pageBackground?.url?.trim()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -57,12 +62,15 @@ export function Canvas() {
   const isPhone = dim.chrome === 'phone'
   const isTablet = dim.chrome === 'tablet'
 
+  const canvasBg = hasPageBackground && transparentCanvas ? 'transparent' : undefined
+
   const cssVars = {
     ['--color-accent' as never]: colorAccent,
     ['--color-primary' as never]: colorPrimary,
     ['--color-secondary' as never]: colorSecondary,
     ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
     ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
+    backgroundColor: hasPageBackground ? 'transparent' : undefined,
   } as React.CSSProperties
 
   const inner = (
@@ -97,6 +105,10 @@ export function Canvas() {
   // Phone: rounded device frame with a tiny notch chip. Tablet: rounded tablet
   // frame, no notch. Desktop: a bordered surface that fills the canvas (the
   // inner content is capped to `dim.width`).
+  //
+  // Each frame acts as the clipping + background container for the page
+  // background layer. PageBackgroundLayer uses absolute positioning so it
+  // stays within the device frame boundary rather than covering the full editor.
   const framed = isPhone ? (
     <div
       className="relative rounded-[40px] border border-ink-300 bg-white p-3"
@@ -104,10 +116,13 @@ export function Canvas() {
     >
       <div className="absolute left-1/2 top-3 z-10 h-1 w-12 -translate-x-1/2 rounded-full bg-ink-300" />
       <div
-        className="h-full w-full overflow-y-auto rounded-[28px] border border-ink-200 bg-white scroll-thin"
-        style={{ width: dim.width, height: dim.height }}
+        className="relative h-full w-full overflow-y-auto rounded-[28px] border border-ink-200 scroll-thin"
+        style={{ width: dim.width, height: dim.height, background: hasPageBackground ? 'transparent' : 'white' }}
       >
-        {inner}
+        {hasPageBackground && (
+          <PageBackgroundLayer bg={{ ...pageBackground!, attachment: 'scroll' }} />
+        )}
+        <div className="relative" style={{ background: canvasBg }}>{inner}</div>
       </div>
     </div>
   ) : isTablet ? (
@@ -116,18 +131,24 @@ export function Canvas() {
       style={{ width: dim.width + 24, height: dim.height + 24 }}
     >
       <div
-        className="h-full w-full overflow-y-auto rounded-[14px] border border-ink-200 bg-white scroll-thin"
-        style={{ width: dim.width, height: dim.height }}
+        className="relative h-full w-full overflow-y-auto rounded-[14px] border border-ink-200 scroll-thin"
+        style={{ width: dim.width, height: dim.height, background: hasPageBackground ? 'transparent' : 'white' }}
       >
-        {inner}
+        {hasPageBackground && (
+          <PageBackgroundLayer bg={{ ...pageBackground!, attachment: 'scroll' }} />
+        )}
+        <div className="relative" style={{ background: canvasBg }}>{inner}</div>
       </div>
     </div>
   ) : (
     <div
-      className="w-full max-w-full border border-ink-200 bg-white"
-      style={{ maxWidth: dim.width }}
+      className="relative w-full max-w-full border border-ink-200"
+      style={{ maxWidth: dim.width, background: hasPageBackground ? 'transparent' : 'white' }}
     >
-      {inner}
+      {hasPageBackground && (
+        <PageBackgroundLayer bg={{ ...pageBackground!, attachment: 'scroll' }} />
+      )}
+      <div className="relative" style={{ background: canvasBg }}>{inner}</div>
     </div>
   )
 

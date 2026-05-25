@@ -11,7 +11,6 @@ import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
-import { PageBackgroundLayer } from './PageBackgroundLayer'
 import { EnvelopeIntro } from './EnvelopeIntro'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
@@ -131,11 +130,14 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
           ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
           fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined,
+          // When a page background is active the outer wrapper must be fully
+          // transparent so the background layer (rendered at root level, outside
+          // every stacking context) is visible beneath the canvas card.
+          // Inline styles win over the .invitation-canvas CSS class rule.
           backgroundColor: hasPageBackground ? 'transparent' : undefined,
         } as React.CSSProperties
       }
     >
-      <PageBackgroundLayer bg={globalSettings.pageBackground} />
       <div
         className="relative mx-auto max-w-[920px] border-x border-black/5"
         style={{ background: canvasBg }}
