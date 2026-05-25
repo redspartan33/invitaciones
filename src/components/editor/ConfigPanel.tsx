@@ -3,7 +3,12 @@ import { useEditorStore } from '../../store/editorStore'
 import { useSelectedBlock } from '../../hooks/useSelectedBlock'
 import { DynamicBlockForm } from '../forms/DynamicBlockForm'
 import { BLOCK_CATALOG } from '../../utils/blockDefaults'
-import type { FontFamily, Language, PageBackground } from '../../types/invitation.types'
+import type {
+  EnvelopeIntroConfig,
+  FontFamily,
+  Language,
+  PageBackground,
+} from '../../types/invitation.types'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
 
@@ -584,6 +589,23 @@ function DetailsPanel() {
         }
         onToggleTransparent={(v) => updateGlobalSettings({ transparentCanvas: v })}
       />
+      {!isMenu && (
+        <EnvelopeIntroRow
+          config={inv.globalSettings.envelopeIntro}
+          invitationId={inv.id}
+          onChange={(patch) =>
+            updateGlobalSettings({
+              envelopeIntro:
+                patch === null
+                  ? undefined
+                  : {
+                      ...(inv.globalSettings.envelopeIntro ?? { enabled: false }),
+                      ...patch,
+                    },
+            })
+          }
+        />
+      )}
       {isMenu && <SeasonsRow />}
       {isMenu && (
         <LanguagesRow
@@ -984,6 +1006,277 @@ function PageBackgroundRow({
         </>
       )}
     </div>
+  )
+}
+
+function EnvelopeIntroRow({
+  config,
+  invitationId,
+  onChange,
+}: {
+  config?: EnvelopeIntroConfig
+  invitationId: string
+  onChange: (patch: Partial<EnvelopeIntroConfig> | null) => void
+}) {
+  const enabled = !!config?.enabled
+  const envelopeColor = config?.envelopeColor ?? '#a3b88c'
+  const liningColor = config?.liningColor ?? '#f4ead7'
+  const backgroundColor = config?.backgroundColor ?? '#eef2e5'
+  const recipientName = config?.recipientName ?? ''
+  const monogram = config?.monogram ?? ''
+  const cardPreviewImage = config?.cardPreviewImage ?? ''
+  const showWax = !!config?.wax
+  const waxColor = config?.waxColor ?? '#9c3a3a'
+  const hintLabel = config?.hintLabel ?? ''
+  const autoOpen = !!config?.autoOpen
+
+  // Force the EnvelopeIntro overlay to re-mount each time the user presses
+  // "Vista previa", since the component caches its own stage state.
+  const [previewNonce, setPreviewNonce] = useState(0)
+  const triggerPreview = () => {
+    try {
+      sessionStorage.removeItem(`envelope-intro:${invitationId}`)
+    } catch {
+      /* ignore */
+    }
+    setPreviewNonce((n) => n + 1)
+  }
+
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-ink-400">Intro de sobre</p>
+          <p className="mt-0.5 text-[11px] text-ink-500">
+            Antes de mostrar la invitación, aparece un sobre cerrado. Al tocarlo la solapa
+            se abre y la invitación sale del sobre.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange(enabled ? { enabled: false } : { enabled: true })}
+          className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${enabled ? 'bg-ink-900' : 'bg-ink-200'}`}
+          aria-pressed={enabled}
+          aria-label="Activar intro de sobre"
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+
+      {enabled && (
+        <div className="mt-3 space-y-3">
+          {/* Colors */}
+          <div className="grid grid-cols-3 gap-2">
+            <ColorField
+              label="Sobre"
+              value={envelopeColor}
+              onChange={(v) => onChange({ envelopeColor: v })}
+            />
+            <ColorField
+              label="Forro"
+              value={liningColor}
+              onChange={(v) => onChange({ liningColor: v })}
+            />
+            <ColorField
+              label="Fondo"
+              value={backgroundColor}
+              onChange={(v) => onChange({ backgroundColor: v })}
+            />
+          </div>
+
+          {/* Recipient + monogram */}
+          <div>
+            <label className="label-flat">Nombre del invitado</label>
+            <input
+              type="text"
+              value={recipientName}
+              onChange={(e) => onChange({ recipientName: e.target.value })}
+              placeholder="Arlenne González"
+              className="input-flat"
+              maxLength={60}
+            />
+          </div>
+          <div>
+            <label className="label-flat">Monograma / iniciales</label>
+            <input
+              type="text"
+              value={monogram}
+              onChange={(e) => onChange({ monogram: e.target.value })}
+              placeholder="A · G"
+              className="input-flat"
+              maxLength={12}
+            />
+          </div>
+
+          {/* Optional preview image (shown on the card peeking out of envelope) */}
+          <div>
+            <label className="label-flat">Imagen del frente (opcional)</label>
+            <input
+              type="url"
+              value={cardPreviewImage}
+              onChange={(e) => onChange({ cardPreviewImage: e.target.value })}
+              placeholder="https://…"
+              className="input-flat"
+            />
+            <p className="mt-1 text-[10px] text-ink-400">
+              Imagen que se ve impresa en la tarjeta cuando sale del sobre. Si la dejas vacía
+              usa el nombre y el monograma.
+            </p>
+          </div>
+
+          {/* Wax seal toggle */}
+          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
+            <span className="font-medium">Sello de cera</span>
+            <span className="flex items-center gap-2">
+              {showWax && (
+                <input
+                  type="color"
+                  value={waxColor}
+                  onChange={(e) => onChange({ waxColor: e.target.value })}
+                  className="h-5 w-7 cursor-pointer rounded border border-ink-200 bg-white"
+                  aria-label="Color del sello"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => onChange({ wax: !showWax })}
+                className={`relative h-5 w-9 rounded-full transition-colors ${showWax ? 'bg-ink-900' : 'bg-ink-200'}`}
+                aria-pressed={showWax}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                    showWax ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </span>
+          </label>
+
+          {/* Auto-open toggle */}
+          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
+            <span>
+              <span className="font-medium">Abrir automáticamente</span>
+              <span className="block text-[10px] text-ink-400">
+                Si está apagado, el invitado toca el sobre para abrirlo.
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange({ autoOpen: !autoOpen })}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${autoOpen ? 'bg-ink-900' : 'bg-ink-200'}`}
+              aria-pressed={autoOpen}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  autoOpen ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </label>
+
+          {/* Hint label */}
+          <div>
+            <label className="label-flat">Texto pista</label>
+            <input
+              type="text"
+              value={hintLabel}
+              onChange={(e) => onChange({ hintLabel: e.target.value })}
+              placeholder="Toca para abrir"
+              className="input-flat"
+              maxLength={40}
+            />
+          </div>
+
+          {/* Preview button */}
+          <button
+            type="button"
+            onClick={triggerPreview}
+            className="btn-flat w-full"
+          >
+            Ver vista previa
+          </button>
+
+          {previewNonce > 0 && (
+            <EnvelopeIntroPreview
+              key={previewNonce}
+              config={{
+                enabled: true,
+                envelopeColor,
+                liningColor,
+                backgroundColor,
+                recipientName,
+                monogram,
+                cardPreviewImage,
+                wax: showWax,
+                waxColor,
+                hintLabel,
+                autoOpen,
+              }}
+              onClose={() => setPreviewNonce(0)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Lazy-loaded preview overlay used by the editor's "Ver vista previa" button. */
+function EnvelopeIntroPreview({
+  config,
+  onClose,
+}: {
+  config: EnvelopeIntroConfig
+  onClose: () => void
+}) {
+  // Mount the production EnvelopeIntro component so the preview matches 1:1.
+  // We hand it `demo` so it disappears immediately after the animation finishes.
+  const [Comp, setComp] = useState<null | React.ComponentType<any>>(null)
+  useEffect(() => {
+    let cancelled = false
+    import('../public/EnvelopeIntro').then((m) => {
+      if (!cancelled) setComp(() => m.EnvelopeIntro)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  if (!Comp) return null
+  return <Comp config={config} onDone={onClose} demo />
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="label-flat">{label}</span>
+      <span className="flex items-center gap-1.5 rounded border border-ink-200 bg-white px-2 py-1">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-5 w-6 shrink-0 cursor-pointer rounded border border-ink-200 bg-white"
+          aria-label={label}
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full min-w-0 border-0 bg-transparent text-[11px] text-ink-700 focus:outline-none"
+        />
+      </span>
+    </label>
   )
 }
 

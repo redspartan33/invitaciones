@@ -206,6 +206,32 @@ Cuando un invitado abre el link público (`?id=<slug>`) ya no se ve el texto "Ca
 
 Para decidir qué skeleton mostrar antes de que llegue la data, cacheamos el `kind` por slug en `localStorage` bajo la clave `invitation-builder:kind-cache:<slug>`. La primera vez que `App.tsx` recibe la `Invitation` del servidor, escribe el kind al cache; visitas posteriores muestran el skeleton correcto desde el primer paint. Visitas en frío (sin cache) muestran el `NeutralSkeleton`.
 
+### Intro de sobre animado (greenvelope-style)
+
+Las invitaciones pueden activar una intro previa en la que aparece un sobre cerrado centrado en pantalla; al tocarlo (o por auto-apertura) la solapa rota hacia atrás y la tarjeta sale del sobre antes de mostrar la invitación real. Se configura desde **Detalles → "Intro de sobre"** y se renderiza en la vista pública vía [EnvelopeIntro](src/components/public/EnvelopeIntro.tsx).
+
+- **Toggle de activación** — sólo aparece en invitaciones (no menús).
+- **Colores** — sobre, forro (interior del sobre, visible al abrir) y fondo del overlay. Pickers nativos + input hex.
+- **Nombre del invitado** — se imprime en el frente del sobre, con tipografía serif itálica.
+- **Monograma / iniciales** — texto corto sobre el nombre y dentro del sello de cera.
+- **Imagen del frente (opcional)** — URL de una imagen que se ve en la tarjeta cuando emerge del sobre. Si se deja vacía, la tarjeta muestra el nombre + "Te esperamos".
+- **Sello de cera** — toggle con color custom. Aparece centrado en la solapa.
+- **Abrir automáticamente** — si está apagado, el invitado toca el sobre. Si está encendido, se abre solo después de ~1.2 s.
+- **Texto pista** — frase que aparece en una pastilla pulsante debajo del sobre cerrado (default "Toca para abrir").
+- **Botón "Ver vista previa"** — monta el mismo componente en modo `demo` para validar el render sin tener que publicar.
+
+Capas del sobre (de fondo a frente, z-index):
+
+1. **Back panel** (env color) — base rectangular siempre visible detrás.
+2. **Lining** (lining color, opacity 0→1) — interior del sobre revelado al abrir.
+3. **Card** (cream o imagen custom) — la tarjeta misma, oculta inicialmente; con la animación sube en `y` y crece levemente.
+4. **Front pocket** (env color, polygon pentagonal con V-peak hacia arriba a 55%) — cubre las cuñas laterales superiores + toda la mitad inferior.
+5. **Flap** (env color con gradiente, polygon triangular `(0,0)-(100%,0)-(50%,55%)`) — solapa con `backfaceVisibility: hidden` y rotación `rotateX 0→180°` para abrirse.
+
+Las geometrías de las dos capas verdes son complementarias: comparten un mismo vértice central a `FLAP_APEX_PCT=55%` y juntas tilean todo el sobre sin huecos cuando la solapa está cerrada. Cuando la solapa rota más allá de los 90° su backface se oculta, dejando al descubierto el forro + la tarjeta que sube.
+
+La intro se muestra **una sola vez por sesión** del invitado: tras completarse (o tras pulsar **"Saltar"**), `sessionStorage` guarda `envelope-intro:<id>=1` y los siguientes refreshes saltan el overlay. El scroll se bloquea (`document.body.overflow = 'hidden'`) mientras la intro está visible. El estado interno avanza `closed → opening → leaving → gone`; al llegar a `gone` se llama `onDone()` y la invitación real toma el foco.
+
 ## Editor en móvil
 
 En pantallas `< 768px` el `ConfigPanel` queda oculto por defecto y el `Canvas` ocupa todo el ancho. Al tocar un bloque (o un panel del Footbar — Detalles, Colores, Fuentes, Música) el panel aparece **a pantalla completa** con su propio botón **×** en el header y un botón **Listo** al pie. Cerrar regresa al editor con la selección limpiada.

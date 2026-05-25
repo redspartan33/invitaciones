@@ -411,6 +411,37 @@ export interface GlobalSettings {
    *  background shows through. Defaults to false (keeps the secondary-color
    *  card on top of the background). Only matters when pageBackground is set. */
   transparentCanvas?: boolean
+  /**
+   * Animated envelope intro played before the public invitation is shown.
+   * When `enabled` is true, the public view first renders a centered closed
+   * envelope; tapping it (or auto-play after a short delay) opens the flap
+   * and the card slides out before handing off to the real invitation.
+   */
+  envelopeIntro?: EnvelopeIntroConfig
+}
+
+export interface EnvelopeIntroConfig {
+  enabled: boolean
+  /** Color of the envelope body + flap. Defaults to '#a3b88c' (sage). */
+  envelopeColor?: string
+  /** Color of the inside-of-flap lining shown after the flap opens. */
+  liningColor?: string
+  /** Backdrop color behind the envelope. Defaults to a soft neutral. */
+  backgroundColor?: string
+  /** Optional recipient name printed on the envelope front (e.g. "Arlenne González"). */
+  recipientName?: string
+  /** Optional short monogram/initials shown small above the recipient name. */
+  monogram?: string
+  /** Optional URL for the small preview image shown on the card peeking out. */
+  cardPreviewImage?: string
+  /** When true the flap shows a wax seal in the center of the envelope. */
+  wax?: boolean
+  /** Hex color of the wax seal. */
+  waxColor?: string
+  /** Label rendered under the closed envelope. Defaults to "Toca para abrir". */
+  hintLabel?: string
+  /** When true, the intro auto-opens after ~1.2s without requiring a tap. */
+  autoOpen?: boolean
 }
 
 export interface PageBackground {

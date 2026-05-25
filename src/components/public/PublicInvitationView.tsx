@@ -12,6 +12,7 @@ import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
 import { PageBackgroundLayer } from './PageBackgroundLayer'
+import { EnvelopeIntro } from './EnvelopeIntro'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
   const { globalSettings } = invitation
@@ -94,6 +95,30 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   const showSeasonTabs = hasVariants && variants.length > 1
   const firstNonHeaderIdx = visible.findIndex((b) => b.type !== 'menu-header')
 
+  // Envelope intro overlay — only on invitations (not menus), only when
+  // enabled, and only once per browser session.
+  const introCfg = globalSettings.envelopeIntro
+  const introEnabled = !!introCfg?.enabled && !isMenu
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    if (!introEnabled) return false
+    if (typeof window === 'undefined') return false
+    try {
+      const seenKey = `envelope-intro:${invitation.id}`
+      return sessionStorage.getItem(seenKey) !== '1'
+    } catch {
+      return true
+    }
+  })
+
+  const dismissIntro = () => {
+    try {
+      sessionStorage.setItem(`envelope-intro:${invitation.id}`, '1')
+    } catch {
+      /* sessionStorage unavailable — fine, just close */
+    }
+    setShowIntro(false)
+  }
+
   return (
     <div
       className={`invitation-canvas relative min-h-screen w-full ${fontClass}`}
@@ -137,6 +162,9 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
         ))}
       </div>
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
+      {introEnabled && showIntro && introCfg && (
+        <EnvelopeIntro config={introCfg} onDone={dismissIntro} />
+      )}
     </div>
   )
 }
