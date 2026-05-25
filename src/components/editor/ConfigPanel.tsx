@@ -1033,6 +1033,7 @@ function EnvelopeIntroRow({
   const waxColor = config?.waxColor ?? '#9c3a3a'
   const hintLabel = config?.hintLabel ?? ''
   const autoOpen = !!config?.autoOpen
+  const alwaysShowOnReload = !!config?.alwaysShowOnReload
 
   // Force the EnvelopeIntro overlay to re-mount each time the user presses
   // "Vista previa", since the component caches its own stage state.
@@ -1182,6 +1183,28 @@ function EnvelopeIntroRow({
             </button>
           </label>
 
+          {/* Always show on reload toggle */}
+          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
+            <span>
+              <span className="font-medium">Mostrar siempre al recargar</span>
+              <span className="block text-[10px] text-ink-400">
+                Si está encendido, la animación del sobre se mostrará en cada visita o recarga.
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange({ alwaysShowOnReload: !alwaysShowOnReload })}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${alwaysShowOnReload ? 'bg-ink-900' : 'bg-ink-200'}`}
+              aria-pressed={alwaysShowOnReload}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  alwaysShowOnReload ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </label>
+
           {/* Hint label */}
           <div>
             <label className="label-flat">Texto pista</label>
@@ -1219,6 +1242,7 @@ function EnvelopeIntroRow({
                 waxColor,
                 hintLabel,
                 autoOpen,
+                alwaysShowOnReload,
               }}
               invitation={invitation}
               onClose={() => setPreviewNonce(0)}

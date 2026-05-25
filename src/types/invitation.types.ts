@@ -442,6 +442,8 @@ export interface EnvelopeIntroConfig {
   hintLabel?: string
   /** When true, the intro auto-opens after ~1.2s without requiring a tap. */
   autoOpen?: boolean
+  /** When true, the intro bypasses the session storage guard so it is shown on every reload/visit. */
+  alwaysShowOnReload?: boolean
 }
 
 export interface PageBackground {

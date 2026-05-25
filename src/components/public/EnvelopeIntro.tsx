@@ -87,7 +87,7 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
       console.log('[envelope] transitioning to gone, calling onDone')
       setStage('gone')
       onDone()
-    }, demo ? 200 : 500)
+    }, demo ? 250 : 850)
     return () => window.clearTimeout(t)
   }, [stage, onDone, demo])
 
@@ -211,15 +211,32 @@ function EnvelopeStage({
   const open = stage === 'opening' || stage === 'leaving'
 
   // Card slides up out of the envelope, then scales toward viewport center.
-  const cardAnim = open
+  // In the leaving stage, it flies upward and zooms in (scale 2.2) while fading out,
+  // making it look like the invitation is expanding to become the full page.
+  const cardAnim = stage === 'leaving'
+    ? {
+        y: '-120%',
+        scale: 2.2,
+        opacity: 0,
+        transition: { duration: 0.8, ease: EASE_SMOOTH },
+      }
+    : open
     ? {
         y: '-58%',
         scale: 1.18,
+        opacity: 1,
         transition: { delay: 0.55, duration: 1.05, ease: EASE_SMOOTH },
       }
-    : { y: '0%', scale: 1 }
+    : { y: '0%', scale: 1, opacity: 1 }
 
-  const stageAnim = open
+  // Envelope parts (back, lining, pocket, flap) slide down and fade out during transition.
+  const envelopePartsAnim = stage === 'leaving'
+    ? { y: '120%', opacity: 0, transition: { duration: 0.8, ease: EASE_SMOOTH } }
+    : { y: '0%', opacity: 1 }
+
+  const stageAnim = stage === 'leaving'
+    ? { scale: 1 }
+    : open
     ? { scale: 0.96, transition: { delay: 0.25, duration: 1.5, ease: 'easeOut' as Easing } }
     : { scale: 1 }
 
@@ -242,13 +259,14 @@ function EnvelopeStage({
       animate={stageAnim}
     >
       {/* Back of envelope — full rectangle, always behind everything. */}
-      <div
+      <motion.div
         className="absolute inset-0 rounded-[6px]"
         style={{
           background: `linear-gradient(180deg, ${shadeColor(envelopeColor, -4)} 0%, ${shaded} 100%)`,
           boxShadow:
             '0 24px 60px -20px rgba(0,0,0,0.35), 0 8px 18px -8px rgba(0,0,0,0.2)',
         }}
+        animate={envelopePartsAnim}
       />
 
       {/* Lining — the "inside" surface revealed once the flap lifts. Lives at
@@ -257,11 +275,15 @@ function EnvelopeStage({
       <motion.div
         className="absolute inset-0 rounded-[6px]"
         style={{ zIndex: 1, background: liningColor }}
-        initial={{ opacity: 0 }}
-        animate={{
-          opacity: open ? 1 : 0,
-          transition: { delay: open ? 0.3 : 0, duration: 0.3 },
-        }}
+        initial={{ opacity: 0, y: '0%' }}
+        animate={stage === 'leaving'
+          ? { y: '120%', opacity: 0, transition: { duration: 0.8, ease: EASE_SMOOTH } }
+          : {
+              opacity: open ? 1 : 0,
+              y: '0%',
+              transition: { delay: open ? 0.3 : 0, duration: 0.3 },
+            }
+        }
         aria-hidden
       />
 
@@ -278,7 +300,7 @@ function EnvelopeStage({
           zIndex: 2,
           transformOrigin: '50% 100%',
         }}
-        initial={{ y: '0%', scale: 1 }}
+        initial={{ y: '0%', scale: 1, opacity: 1 }}
         animate={cardAnim}
       >
         <CardPreview
@@ -295,7 +317,7 @@ function EnvelopeStage({
           bottom half. Its top edge slopes from each upper corner down to a
           shared apex at (50%, FLAP_APEX_PCT). Combined with the flap, it
           tiles the envelope perfectly when closed. */}
-      <div
+      <motion.div
         className="absolute inset-0 rounded-[6px]"
         style={{
           zIndex: 3,
@@ -303,6 +325,7 @@ function EnvelopeStage({
           clipPath: `polygon(0 0, 50% ${FLAP_APEX_PCT}%, 100% 0, 100% 100%, 0 100%)`,
           boxShadow: 'inset 0 4px 12px -8px rgba(0,0,0,0.18)',
         }}
+        animate={envelopePartsAnim}
       >
         {recipientName && (
           <div
@@ -320,7 +343,7 @@ function EnvelopeStage({
             </p>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Flap — downward triangle from the upper corners to the shared apex.
           Hinged at the top edge; rotates 180° on X to open. backface-visibility
@@ -337,9 +360,17 @@ function EnvelopeStage({
           background: `linear-gradient(180deg, ${highlight} 0%, ${envelopeColor} 100%)`,
           boxShadow: open ? 'none' : '0 4px 6px -3px rgba(0,0,0,0.18)',
         }}
-        initial={{ rotateX: 0 }}
-        animate={open ? { rotateX: 180 } : { rotateX: 0 }}
-        transition={{ duration: 0.85, ease: EASE_FLAP, delay: 0.05 }}
+        initial={{ rotateX: 0, y: '0%', opacity: 1 }}
+        animate={stage === 'leaving'
+          ? { y: '120%', opacity: 0, transition: { duration: 0.8, ease: EASE_SMOOTH } }
+          : open
+          ? { rotateX: 180, y: '0%', opacity: 1 }
+          : { rotateX: 0, y: '0%', opacity: 1 }
+        }
+        transition={stage === 'leaving'
+          ? { duration: 0.8, ease: EASE_SMOOTH }
+          : { duration: 0.85, ease: EASE_FLAP, delay: 0.05 }
+        }
       >
         {showWax && (
           <div

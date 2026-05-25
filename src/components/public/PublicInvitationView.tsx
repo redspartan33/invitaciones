@@ -102,6 +102,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   const [showIntro, setShowIntro] = useState<boolean>(() => {
     if (!introEnabled) return false
     if (typeof window === 'undefined') return false
+    if (introCfg?.alwaysShowOnReload) return true
     try {
       const seenKey = `envelope-intro:${invitation.id}`
       return sessionStorage.getItem(seenKey) !== '1'
