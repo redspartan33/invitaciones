@@ -6,6 +6,7 @@ import { BLOCK_CATALOG } from '../../utils/blockDefaults'
 import type {
   EnvelopeIntroConfig,
   FontFamily,
+  Invitation,
   Language,
   PageBackground,
 } from '../../types/invitation.types'
@@ -593,6 +594,7 @@ function DetailsPanel() {
         <EnvelopeIntroRow
           config={inv.globalSettings.envelopeIntro}
           invitationId={inv.id}
+          invitation={inv}
           onChange={(patch) =>
             updateGlobalSettings({
               envelopeIntro:
@@ -1012,10 +1014,12 @@ function PageBackgroundRow({
 function EnvelopeIntroRow({
   config,
   invitationId,
+  invitation,
   onChange,
 }: {
   config?: EnvelopeIntroConfig
   invitationId: string
+  invitation: Invitation
   onChange: (patch: Partial<EnvelopeIntroConfig> | null) => void
 }) {
   const enabled = !!config?.enabled
@@ -1216,6 +1220,7 @@ function EnvelopeIntroRow({
                 hintLabel,
                 autoOpen,
               }}
+              invitation={invitation}
               onClose={() => setPreviewNonce(0)}
             />
           )}
@@ -1228,9 +1233,11 @@ function EnvelopeIntroRow({
 /** Lazy-loaded preview overlay used by the editor's "Ver vista previa" button. */
 function EnvelopeIntroPreview({
   config,
+  invitation,
   onClose,
 }: {
   config: EnvelopeIntroConfig
+  invitation: Invitation
   onClose: () => void
 }) {
   // Mount the production EnvelopeIntro component so the preview matches 1:1.
@@ -1246,7 +1253,7 @@ function EnvelopeIntroPreview({
     }
   }, [])
   if (!Comp) return null
-  return <Comp config={config} onDone={onClose} demo />
+  return <Comp config={config} onDone={onClose} demo invitation={invitation} />
 }
 
 function ColorField({

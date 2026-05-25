@@ -163,7 +163,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
       </div>
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
       {introEnabled && showIntro && introCfg && (
-        <EnvelopeIntro config={introCfg} onDone={dismissIntro} />
+        <EnvelopeIntro config={introCfg} onDone={dismissIntro} invitation={invitation} />
       )}
     </div>
   )

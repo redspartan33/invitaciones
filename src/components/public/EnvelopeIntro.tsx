@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, type Easing } from 'framer-motion'
-import type { EnvelopeIntroConfig } from '../../types/invitation.types'
+import type {
+  EnvelopeIntroConfig,
+  HeroData,
+  Invitation,
+  InvitationBlock,
+} from '../../types/invitation.types'
+import { formatDate } from '../../utils/blockValidation'
 
 const EASE_SMOOTH: Easing = [0.22, 1, 0.36, 1]
 const EASE_FLAP: Easing = [0.7, 0, 0.84, 0]
@@ -12,6 +18,11 @@ interface EnvelopeIntroProps {
   /** When true, the intro behaves as a one-shot demo: it re-opens on every mount
    *  (used by the editor preview). Default: false (production behavior). */
   demo?: boolean
+  /** Full invitation. When provided, the card that emerges from the envelope
+   *  shows a live preview of the Hero block — same title, subtitle and date
+   *  the visitor is about to see, so the transition from envelope → page feels
+   *  continuous. Falls back to a generic preview when omitted. */
+  invitation?: Invitation
 }
 
 type Stage = 'closed' | 'opening' | 'leaving' | 'gone'
@@ -22,8 +33,18 @@ type Stage = 'closed' | 'opening' | 'leaving' | 'gone'
  * lining, the invitation card slides up out of the envelope and grows to fill
  * the viewport, and the overlay fades away to hand off to the real invitation.
  */
-export function EnvelopeIntro({ config, onDone, demo }: EnvelopeIntroProps) {
+export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntroProps) {
   const [stage, setStage] = useState<Stage>('closed')
+
+  // Resolve the hero block that drives the card preview, if any.
+  const heroBlock = useMemo(() => {
+    if (!invitation) return null
+    return (
+      (invitation.blocks ?? []).find((b) => b.type === 'hero' && b.visible) as
+        | InvitationBlock<'hero'>
+        | undefined
+    ) ?? null
+  }, [invitation])
 
   const envelopeColor = config.envelopeColor || '#a3b88c'
   const liningColor = config.liningColor || '#f4ead7'
@@ -51,11 +72,12 @@ export function EnvelopeIntro({ config, onDone, demo }: EnvelopeIntroProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.autoOpen, stage])
 
-  // Once the flap + card animations have settled, fade the whole overlay out
-  // and let the real invitation underneath take over.
+  // Once the flap + card animations have settled, hold the emerged card on
+  // screen for ~1.4 s so the guest can read the title/date, then fade the
+  // overlay out and let the real invitation underneath take over.
   useEffect(() => {
     if (stage !== 'opening') return
-    const t = window.setTimeout(() => setStage('leaving'), 2200)
+    const t = window.setTimeout(() => setStage('leaving'), 3200)
     return () => window.clearTimeout(t)
   }, [stage])
 
@@ -107,6 +129,9 @@ export function EnvelopeIntro({ config, onDone, demo }: EnvelopeIntroProps) {
             showWax={showWax}
             waxColor={waxColor}
             preview={config.cardPreviewImage}
+            hero={heroBlock}
+            globalAccent={invitation?.globalSettings.colorAccent}
+            globalPrimary={invitation?.globalSettings.colorPrimary}
           />
 
           {/* Hint pill — only while closed */}
@@ -162,6 +187,9 @@ interface StageProps {
   showWax: boolean
   waxColor: string
   preview?: string
+  hero: InvitationBlock<'hero'> | null
+  globalAccent?: string
+  globalPrimary?: string
 }
 
 function EnvelopeStage({
@@ -175,6 +203,9 @@ function EnvelopeStage({
   showWax,
   waxColor,
   preview,
+  hero,
+  globalAccent,
+  globalPrimary,
 }: StageProps) {
   // Width is responsive; height scales proportionally to keep the envelope ratio.
   const open = stage === 'opening' || stage === 'leaving'
@@ -254,6 +285,9 @@ function EnvelopeStage({
           recipientName={recipientName}
           monogram={monogram}
           preview={preview}
+          hero={hero}
+          accentColor={globalAccent}
+          primaryColor={globalPrimary}
         />
       </motion.div>
 
@@ -336,11 +370,18 @@ function CardPreview({
   recipientName,
   monogram,
   preview,
+  hero,
+  accentColor,
+  primaryColor,
 }: {
   recipientName: string
   monogram: string
   preview?: string
+  hero: InvitationBlock<'hero'> | null
+  accentColor?: string
+  primaryColor?: string
 }) {
+  // 1) Custom artwork wins if the user provided one explicitly.
   if (preview) {
     return (
       <div
@@ -354,6 +395,14 @@ function CardPreview({
       />
     )
   }
+
+  // 2) Real Hero preview — same title, subtitle and date the guest is about
+  //    to see on the page, so the card → invitation hand-off feels continuous.
+  if (hero) {
+    return <HeroCardPreview hero={hero} accentColor={accentColor} primaryColor={primaryColor} />
+  }
+
+  // 3) Fallback — no hero block configured yet.
   return (
     <div
       className="flex h-full w-full flex-col items-center justify-center rounded-[4px] bg-[#fdf7e8] px-6 text-center"
@@ -375,6 +424,84 @@ function CardPreview({
       <p className="mt-3 text-[10px] uppercase tracking-[0.4em] text-ink-500">
         Te esperamos
       </p>
+    </div>
+  )
+}
+
+/**
+ * Compact rendering of the Hero block that fits inside the envelope card.
+ * Reads the same data the page Hero uses (title, subtitle, eventDate) so
+ * when the overlay fades the visitor sees the same content beneath — a
+ * seamless transition from envelope to invitation.
+ */
+function HeroCardPreview({
+  hero,
+  accentColor,
+  primaryColor,
+}: {
+  hero: InvitationBlock<'hero'>
+  accentColor?: string
+  primaryColor?: string
+}) {
+  const data = hero.data as HeroData
+  const usingImage = !!data.backgroundImage
+  const bg: React.CSSProperties = usingImage
+    ? {
+        backgroundImage: `url(${data.backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : data.backgroundColor
+    ? { backgroundColor: data.backgroundColor }
+    : { background: '#fdf7e8' }
+
+  const showSubtitle = data.showSubtitle && !!data.subtitle
+  const showTitle = data.showTitle && !!data.title
+  const showDate = data.showDate && !!data.eventDate
+  const dateLabel = showDate ? formatDate(data.eventDate, data.dateFormat) : ''
+
+  return (
+    <div
+      className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-[4px] px-4 text-center"
+      style={{ ...bg, boxShadow: '0 10px 28px -10px rgba(0,0,0,0.35)' }}
+    >
+      {/* Subtle wash so text stays legible on photo backgrounds. */}
+      {usingImage && (
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: 'rgba(255,255,255,0.55)' }}
+        />
+      )}
+      <div className="relative flex flex-col items-center gap-2">
+        {showSubtitle && (
+          <p
+            className="text-[10px] uppercase tracking-[0.32em]"
+            style={{ color: accentColor || '#7a6a4f' }}
+          >
+            {data.subtitle}
+          </p>
+        )}
+        {showTitle && (
+          <h1
+            className="font-serif leading-tight"
+            style={{
+              fontSize: 'clamp(22px, 5.4vw, 44px)',
+              color: primaryColor || '#1f2937',
+            }}
+          >
+            {data.title}
+          </h1>
+        )}
+        {showDate && (
+          <p
+            className="mt-1 text-[10px] uppercase tracking-[0.32em]"
+            style={{ color: 'rgba(0,0,0,0.55)' }}
+          >
+            {dateLabel}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
