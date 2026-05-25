@@ -27,6 +27,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
   const updateBlockData = useEditorStore((s) => s.updateBlockData)
   const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle)
   const validation = validateBlock(block)
+  const hasCustomPadding = block.style?.paddingTop !== undefined || block.style?.paddingBottom !== undefined
 
   const textStyles = block.style?.textStyles ?? {}
 
@@ -362,22 +363,105 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Espaciado</h3>
-        <div className="grid grid-cols-4 gap-2">
-          {(['sm', 'md', 'lg', 'xl'] as const).map((p) => (
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Espaciado vertical</h3>
+
+        {/* Predefined quick presets */}
+        <div>
+          <label className="label-flat">Ajuste rápido (Predefinido)</label>
+          <div className="grid grid-cols-4 gap-2">
+            {(['sm', 'md', 'lg', 'xl'] as const).map((p) => {
+              const active = !hasCustomPadding && (block.style?.paddingY ?? 'lg') === p
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => updateBlockStyle(block.id, { paddingY: p, paddingTop: undefined, paddingBottom: undefined })}
+                  className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
+                    active
+                      ? 'border-ink-900 bg-ink-900 text-white'
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Custom pixel sliders and inputs */}
+        <div className="space-y-3 rounded border border-ink-200 bg-white p-3">
+          <div>
+            <div className="flex items-center justify-between label-flat">
+              <span>Espaciado superior</span>
+              <span className="text-[10px] font-mono text-ink-400">
+                {block.style?.paddingTop !== undefined ? `${block.style.paddingTop}px` : 'Por defecto'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={200}
+                value={block.style?.paddingTop ?? 80}
+                onChange={(e) => updateBlockStyle(block.id, { paddingTop: Number(e.target.value) })}
+                className="flex-1 accent-ink-900"
+              />
+              <input
+                type="number"
+                min={0}
+                max={500}
+                value={block.style?.paddingTop !== undefined ? block.style.paddingTop : ''}
+                placeholder="Auto"
+                onChange={(e) => {
+                  const val = e.target.value === '' ? undefined : Number(e.target.value)
+                  updateBlockStyle(block.id, { paddingTop: val })
+                }}
+                className="input-flat w-16 text-center py-1 px-1.5"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between label-flat">
+              <span>Espaciado inferior</span>
+              <span className="text-[10px] font-mono text-ink-400">
+                {block.style?.paddingBottom !== undefined ? `${block.style.paddingBottom}px` : 'Por defecto'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={200}
+                value={block.style?.paddingBottom ?? 80}
+                onChange={(e) => updateBlockStyle(block.id, { paddingBottom: Number(e.target.value) })}
+                className="flex-1 accent-ink-900"
+              />
+              <input
+                type="number"
+                min={0}
+                max={500}
+                value={block.style?.paddingBottom !== undefined ? block.style.paddingBottom : ''}
+                placeholder="Auto"
+                onChange={(e) => {
+                  const val = e.target.value === '' ? undefined : Number(e.target.value)
+                  updateBlockStyle(block.id, { paddingBottom: val })
+                }}
+                className="input-flat w-16 text-center py-1 px-1.5"
+              />
+            </div>
+          </div>
+
+          {hasCustomPadding && (
             <button
-              key={p}
               type="button"
-              onClick={() => updateBlockStyle(block.id, { paddingY: p })}
-              className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
-                (block.style?.paddingY ?? 'lg') === p
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
-              }`}
+              onClick={() => updateBlockStyle(block.id, { paddingTop: undefined, paddingBottom: undefined })}
+              className="text-[10px] uppercase tracking-widest text-rose-600 hover:underline"
             >
-              {p}
+              Restablecer a predefinido
             </button>
-          ))}
+          )}
         </div>
       </section>
 

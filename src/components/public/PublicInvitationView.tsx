@@ -131,6 +131,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
           ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
           fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined,
+          backgroundColor: hasPageBackground ? 'transparent' : undefined,
         } as React.CSSProperties
       }
     >

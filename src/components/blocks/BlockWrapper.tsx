@@ -50,7 +50,10 @@ export function BlockWrapper({
   children: ReactNode
   align?: 'left' | 'center' | 'right'
 }) {
-  const padding = padMap[style?.paddingY ?? 'lg']
+  const hasCustomPadding = style?.paddingTop !== undefined || style?.paddingBottom !== undefined
+  const padding = hasCustomPadding
+    ? 'px-5 md:px-8'
+    : `${padMap[style?.paddingY ?? 'lg']} px-5 md:px-8`
   const textSize = style?.textSize ?? 'md'
   const hasImage = !!style?.backgroundImage
   const radiusPx = BORDER_RADIUS_PX[style?.borderRadius ?? 'none']
@@ -58,6 +61,8 @@ export function BlockWrapper({
     backgroundColor: style?.backgroundColor || undefined,
     color: style?.textColor || undefined,
     textAlign: align,
+    paddingTop: style?.paddingTop !== undefined ? `${style.paddingTop}px` : undefined,
+    paddingBottom: style?.paddingBottom !== undefined ? `${style.paddingBottom}px` : undefined,
     // Apply borderRadius to the block container. `overflow: hidden` ensures
     // the bg image is clipped by the rounded corners (otherwise it would
     // spill out of the rounded box on browsers that don't auto-clip).
@@ -76,7 +81,7 @@ export function BlockWrapper({
   ;(css as Record<string, string>)['--item-gap'] = ITEM_GAP_PX[style?.itemSpacing ?? 'md']
   ;(css as Record<string, string>)['--block-radius'] = radiusPx
   return (
-    <div className={`block-scale-active block-text-${textSize} ${padding} px-5 md:px-8`} style={css}>
+    <div className={`block-scale-active block-text-${textSize} ${padding}`} style={css}>
       <div className="mx-auto max-w-2xl">{children}</div>
     </div>
   )

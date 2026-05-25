@@ -44,6 +44,8 @@ export interface BlockStyle {
   backgroundImage?: string
   textColor?: string
   paddingY?: 'sm' | 'md' | 'lg' | 'xl'
+  paddingTop?: number
+  paddingBottom?: number
   textSize?: TextSize
   // Per-element overrides keyed by field name (e.g. "title", "items.title").
   textStyles?: Record<string, TextElementStyle>
