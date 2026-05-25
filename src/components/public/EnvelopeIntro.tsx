@@ -110,8 +110,7 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
           key="envelope-intro"
           className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden select-none"
           style={{ background: backgroundColor }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.45 }}
           onClick={open}
