@@ -1,4 +1,5 @@
 import type { Invitation, InvitationBlock } from '../types/invitation.types'
+import { apiUrl } from './apiBase'
 
 // When the editor lets users upload images via FileReader we end up with
 // `data:image/...;base64,...` URIs embedded in the invitation JSON. Multiple
@@ -10,7 +11,7 @@ import type { Invitation, InvitationBlock } from '../types/invitation.types'
 // replace them with the returned public URL. The serialized invitation then
 // stays small no matter how many photos the user added.
 
-const ASSETS_ENDPOINT = '/api/assets'
+const ASSETS_ENDPOINT = apiUrl('/api/assets')
 
 // Soft client-side cap. Vercel Functions accept JSON bodies up to ~4.5 MB.
 // File pickers cap at 2 MB raw → ~2.7 MB base64 → ~2.8 MB JSON body, well

@@ -1,6 +1,9 @@
-// Client for the public guestlist. The server (Vercel Blob via /api) is the
-// SOLE source of truth — entries are never persisted locally. This guarantees
-// every device that opens the same link sees the exact same confirmed list.
+import { apiUrl } from './apiBase'
+
+// Client for the public guestlist. The server (Express API on
+// api.lamartinasma.com) is the SOLE source of truth — entries are never
+// persisted locally. This guarantees every device that opens the same link
+// sees the exact same confirmed list.
 //
 // The only thing kept in localStorage is the per-device "already submitted"
 // marker, which is used to prevent the same browser from submitting twice.
@@ -54,7 +57,7 @@ function markSubmitted(slug: string, name: string) {
 /** Initialize an empty guestlist on the server. Resolves silently on failure. */
 export async function initGuestList(slug: string): Promise<void> {
   try {
-    await fetch(`/api/guestlists/${slug}`, { method: 'PUT' })
+    await fetch(apiUrl(`/api/guestlists/${slug}`), { method: 'PUT' })
   } catch {
     // ignore — the first submission will lazily create the file
   }
@@ -89,7 +92,7 @@ export async function submitGuestEntry(
   if (!name) return { ok: false, reason: 'invalid-name' }
   let res: Response
   try {
-    res = await fetch(`/api/guestlists/${slug}`, {
+    res = await fetch(apiUrl(`/api/guestlists/${slug}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, message: payload.message ?? '' }),
@@ -117,7 +120,7 @@ export async function loadGuestList(slug: string): Promise<LoadResult> {
   try {
     // Cache-bust so the API response can't be served from a service-worker /
     // proxy / browser cache.
-    res = await fetch(`/api/guestlists/${slug}?_=${Date.now()}`, { cache: 'no-store' })
+    res = await fetch(apiUrl(`/api/guestlists/${slug}?_=${Date.now()}`), { cache: 'no-store' })
   } catch (e) {
     console.error('[guestlist] load network error', e)
     return { ok: false, reason: 'network' }

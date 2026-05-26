@@ -1,12 +1,14 @@
 import type { Invitation } from '../types/invitation.types'
+import { apiUrl } from './apiBase'
 
-// Persistent registry backed by Vercel Blob via our own serverless API.
-// Each invitation is stored as a public JSON blob at `inv/<slug>.json`.
+// Persistent registry backed by our own Express API on api.lamartinasma.com.
+// Each invitation is stored as a JSON file at `data/inv/<slug>.json` on the
+// API server's filesystem.
 //
-// In local development (where /api is not available) every function falls back
-// to a no-op / null so the rest of the app continues working with localStorage.
+// In local development (where the API is not available) every function falls
+// back to null/false so the rest of the app continues working with localStorage.
 
-const API_BASE = '/api/invitations'
+const API_BASE = apiUrl('/api/invitations')
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

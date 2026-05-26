@@ -3,6 +3,7 @@ import { INVITATION_PREFIX, useEditorStore } from '../store/editorStore'
 import type { Invitation, InvitationKind } from '../types/invitation.types'
 import { ADMIN_TOKEN } from './adminAuth'
 import { listFromRegistry, deleteFromRegistry } from '../utils/inviteRegistry'
+import { apiUrl } from '../utils/apiBase'
 
 function StatusBadge({ status }: { status: 'draft' | 'published' | 'archived' }) {
   const map = {
@@ -18,17 +19,28 @@ function StatusBadge({ status }: { status: 'draft' | 'published' | 'archived' })
   )
 }
 
+// Normalized result the UI consumes. Older deploys returned a Vercel-Blob-
+// shaped payload ({ blob: { writeOk, readOk, error } }); the current Express
+// server returns the same fields at the top level. We accept both.
 interface DiagResult {
-  env: Record<string, boolean>
   blob: { writeOk: boolean; readOk: boolean; error: string | null }
   summary: string
 }
 
 async function fetchDiag(): Promise<DiagResult | null> {
   try {
-    const res = await fetch('/api/diag', { cache: 'no-store' })
+    const res = await fetch(apiUrl('/api/diag'), { cache: 'no-store' })
     if (!res.ok) return null
-    return (await res.json()) as DiagResult
+    const raw = (await res.json()) as Record<string, unknown>
+    const blob = (raw.blob ?? {
+      writeOk: !!raw.writeOk,
+      readOk: !!raw.readOk,
+      error: (raw.error as string | null) ?? null,
+    }) as DiagResult['blob']
+    const summary = typeof raw.summary === 'string'
+      ? raw.summary
+      : blob.error ?? (blob.writeOk && blob.readOk ? 'OK' : 'fallo de almacenamiento')
+    return { blob, summary }
   } catch {
     return null
   }
