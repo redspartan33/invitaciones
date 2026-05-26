@@ -319,32 +319,52 @@ su contenido) al `public_html` de Hostinger via File Manager, FTP o SFTP.
 - SPA fallback: cualquier ruta cae en `index.html` para que `/?inv=<id>` funcione
 - Cache largo para los assets hasheados, `no-cache` para el HTML
 
-## Backend en Vercel (Vercel Blob)
+## Backend en Hostinger (Express + filesystem)
 
-El backend vive en este mismo repo como funciones serverless de Vercel y guarda
-cada invitación como un blob público JSON en `inv/<slug>.json`. No requiere
-subdominio: comparte el dominio del frontend.
+El backend vive en un repo separado (`redspartan33/invitaciones-api`) como app
+Express normal y corre en un Node.js App de Hostinger en `api.lamartinasma.com`.
+Guarda cada invitación como un archivo JSON en `data/inv/<slug>.json` y las
+imágenes subidas en `uploads/<folder>/<file>` del propio servidor.
 
-**Endpoints (mismo origen):**
+> Cómo llegamos aquí: el backend original era un set de Vercel Functions sobre
+> Vercel Blob. Migrado en mayo 2026 para no pagar Vercel Pro — todos los datos
+> existentes se movieron con `/tmp/migration/migrate.mjs` (script de un solo
+> uso, no versionado).
+
+**Endpoints (origen `https://api.lamartinasma.com`):**
 
 ```
 GET    /api/health                       → { ok: true }
-GET    /api/diag                         → estado vivo del Blob store
+GET    /api/diag                         → { writeOk, readOk, storage, … }
 PUT    /api/invitations/<slug>           → { ok: true }    (body: Invitation JSON)
 GET    /api/invitations/<slug>           → Invitation JSON | 404
 DELETE /api/invitations/<slug>           → { ok: true }
 GET    /api/invitations/index            → [Invitation, …]   (todas)
 DELETE /api/invitations/index?id=<slug>  → { ok: true }
+POST   /api/assets                       → { url } (sube data URI; devuelve URL absoluta)
+GET    /api/asset/<folder>/<file>        → bytes del archivo
+GET    /api/guestlists/<slug>            → [GuestEntry, …]
+POST   /api/guestlists/<slug>            → { ok: true, entry }
+PUT    /api/guestlists/<slug>            → { ok: true }   (inicializa vacía)
 ```
 
-### Setup en Vercel (una sola vez)
+### Cómo se compone la URL desde el frontend
 
-1. En el dashboard de Vercel del proyecto, ve a **Storage → Create Database →
-   Blob → Connect to Project** (elige Production + Preview + Development).
-2. Vercel inyecta automáticamente `BLOB_READ_WRITE_TOKEN`. No hay que copiar
-   nada manualmente.
-3. El redeploy automático deja los endpoints listos. Verifica con
-   `/api/diag` que `writeOk` y `readOk` sean `true`.
+`src/utils/apiBase.ts` expone `apiUrl(path)`. En dev devuelve una ruta relativa
+y el `vite.config.ts` proxea `/api` a `http://localhost:5050` (donde corres el
+Express local). En build de producción devuelve el origen absoluto
+`https://api.lamartinasma.com`, así el frontend en `lamartinasma.com` apunta a
+otro origen sin ningún truco extra del lado del servidor.
+
+### Levantar el backend en local
+
+```bash
+cd ../invitaciones-api   # repo separado
+npm install
+npm start                 # escucha en :5050
+```
+
+El frontend en `npm run dev` proxea `/api` ahí.
 
 ### Garantía de publicación
 
