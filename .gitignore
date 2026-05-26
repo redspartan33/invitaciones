@@ -9,3 +9,6 @@ dist-ssr
 .cache
 coverage
 *.tsbuildinfo
+
+# Backend lives in its own repo: redspartan33/invitaciones-api
+server/
