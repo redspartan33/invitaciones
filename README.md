@@ -196,6 +196,8 @@ Toggle **"Ocultar fondos de bloques"** suprime el `backgroundColor` / `backgroun
 
 Ambos toggles funcionan igual para invitaciones y menús. Cuando se configura un `pageBackground`, los dos toggles **se asumen encendidos por default** (basta con setear `transparentCanvas` o `hideBlockBackgrounds` explícitamente a `false` para mantener el comportamiento legacy). En el editor cada device-frame agrega `isolation: isolate` para mantener el negative-z del background layer dentro del frame en lugar de detrás del lienzo gris.
 
+En la vista pública, `PageBackgroundLayer` se monta a nivel de `App` (afuera de cualquier stacking context) con `position: fixed`. Como `fixed` se escapa de cualquier `isolation: isolate` en un wrapper, el negative-z del layer quedaba detrás del `background: #fafafa` que `index.css` aplica a `html/body/#root` y el fondo no se veía. La solución: mientras el layer está activo, su `useEffect` agrega la clase `has-page-background` al `<body>` y una regla CSS limpia el `background` de `html/body/#root` para esa visita.
+
 ### Nombre de la pestaña del navegador
 
 En **Detalles** → **"Nombre en la pestaña"** se puede personalizar el `document.title` que ven los invitados en su navegador. Si se deja vacío, se usa el `invitation.title`. Aplicado vía `usePageChrome` ([src/hooks/usePageChrome.ts](src/hooks/usePageChrome.ts)) que guarda/restaura el título original al montar/desmontar.

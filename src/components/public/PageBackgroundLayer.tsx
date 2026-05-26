@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { PageBackground } from '../../types/invitation.types'
 import {
   backgroundPositionStyle,
@@ -13,7 +14,23 @@ import {
  */
 export function PageBackgroundLayer({ bg }: { bg?: PageBackground }) {
   const source = resolveBackgroundSource(bg)
-  if (source.kind === 'empty') return null
+  const active = source.kind !== 'empty'
+
+  // When a page background is in play we need html/body/#root to be
+  // transparent — `index.css` paints them all with `background: #fafafa` which
+  // would otherwise sit on top of the layer's negative-z stack and hide it
+  // (the fixed-positioned layer escapes parent stacking contexts so a wrapper
+  // `isolation: isolate` cannot save us here). Toggling a body class lets a
+  // plain CSS rule clear those backgrounds for the duration of the visit.
+  useEffect(() => {
+    if (!active || typeof document === 'undefined') return
+    document.body.classList.add('has-page-background')
+    return () => {
+      document.body.classList.remove('has-page-background')
+    }
+  }, [active])
+
+  if (!active) return null
 
   const opacity = clamp((bg?.opacity ?? 100) / 100, 0, 1)
   const blur = clamp(bg?.blur ?? 0, 0, 30)

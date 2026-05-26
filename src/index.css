@@ -20,6 +20,16 @@ html, body, #root {
   text-rendering: optimizeLegibility;
 }
 
+/* When the public view mounts a page background, the html/body/#root
+   default `#fafafa` would paint OVER the fixed -z-20 background layer
+   (fixed positioning escapes parent stacking contexts so isolation on a
+   wrapper can't help). Clearing them lets the layer come through. */
+html:has(body.has-page-background),
+body.has-page-background,
+body.has-page-background #root {
+  background: transparent;
+}
+
 /* Flat UI: no shadows. Use borders + subtle backgrounds for separation.
    Custom component classes live inside @layer components so Tailwind
    utilities (e.g. `hidden`, `md:inline-flex`) defined later in the
