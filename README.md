@@ -192,6 +192,10 @@ Configuración adicional en el mismo row: **opacidad** (0–100%), **desenfoque*
 
 Toggle **"Tarjeta central transparente"** vuelve el wrapper `max-w-[920px]` transparente para que el fondo se vea a través de los bloques (útil con un fondo de baja opacidad). Apagado mantiene la tarjeta sólida con el color secundario encima del fondo.
 
+Toggle **"Ocultar fondos de bloques"** suprime el `backgroundColor` / `backgroundImage` que cada bloque tenga configurado, dejando ver libremente el fondo de página. Se propaga vía [`BlockBackgroundContext`](src/components/blocks/BlockBackgroundContext.tsx) que consumen `BlockWrapper`, `HeroBlock` y `MenuHeaderBlock`.
+
+Ambos toggles funcionan igual para invitaciones y menús. Cuando se configura un `pageBackground`, los dos toggles **se asumen encendidos por default** (basta con setear `transparentCanvas` o `hideBlockBackgrounds` explícitamente a `false` para mantener el comportamiento legacy). En el editor cada device-frame agrega `isolation: isolate` para mantener el negative-z del background layer dentro del frame en lugar de detrás del lienzo gris.
+
 ### Nombre de la pestaña del navegador
 
 En **Detalles** → **"Nombre en la pestaña"** se puede personalizar el `document.title` que ven los invitados en su navegador. Si se deja vacío, se usa el `invitation.title`. Aplicado vía `usePageChrome` ([src/hooks/usePageChrome.ts](src/hooks/usePageChrome.ts)) que guarda/restaura el título original al montar/desmontar.

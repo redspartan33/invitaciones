@@ -582,13 +582,15 @@ function DetailsPanel() {
       <FaviconRow value={favicon} onChange={(v) => updateGlobalSettings({ favicon: v })} />
       <PageBackgroundRow
         bg={inv.globalSettings.pageBackground}
-        transparentCanvas={!!inv.globalSettings.transparentCanvas}
+        transparentCanvas={inv.globalSettings.transparentCanvas !== false}
+        hideBlockBackgrounds={inv.globalSettings.hideBlockBackgrounds !== false}
         onChange={(patch) =>
           updateGlobalSettings({
             pageBackground: patch === null ? undefined : { ...(inv.globalSettings.pageBackground ?? { url: '' }), ...patch },
           })
         }
         onToggleTransparent={(v) => updateGlobalSettings({ transparentCanvas: v })}
+        onToggleHideBlockBackgrounds={(v) => updateGlobalSettings({ hideBlockBackgrounds: v })}
       />
       {!isMenu && (
         <EnvelopeIntroRow
@@ -812,13 +814,17 @@ const BG_POSITIONS: { value: NonNullable<PageBackground['position']>; label: str
 function PageBackgroundRow({
   bg,
   transparentCanvas,
+  hideBlockBackgrounds,
   onChange,
   onToggleTransparent,
+  onToggleHideBlockBackgrounds,
 }: {
   bg?: PageBackground
   transparentCanvas: boolean
+  hideBlockBackgrounds: boolean
   onChange: (patch: Partial<PageBackground> | null) => void
   onToggleTransparent: (v: boolean) => void
+  onToggleHideBlockBackgrounds: (v: boolean) => void
 }) {
   const url = bg?.url ?? ''
   const detectedKind = detectBackgroundKind(url)
@@ -1004,6 +1010,28 @@ function PageBackgroundRow({
           </label>
           <p className="mt-1 text-[10px] text-ink-400">
             Si está encendido, el fondo se ve a través del lienzo central; si está apagado, queda detrás del color secundario.
+          </p>
+
+          {/* Hide block backgrounds */}
+          <label className="mt-3 flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-xs">
+            <span className="text-ink-700">Ocultar fondos de bloques</span>
+            <button
+              type="button"
+              onClick={() => onToggleHideBlockBackgrounds(!hideBlockBackgrounds)}
+              className={`relative h-5 w-9 rounded-full transition-colors ${
+                hideBlockBackgrounds ? 'bg-ink-900' : 'bg-ink-200'
+              }`}
+              aria-pressed={hideBlockBackgrounds}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  hideBlockBackgrounds ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </label>
+          <p className="mt-1 text-[10px] text-ink-400">
+            Si está encendido, los colores e imágenes de fondo de cada bloque se ocultan y el fondo de página se ve libremente.
           </p>
         </>
       )}

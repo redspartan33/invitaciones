@@ -2,6 +2,7 @@ import type { HeroData, InvitationBlock } from '../../types/invitation.types'
 import { formatDate } from '../../utils/blockValidation'
 import { resolveFieldOrder } from '../../utils/fieldOrder'
 import { BlockWrapper } from './BlockWrapper'
+import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
 import { TextEl } from './TextEl'
 
 export const HERO_FIELD_ORDER = ['subtitle', 'title', 'eventDate'] as const
@@ -9,7 +10,8 @@ export const HERO_FIELD_ORDER = ['subtitle', 'title', 'eventDate'] as const
 export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
   const data = block.data as HeroData
   const align = data.alignment ?? 'center'
-  const usingImage = !!data.backgroundImage
+  const suppressBg = useSuppressBlockBackgrounds()
+  const usingImage = !!data.backgroundImage && !suppressBg
   // Render the bg image as-is: no dark overlay, no forced text color. If
   // the resulting contrast is too low the user can pick text color per
   // element via the per-text Color picker in the sidebar.
@@ -19,7 +21,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
-    : data.backgroundColor
+    : !suppressBg && data.backgroundColor
     ? { backgroundColor: data.backgroundColor }
     : undefined
 

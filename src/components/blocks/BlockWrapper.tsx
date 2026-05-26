@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { BlockStyle } from '../../types/invitation.types'
+import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
 
 const padMap: Record<NonNullable<BlockStyle['paddingY']>, string> = {
   sm: 'py-6 md:py-8',
@@ -50,15 +51,16 @@ export function BlockWrapper({
   children: ReactNode
   align?: 'left' | 'center' | 'right'
 }) {
+  const suppressBg = useSuppressBlockBackgrounds()
   const hasCustomPadding = style?.paddingTop !== undefined || style?.paddingBottom !== undefined
   const padding = hasCustomPadding
     ? 'px-5 md:px-8'
     : `${padMap[style?.paddingY ?? 'lg']} px-5 md:px-8`
   const textSize = style?.textSize ?? 'md'
-  const hasImage = !!style?.backgroundImage
+  const hasImage = !!style?.backgroundImage && !suppressBg
   const radiusPx = BORDER_RADIUS_PX[style?.borderRadius ?? 'none']
   const css: CSSProperties = {
-    backgroundColor: style?.backgroundColor || undefined,
+    backgroundColor: suppressBg ? undefined : style?.backgroundColor || undefined,
     color: style?.textColor || undefined,
     textAlign: align,
     paddingTop: style?.paddingTop !== undefined ? `${style.paddingTop}px` : undefined,

@@ -410,9 +410,16 @@ export interface GlobalSettings {
    */
   pageBackground?: PageBackground
   /** When true, the central canvas card becomes transparent so the page
-   *  background shows through. Defaults to false (keeps the secondary-color
-   *  card on top of the background). Only matters when pageBackground is set. */
+   *  background shows through. When `pageBackground` is set and this is
+   *  `undefined`, the canvas is treated as transparent by default so the
+   *  background is visible without extra config. Set explicitly to `false`
+   *  to keep the secondary-color card on top of the background. */
   transparentCanvas?: boolean
+  /** When true, every block's own backgroundColor / backgroundImage is
+   *  suppressed in render so the global pageBackground shows through. When
+   *  `pageBackground` is set and this is `undefined`, blocks are hidden by
+   *  default. Set explicitly to `false` to keep block backgrounds visible. */
+  hideBlockBackgrounds?: boolean
   /**
    * Animated envelope intro played before the public invitation is shown.
    * When `enabled` is true, the public view first renders a centered closed

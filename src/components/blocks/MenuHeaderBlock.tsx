@@ -7,6 +7,7 @@ import type {
 } from '../../types/invitation.types'
 import { useEditorStore } from '../../store/editorStore'
 import { TextEl } from './TextEl'
+import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 
@@ -70,8 +71,13 @@ export function MenuHeaderBlock({
     [data.navItems],
   )
   const sections = navOverride ?? sectionsOverride ?? sectionsFromStore
-  const usingImage = !!data.backgroundImage
-  const bgStyle = usingImage
+  const suppressBg = useSuppressBlockBackgrounds()
+  const usingImage = !!data.backgroundImage && !suppressBg
+  const bgStyle = suppressBg
+    ? // Global page background is visible behind the header — drop the dark
+      // default so it shows through, and let text inherit the canvas color.
+      ({} as React.CSSProperties)
+    : usingImage
     ? {
         backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${data.backgroundImage})`,
         backgroundSize: 'cover',

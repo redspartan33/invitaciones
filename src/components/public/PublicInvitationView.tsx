@@ -7,6 +7,7 @@ import type {
   MenuVariant,
 } from '../../types/invitation.types'
 import { BlockRenderer } from '../blocks/BlockRenderer'
+import { BlockBackgroundProvider } from '../blocks/BlockBackgroundContext'
 import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
@@ -86,10 +87,15 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   const autoplay = !!globalSettings.backgroundMusicAutoplay
 
   const hasPageBackground = !!globalSettings.pageBackground?.url?.trim()
-  const canvasBg =
-    hasPageBackground && globalSettings.transparentCanvas
-      ? 'transparent'
-      : 'var(--color-secondary)'
+  // When the user adds a page background we assume they want to see it: the
+  // central canvas card defaults to transparent and block backgrounds default
+  // to hidden. Setting either toggle explicitly to `false` opts back into the
+  // legacy behaviour.
+  const canvasTransparent =
+    hasPageBackground && globalSettings.transparentCanvas !== false
+  const canvasBg = canvasTransparent ? 'transparent' : 'var(--color-secondary)'
+  const suppressBlockBackgrounds =
+    hasPageBackground && globalSettings.hideBlockBackgrounds !== false
 
   const showSeasonTabs = hasVariants && variants.length > 1
   const firstNonHeaderIdx = visible.findIndex((b) => b.type !== 'menu-header')
@@ -138,33 +144,35 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
         } as React.CSSProperties
       }
     >
-      <div
-        className="relative mx-auto max-w-[920px] border-x border-black/5"
-        style={{ background: canvasBg }}
-      >
-        {showSeasonTabs && firstNonHeaderIdx === -1 && (
-          <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
-        )}
-        {visible.map((block, idx) => (
-          <div key={block.id}>
-            {showSeasonTabs && idx === firstNonHeaderIdx && (
-              <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
-            )}
-            {block.type === 'menu-header' ? (
-              <MenuHeaderBlock
-                block={block as InvitationBlock<'menu-header'>}
-                sectionsOverride={menuSections}
-                publicView
-                languages={showLanguageSwitcher ? languages : undefined}
-                currentLanguage={currentLanguage}
-                onLanguageChange={setCurrentLanguage}
-              />
-            ) : (
-              <BlockRenderer block={block} />
-            )}
-          </div>
-        ))}
-      </div>
+      <BlockBackgroundProvider suppress={suppressBlockBackgrounds}>
+        <div
+          className="relative mx-auto max-w-[920px] border-x border-black/5"
+          style={{ background: canvasBg }}
+        >
+          {showSeasonTabs && firstNonHeaderIdx === -1 && (
+            <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
+          )}
+          {visible.map((block, idx) => (
+            <div key={block.id}>
+              {showSeasonTabs && idx === firstNonHeaderIdx && (
+                <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
+              )}
+              {block.type === 'menu-header' ? (
+                <MenuHeaderBlock
+                  block={block as InvitationBlock<'menu-header'>}
+                  sectionsOverride={menuSections}
+                  publicView
+                  languages={showLanguageSwitcher ? languages : undefined}
+                  currentLanguage={currentLanguage}
+                  onLanguageChange={setCurrentLanguage}
+                />
+              ) : (
+                <BlockRenderer block={block} />
+              )}
+            </div>
+          ))}
+        </div>
+      </BlockBackgroundProvider>
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
       {introEnabled && showIntro && introCfg && (
         <EnvelopeIntro config={introCfg} onDone={dismissIntro} invitation={invitation} />
