@@ -18,7 +18,6 @@ import type { InvitationBlock, ViewportMode } from '../../types/invitation.types
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { BlockBackgroundProvider } from '../blocks/BlockBackgroundContext'
 import { MenuFeaturesProvider } from '../blocks/MenuFeaturesContext'
-import { PromoBannerCarousel } from '../blocks/PromoBannerCarousel'
 import { DragIcon, EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { PageBackgroundLayer } from '../public/PageBackgroundLayer'
@@ -94,12 +93,12 @@ export function Canvas() {
     backgroundColor: hasPageBackground ? 'transparent' : undefined,
   } as React.CSSProperties
 
-  const headerIdx = blocks.findIndex((b) => b.type === 'menu-header')
   const inner = (
     <BlockBackgroundProvider suppress={suppressBlockBackgrounds}>
       <MenuFeaturesProvider
         enableSearch={false /* editor preview: don't show the search overlay */}
         showItemImages={isMenu && enableItemImages}
+        promoBanner={isMenu ? promoBanner : undefined}
       >
       <div
         className={`invitation-canvas h-full ${fontClass}`}
@@ -109,17 +108,13 @@ export function Canvas() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
             {blocks.map((block, i) => (
-              <div key={block.id}>
-                <SortableCanvasBlock
-                  block={block}
-                  index={i}
-                  selected={selectedId === block.id}
-                  onSelect={() => selectBlock(block.id)}
-                />
-                {isMenu && i === headerIdx && promoBanner?.enabled && (
-                  <PromoBannerCarousel config={promoBanner} />
-                )}
-              </div>
+              <SortableCanvasBlock
+                key={block.id}
+                block={block}
+                index={i}
+                selected={selectedId === block.id}
+                onSelect={() => selectBlock(block.id)}
+              />
             ))}
           </SortableContext>
         </DndContext>

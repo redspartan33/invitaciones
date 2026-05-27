@@ -13,6 +13,7 @@ import { menuSectionAnchor } from '../../utils/menuNav'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { ITEM_GAP_PX, PAD_Y_CLASS } from './BlockWrapper'
 import { SearchIcon, CloseIcon } from './icons'
+import { PromoSlideCard } from './PromoSlide'
 
 const EMPTY_BLOCKS: InvitationBlock[] = []
 
@@ -236,7 +237,7 @@ export function MenuHeaderBlock({
   // ── Search overlay state. The icon lives in the sticky nav (right side);
   //    clicking it expands a full-width input across the nav. Only rendered
   //    on the public view because there's nothing to search in the editor.
-  const { searchQuery, setSearchQuery, enableSearch } = useMenuFeatures()
+  const { searchQuery, setSearchQuery, enableSearch, promoBanner } = useMenuFeatures()
   const [searchOpen, setSearchOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const showSearch = isPublicView && enableSearch
@@ -270,11 +271,12 @@ export function MenuHeaderBlock({
   // elementos internos" control.
   ;(headerInlineStyle as Record<string, string>)['--item-gap'] = ITEM_GAP_PX[blockStyle?.itemSpacing ?? 'md']
 
-  const renderHeaderContent = () => (
+  // The "header card" — what used to be the only thing this block rendered.
+  // Now it's slide 0 of an optional carousel (promos become slides 1+).
+  const headerCard = (
     <div
       style={headerInlineStyle}
-      className={`block-scale-active ${textSizeClass} ${paddingClass} text-center flex flex-col items-center`}
-      ref={headerRef}
+      className={`block-scale-active ${textSizeClass} ${paddingClass} text-center flex flex-col items-center justify-center h-full w-full`}
     >
       {data.showLogo && data.logo && (
         <img
@@ -327,6 +329,78 @@ export function MenuHeaderBlock({
       )}
     </div>
   )
+
+  // Decide whether we're in carousel mode. Header is always slide 0; promos
+  // append after. With a single slide (header only) we skip all the carousel
+  // chrome to keep the markup identical to pre-promo days.
+  const promoSlides = promoBanner?.enabled ? (promoBanner.slides ?? []) : []
+  const carouselEnabled = promoSlides.length > 0
+  const allSlides = carouselEnabled
+    ? [{ kind: 'header' as const, id: '__header__' }, ...promoSlides.map((s) => ({ kind: 'promo' as const, id: s.id, slide: s }))]
+    : [{ kind: 'header' as const, id: '__header__' }]
+  const slideCount = allSlides.length
+  const [slideIndex, setSlideIndex] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const intervalMs = Math.max(2, promoBanner?.intervalSeconds ?? 5) * 1000
+  const autoplay = promoBanner?.autoplay !== false
+  const showDots = promoBanner?.showDots !== false
+
+  useEffect(() => {
+    if (!carouselEnabled || !autoplay || paused || slideCount <= 1) return
+    const id = window.setInterval(() => {
+      setSlideIndex((i) => (i + 1) % slideCount)
+    }, intervalMs)
+    return () => window.clearInterval(id)
+  }, [carouselEnabled, autoplay, paused, slideCount, intervalMs])
+
+  // Keep index in range if user removes a slide while editing.
+  useEffect(() => {
+    if (slideIndex >= slideCount) setSlideIndex(0)
+  }, [slideCount, slideIndex])
+
+  const renderHeaderContent = () => {
+    if (!carouselEnabled) {
+      // Single slide: render the header card directly and keep the headerRef
+      // on the actual content (its height drives sticky-nav offset).
+      return <div ref={headerRef}>{headerCard}</div>
+    }
+    return (
+      <div
+        ref={headerRef}
+        className="relative"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <div className="overflow-hidden">
+          <div
+            className="flex w-full transition-transform duration-700 ease-out"
+            style={{ transform: `translateX(-${slideIndex * 100}%)` }}
+          >
+            {allSlides.map((s) => (
+              <div key={s.id} className="w-full shrink-0 self-stretch">
+                {s.kind === 'header' ? headerCard : <PromoSlideCard slide={s.slide} />}
+              </div>
+            ))}
+          </div>
+        </div>
+        {showDots && slideCount > 1 && (
+          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
+            {allSlides.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSlideIndex(i)}
+                aria-label={`Ir al slide ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === slideIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const renderNav = (fixed = false) => (
     <div

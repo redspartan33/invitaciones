@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
+import type { PromoBannerConfig } from '../../types/invitation.types'
 
 interface MenuFeaturesValue {
   /** Free-text query coming from the sticky-nav search input. Empty string
@@ -9,6 +10,9 @@ interface MenuFeaturesValue {
   showItemImages: boolean
   /** When true, MenuHeaderBlock renders the search icon + expandable input. */
   enableSearch: boolean
+  /** When set + enabled, MenuHeaderBlock renders the header + promo slides
+   *  as a single horizontal auto-rotating carousel (header = slide 0). */
+  promoBanner?: PromoBannerConfig
 }
 
 const Ctx = createContext<MenuFeaturesValue>({
@@ -16,20 +20,23 @@ const Ctx = createContext<MenuFeaturesValue>({
   setSearchQuery: () => {},
   showItemImages: false,
   enableSearch: false,
+  promoBanner: undefined,
 })
 
 export function MenuFeaturesProvider({
   showItemImages,
   enableSearch,
+  promoBanner,
   children,
 }: {
   showItemImages: boolean
   enableSearch: boolean
+  promoBanner?: PromoBannerConfig
   children: ReactNode
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   return (
-    <Ctx.Provider value={{ searchQuery, setSearchQuery, showItemImages, enableSearch }}>
+    <Ctx.Provider value={{ searchQuery, setSearchQuery, showItemImages, enableSearch, promoBanner }}>
       {children}
     </Ctx.Provider>
   )
