@@ -9,7 +9,10 @@ import type {
   Invitation,
   Language,
   PageBackground,
+  PromoBannerConfig,
+  PromoBannerSlide,
 } from '../../types/invitation.types'
+import { v4 as uuid } from 'uuid'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
 
@@ -618,6 +621,9 @@ function DetailsPanel() {
         />
       )}
       {isMenu && <MetricsRow />}
+      {isMenu && <MenuSearchRow />}
+      {isMenu && <ItemImagesRow />}
+      {isMenu && <PromoBannerRow />}
       <div className="rounded border border-ink-200 p-3">
         <p className="text-[11px] uppercase tracking-widest text-ink-400">ID</p>
         <p className="font-mono text-xs text-ink-700">{inv.id}</p>
@@ -1442,6 +1448,351 @@ function MetricsRow() {
               El menú aún no está publicado: el dashboard mostrará "no disponible" hasta que publiques.
             </p>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MenuSearchRow() {
+  const enabled = useEditorStore((s) => !!s.invitation.globalSettings.enableMenuSearch)
+  const updateGlobalSettings = useEditorStore((s) => s.updateGlobalSettings)
+  return (
+    <SimpleToggleRow
+      label="Buscador en el menú"
+      hint="Muestra un icono de lupa en la barra sticky del menú. Al tocarlo, los visitantes pueden filtrar platillos por nombre o ingredientes."
+      enabled={enabled}
+      onToggle={() => updateGlobalSettings({ enableMenuSearch: !enabled })}
+    />
+  )
+}
+
+function ItemImagesRow() {
+  const enabled = useEditorStore((s) => !!s.invitation.globalSettings.enableItemImages)
+  const updateGlobalSettings = useEditorStore((s) => s.updateGlobalSettings)
+  return (
+    <SimpleToggleRow
+      label="Imágenes en platillos"
+      hint="Si está prendido, los platillos con foto se muestran con miniatura. Puedes subir la imagen al editar cada platillo en su sección."
+      enabled={enabled}
+      onToggle={() => updateGlobalSettings({ enableItemImages: !enabled })}
+    />
+  )
+}
+
+function SimpleToggleRow({
+  label,
+  hint,
+  enabled,
+  onToggle,
+}: {
+  label: string
+  hint: string
+  enabled: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-ink-400">{label}</p>
+          <p className="mt-0.5 text-[11px] text-ink-500">{hint}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${
+            enabled ? 'bg-ink-900' : 'bg-ink-200'
+          }`}
+          aria-pressed={enabled}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PromoBannerRow() {
+  const config = useEditorStore((s) => s.invitation.globalSettings.promoBanner)
+  const updateGlobalSettings = useEditorStore((s) => s.updateGlobalSettings)
+  const enabled = !!config?.enabled
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  const patch = (next: Partial<PromoBannerConfig>) => {
+    const base: PromoBannerConfig = config ?? {
+      enabled: false,
+      slides: [],
+      autoplay: true,
+      intervalSeconds: 5,
+      showDots: true,
+      aspect: 'wide',
+    }
+    updateGlobalSettings({ promoBanner: { ...base, ...next } })
+  }
+
+  const toggle = () => {
+    if (!config) {
+      updateGlobalSettings({
+        promoBanner: {
+          enabled: true,
+          slides: [
+            {
+              id: uuid(),
+              title: 'Promoción especial',
+              subtitle: 'Describe tu anuncio aquí',
+              ctaLabel: 'Ver más',
+              backgroundColor: '#0b3d2e',
+              textColor: '#ffffff',
+            },
+          ],
+          autoplay: true,
+          intervalSeconds: 5,
+          showDots: true,
+          aspect: 'wide',
+        },
+      })
+      return
+    }
+    patch({ enabled: !enabled })
+  }
+
+  const slides = config?.slides ?? []
+  const updateSlide = (id: string, p: Partial<PromoBannerSlide>) => {
+    patch({ slides: slides.map((s) => (s.id === id ? { ...s, ...p } : s)) })
+  }
+  const removeSlide = (id: string) => {
+    patch({ slides: slides.filter((s) => s.id !== id) })
+  }
+  const addSlide = () => {
+    patch({
+      slides: [
+        ...slides,
+        {
+          id: uuid(),
+          title: 'Nueva promo',
+          subtitle: '',
+          ctaLabel: '',
+          backgroundColor: '#0b3d2e',
+          textColor: '#ffffff',
+        },
+      ],
+    })
+  }
+  const moveSlide = (id: string, dir: -1 | 1) => {
+    const i = slides.findIndex((s) => s.id === id)
+    if (i === -1) return
+    const j = i + dir
+    if (j < 0 || j >= slides.length) return
+    const copy = [...slides]
+    const [m] = copy.splice(i, 1)
+    copy.splice(j, 0, m)
+    patch({ slides: copy })
+  }
+  const onPickFile = (slideId: string, file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2 MB). Usa una más ligera o pega una URL pública.`)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => updateSlide(slideId, { image: String(reader.result) })
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-ink-400">Banners / Promos</p>
+          <p className="mt-0.5 text-[11px] text-ink-500">
+            Carrusel arriba del menú para mostrar promociones o avisos. Cada slide puede llevar imagen, título, subtítulo y un botón con enlace.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${
+            enabled ? 'bg-ink-900' : 'bg-ink-200'
+          }`}
+          aria-pressed={enabled}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+
+      {enabled && (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-[11px] text-ink-500">
+              <span className="uppercase tracking-widest">Forma</span>
+              <select
+                value={config?.aspect ?? 'wide'}
+                onChange={(e) => patch({ aspect: e.target.value as PromoBannerConfig['aspect'] })}
+                className="input-flat"
+              >
+                <option value="wide">16:9 (ancho)</option>
+                <option value="banner">3:1 (banner)</option>
+                <option value="square">1:1 (cuadrado)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-ink-500">
+              <span className="uppercase tracking-widest">Intervalo (s)</span>
+              <input
+                type="number"
+                min={2}
+                max={60}
+                value={config?.intervalSeconds ?? 5}
+                onChange={(e) => patch({ intervalSeconds: Number(e.target.value) || 5 })}
+                className="input-flat"
+              />
+            </label>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-ink-600">
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={config?.autoplay !== false}
+                onChange={(e) => patch({ autoplay: e.target.checked })}
+              />
+              Autoplay
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={config?.showDots !== false}
+                onChange={(e) => patch({ showDots: e.target.checked })}
+              />
+              Indicadores
+            </label>
+          </div>
+
+          <div className="space-y-2">
+            {slides.map((s, i) => (
+              <div key={s.id} className="space-y-2 rounded border border-ink-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] uppercase tracking-widest text-ink-400">Slide {i + 1}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveSlide(s.id, -1)}
+                      disabled={i === 0}
+                      className="rounded border border-ink-200 px-2 py-0.5 text-[10px] disabled:opacity-30"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveSlide(s.id, 1)}
+                      disabled={i === slides.length - 1}
+                      className="rounded border border-ink-200 px-2 py-0.5 text-[10px] disabled:opacity-30"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSlide(s.id)}
+                      className="rounded border border-rose-200 px-2 py-0.5 text-[10px] text-rose-600 hover:bg-rose-50"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={s.title ?? ''}
+                  onChange={(e) => updateSlide(s.id, { title: e.target.value })}
+                  placeholder="Título"
+                  className="input-flat"
+                />
+                <input
+                  type="text"
+                  value={s.subtitle ?? ''}
+                  onChange={(e) => updateSlide(s.id, { subtitle: e.target.value })}
+                  placeholder="Subtítulo"
+                  className="input-flat"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={s.ctaLabel ?? ''}
+                    onChange={(e) => updateSlide(s.id, { ctaLabel: e.target.value })}
+                    placeholder="Botón (ej. Ver más)"
+                    className="input-flat"
+                  />
+                  <input
+                    type="url"
+                    value={s.ctaLink ?? ''}
+                    onChange={(e) => updateSlide(s.id, { ctaLink: e.target.value })}
+                    placeholder="Enlace del botón"
+                    className="input-flat"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={s.image?.startsWith('data:') ? '' : (s.image ?? '')}
+                    onChange={(e) => updateSlide(s.id, { image: e.target.value || undefined })}
+                    placeholder="URL imagen o sube →"
+                    className="input-flat flex-1 min-w-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRefs.current[s.id]?.click()}
+                    className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                  >
+                    Subir
+                  </button>
+                  <input
+                    ref={(el) => (fileRefs.current[s.id] = el)}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) onPickFile(s.id, f)
+                      e.target.value = ''
+                    }}
+                  />
+                </div>
+                {s.image && (
+                  <div className="overflow-hidden rounded border border-ink-200 bg-ink-50">
+                    <img src={s.image} alt="" className="block h-24 w-full object-cover" />
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 text-[11px] text-ink-500">
+                    Fondo
+                    <input
+                      type="color"
+                      value={s.backgroundColor ?? '#0b3d2e'}
+                      onChange={(e) => updateSlide(s.id, { backgroundColor: e.target.value })}
+                      className="h-7 w-10 cursor-pointer rounded border border-ink-200"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px] text-ink-500">
+                    Texto
+                    <input
+                      type="color"
+                      value={s.textColor ?? '#ffffff'}
+                      onChange={(e) => updateSlide(s.id, { textColor: e.target.value })}
+                      className="h-7 w-10 cursor-pointer rounded border border-ink-200"
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={addSlide} className="btn-flat w-full">
+            + Añadir slide
+          </button>
         </div>
       )}
     </div>

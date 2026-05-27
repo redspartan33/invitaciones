@@ -2,10 +2,22 @@ import type { InvitationBlock, MenuSectionData } from '../../types/invitation.ty
 import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
 import { menuSectionAnchor } from '../../utils/menuNav'
+import { normalizeForSearch, useMenuFeatures } from './MenuFeaturesContext'
 
 export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-section'> }) {
   const data = block.data as MenuSectionData
   const anchor = menuSectionAnchor(block.id, data.title, data.customAnchor)
+  const { searchQuery, showItemImages } = useMenuFeatures()
+  const trimmedQuery = searchQuery.trim()
+  const filteredItems = trimmedQuery
+    ? data.items.filter((it) => {
+        const q = normalizeForSearch(trimmedQuery)
+        const hay = normalizeForSearch(`${it.name ?? ''} ${it.description ?? ''}`)
+        return hay.includes(q)
+      })
+    : data.items
+  // Hide the entire section when a search is active and nothing matches.
+  if (trimmedQuery && filteredItems.length === 0) return null
   // style.itemSpacing is the universal control; data.itemSpacing is the legacy
   // value kept for backwards compatibility with already-saved menus.
   // BlockWrapper exposes the chosen spacing as the `--item-gap` CSS variable,
@@ -50,29 +62,49 @@ export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-secti
             className={legacyClass}
             style={styleHasSpacing ? { display: 'flex', flexDirection: 'column', gap: 'var(--item-gap)' } : undefined}
           >
-            {data.items.map((item) => (
-              <li key={item.id} className="grid grid-cols-[1fr_auto] gap-x-4">
-                <div className="min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-medium text-base">{item.name}</span>
-                    {item.badges && (
-                      <span className="text-[10px] uppercase tracking-widest opacity-60">
-                        {item.badges}
+            {filteredItems.map((item) => {
+              const showImage = showItemImages && !!item.image
+              return (
+                <li
+                  key={item.id}
+                  className={
+                    showImage
+                      ? 'flex items-start gap-3'
+                      : 'grid grid-cols-[1fr_auto] gap-x-4'
+                  }
+                >
+                  {showImage && (
+                    <img
+                      src={item.image}
+                      alt=""
+                      loading="lazy"
+                      className="h-20 w-20 shrink-0 rounded-md object-cover border border-current/10"
+                    />
+                  )}
+                  <div className={showImage ? 'flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-3' : 'contents'}>
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-medium text-base">{item.name}</span>
+                        {item.badges && (
+                          <span className="text-[10px] uppercase tracking-widest opacity-60">
+                            {item.badges}
+                          </span>
+                        )}
+                      </div>
+                      {item.description && (
+                        <p className="mt-0.5 text-sm italic opacity-70">{item.description}</p>
+                      )}
+                    </div>
+                    {item.price && (
+                      <span className="whitespace-nowrap font-medium text-base tabular-nums accent">
+                        {item.price}
                       </span>
                     )}
                   </div>
-                  {item.description && (
-                    <p className="mt-0.5 text-sm italic opacity-70">{item.description}</p>
-                  )}
-                </div>
-                {item.price && (
-                  <span className="whitespace-nowrap font-medium text-base tabular-nums accent">
-                    {item.price}
-                  </span>
-                )}
-              </li>
-            ))}
-            {data.items.length === 0 && (
+                </li>
+              )
+            })}
+            {filteredItems.length === 0 && (
               <li className="text-sm italic opacity-50">Aún no hay platillos en esta sección.</li>
             )}
           </ul>

@@ -310,6 +310,9 @@ export interface MenuItem {
   description?: string
   price?: string
   badges?: string
+  /** Optional dish photo (URL or data: URL). Surfaced when
+   *  globalSettings.enableItemImages is true. */
+  image?: string
 }
 
 export interface MenuSectionData {
@@ -444,6 +447,40 @@ export interface GlobalSettings {
   metricsSlug?: string
   /** Whether the metrics dashboard is enabled (drives the toggle UI). */
   enableMetrics?: boolean
+  /** Menu-only. When true, the public sticky nav shows a search icon and
+   *  visitors can filter platillos by name/description. */
+  enableMenuSearch?: boolean
+  /** Menu-only. When true, dish photos render alongside each platillo
+   *  (compact thumbnail layout). Items without a photo fall back to the
+   *  current text-only row. */
+  enableItemImages?: boolean
+  /** Menu-only. Promotional carousel rendered between the menu header and
+   *  the first menu section in the public view. */
+  promoBanner?: PromoBannerConfig
+}
+
+export interface PromoBannerSlide {
+  id: string
+  image?: string
+  title?: string
+  subtitle?: string
+  ctaLabel?: string
+  ctaLink?: string
+  backgroundColor?: string
+  textColor?: string
+}
+
+export interface PromoBannerConfig {
+  enabled: boolean
+  slides: PromoBannerSlide[]
+  /** Auto-rotate. Defaults to true. */
+  autoplay?: boolean
+  /** Seconds between auto-rotation steps. Defaults to 5. */
+  intervalSeconds?: number
+  /** Show pagination dots. Defaults to true. */
+  showDots?: boolean
+  /** Card aspect ratio. Defaults to 'wide' (16:9). */
+  aspect?: 'wide' | 'banner' | 'square'
 }
 
 export interface EnvelopeIntroConfig {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useEditorStore } from '../../store/editorStore'
 import type { InvitationBlock, MenuItem, MenuSectionData } from '../../types/invitation.types'
@@ -12,8 +12,20 @@ export function MenuItemsForm({ block }: { block: InvitationBlock<'menu-section'
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const pastePreview = useMemo(() => parseMenuItems(pasteText), [pasteText])
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const setItems = (items: MenuItem[]) => updateBlockData(block.id, { items })
+
+  const onPickFile = (itemId: string, file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2 MB). Usa una más ligera o pega una URL pública.`)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () =>
+      setItems(data.items.map((x) => (x.id === itemId ? { ...x, image: String(reader.result) } : x)))
+    reader.readAsDataURL(file)
+  }
 
   const importPasted = (mode: 'append' | 'replace') => {
     const parsed = parseMenuItems(pasteText)
@@ -146,6 +158,48 @@ $133`}</pre>
                       className="input-flat flex-1 min-w-0"
                     />
                   </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="url"
+                      value={item.image?.startsWith('data:') ? '' : (item.image ?? '')}
+                      onChange={(e) => update(item.id, { image: e.target.value || undefined })}
+                      placeholder="URL imagen o sube →"
+                      className="input-flat flex-1 min-w-0"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileRefs.current[item.id]?.click()}
+                      className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                    >
+                      Subir
+                    </button>
+                    <input
+                      ref={(el) => (fileRefs.current[item.id] = el)}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) onPickFile(item.id, f)
+                        e.target.value = ''
+                      }}
+                    />
+                    {item.image && (
+                      <button
+                        type="button"
+                        onClick={() => update(item.id, { image: undefined })}
+                        className="btn-ghost text-rose-600 shrink-0"
+                        title="Quitar imagen"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {item.image && (
+                    <div className="overflow-hidden rounded border border-ink-200 bg-ink-50">
+                      <img src={item.image} alt="" className="block h-24 w-full object-cover" />
+                    </div>
+                  )}
                 </div>
               )}
             </SortableItem>

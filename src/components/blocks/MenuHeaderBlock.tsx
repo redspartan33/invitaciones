@@ -8,9 +8,11 @@ import type {
 import { useEditorStore } from '../../store/editorStore'
 import { TextEl } from './TextEl'
 import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
+import { useMenuFeatures } from './MenuFeaturesContext'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { ITEM_GAP_PX, PAD_Y_CLASS } from './BlockWrapper'
+import { SearchIcon, CloseIcon } from './icons'
 
 const EMPTY_BLOCKS: InvitationBlock[] = []
 
@@ -231,6 +233,21 @@ export function MenuHeaderBlock({
 
   const showLangSwitcher = !!languages && languages.length > 1
 
+  // ── Search overlay state. The icon lives in the sticky nav (right side);
+  //    clicking it expands a full-width input across the nav. Only rendered
+  //    on the public view because there's nothing to search in the editor.
+  const { searchQuery, setSearchQuery, enableSearch } = useMenuFeatures()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const showSearch = isPublicView && enableSearch
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus()
+  }, [searchOpen])
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchQuery('')
+  }
+
   // Apply the same block-level layout knobs (padding, item spacing, text
   // size, text color) that every other block reads via BlockWrapper. Without
   // this, the sidebar sliders for "Espaciado vertical" and "Separación
@@ -314,37 +331,77 @@ export function MenuHeaderBlock({
   const renderNav = (fixed = false) => (
     <div
       ref={navRef}
-      className={`menu-sticky-nav border-y border-black/10 ${fixed ? 'fixed left-0 right-0 top-0 z-30' : 'overflow-x-auto'}`}
+      className={`menu-sticky-nav border-y border-black/10 ${fixed ? 'fixed left-0 right-0 top-0 z-30' : ''}`}
       style={{ backgroundColor: navBg, color: navText }}
     >
-      <div className={`mx-auto ${fixed ? 'max-w-[920px]' : ''} overflow-x-auto`}>
-        <ul
-          ref={navListRef}
-          className={`mx-auto flex w-max items-center uppercase ${navListClass}`}
-        >
-          {sections.length === 0 ? (
-            <li className="opacity-60 px-3 py-1.5">Añade secciones al menú</li>
-          ) : (
-            sections.map((s) => {
-              const isActive = isPublicView && activeId === s.id
-              return (
-                <li key={s.id}>
-                  <a
-                    href={`#${s.id}`}
-                    data-section-id={s.id}
-                    onClick={(e) => handleNavClick(e, s.id)}
-                    className={`inline-block whitespace-nowrap rounded-full transition-colors ${navItemClass} ${
-                      isActive ? 'bg-white/20 font-semibold' : 'hover:bg-white/15'
-                    }`}
-                    aria-current={isActive ? 'true' : undefined}
-                  >
-                    {s.title}
-                  </a>
-                </li>
-              )
-            })
-          )}
-        </ul>
+      <div className={`mx-auto ${fixed ? 'max-w-[920px]' : ''} relative flex items-center`}>
+        {searchOpen && showSearch ? (
+          <div className="flex w-full items-center gap-2 px-3 py-2">
+            <SearchIcon className="h-4 w-4 shrink-0 opacity-70" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar platillo…"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') closeSearch()
+              }}
+              className="flex-1 min-w-0 bg-transparent text-sm placeholder:opacity-60 focus:outline-none"
+              style={{ color: navText }}
+            />
+            <button
+              type="button"
+              onClick={closeSearch}
+              aria-label="Cerrar búsqueda"
+              className="rounded-full p-1.5 hover:bg-white/15"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="min-w-0 flex-1 overflow-x-auto">
+              <ul
+                ref={navListRef}
+                className={`mx-auto flex w-max items-center uppercase ${navListClass}`}
+              >
+                {sections.length === 0 ? (
+                  <li className="opacity-60 px-3 py-1.5">Añade secciones al menú</li>
+                ) : (
+                  sections.map((s) => {
+                    const isActive = isPublicView && activeId === s.id
+                    return (
+                      <li key={s.id}>
+                        <a
+                          href={`#${s.id}`}
+                          data-section-id={s.id}
+                          onClick={(e) => handleNavClick(e, s.id)}
+                          className={`inline-block whitespace-nowrap rounded-full transition-colors ${navItemClass} ${
+                            isActive ? 'bg-white/20 font-semibold' : 'hover:bg-white/15'
+                          }`}
+                          aria-current={isActive ? 'true' : undefined}
+                        >
+                          {s.title}
+                        </a>
+                      </li>
+                    )
+                  })
+                )}
+              </ul>
+            </div>
+            {showSearch && (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                aria-label="Buscar"
+                className="shrink-0 rounded-full p-2 mr-2 hover:bg-white/15"
+              >
+                <SearchIcon className="h-4 w-4" />
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

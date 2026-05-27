@@ -8,7 +8,9 @@ import type {
 } from '../../types/invitation.types'
 import { BlockRenderer } from '../blocks/BlockRenderer'
 import { BlockBackgroundProvider } from '../blocks/BlockBackgroundContext'
+import { MenuFeaturesProvider } from '../blocks/MenuFeaturesContext'
 import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
+import { PromoBannerCarousel } from '../blocks/PromoBannerCarousel'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
@@ -200,6 +202,10 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
       }
     >
       <BlockBackgroundProvider suppress={suppressBlockBackgrounds}>
+        <MenuFeaturesProvider
+          enableSearch={isMenu && !!globalSettings.enableMenuSearch}
+          showItemImages={isMenu && !!globalSettings.enableItemImages}
+        >
         <div
           className="relative mx-auto max-w-[920px] border-x border-black/5"
           style={{ background: canvasBg }}
@@ -219,23 +225,29 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
               }} />
               )}
               {block.type === 'menu-header' ? (
-                <MenuHeaderBlock
-                  block={block as InvitationBlock<'menu-header'>}
-                  sectionsOverride={menuSections}
-                  publicView
-                  languages={showLanguageSwitcher ? languages : undefined}
-                  currentLanguage={currentLanguage}
-                  onLanguageChange={(lang) => {
-                    if (slug) recordInteraction(slug, 'language-switch', lang, { variantId: selectedVariantId })
-                    setCurrentLanguage(lang)
-                  }}
-                />
+                <>
+                  <MenuHeaderBlock
+                    block={block as InvitationBlock<'menu-header'>}
+                    sectionsOverride={menuSections}
+                    publicView
+                    languages={showLanguageSwitcher ? languages : undefined}
+                    currentLanguage={currentLanguage}
+                    onLanguageChange={(lang) => {
+                      if (slug) recordInteraction(slug, 'language-switch', lang, { variantId: selectedVariantId })
+                      setCurrentLanguage(lang)
+                    }}
+                  />
+                  {isMenu && globalSettings.promoBanner?.enabled && (
+                    <PromoBannerCarousel config={globalSettings.promoBanner} />
+                  )}
+                </>
               ) : (
                 <BlockRenderer block={block} />
               )}
             </div>
           ))}
         </div>
+        </MenuFeaturesProvider>
       </BlockBackgroundProvider>
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
       {introEnabled && showIntro && introCfg && (
