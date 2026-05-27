@@ -92,11 +92,16 @@ export default function App() {
   if (route.kind === 'admin') {
     return (
       <AdminView
-        onOpenEditor={(id, kind) => {
+        onOpenEditor={(id, kind, template) => {
           const params = new URLSearchParams()
           params.set('admin', ADMIN_TOKEN)
           if (id) params.set('edit', id)
-          else params.set('new', kind === 'menu' ? 'menu' : 'invitation')
+          else {
+            // `template` (e.g. 'hannah-michael', 'cocinoteca') wins over the
+            // generic kind so the boot picks the right factory in
+            // InvitationBuilder.
+            params.set('new', template || (kind === 'menu' ? 'menu' : 'invitation'))
+          }
           window.history.pushState({}, '', `/?${params.toString()}`)
           setRoute({ kind: 'editor' })
         }}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { INVITATION_PREFIX, useEditorStore } from '../store/editorStore'
 import type { Invitation, InvitationKind } from '../types/invitation.types'
 import { ADMIN_TOKEN } from './adminAuth'
@@ -66,7 +66,11 @@ function inferKind(inv: Invitation): InvitationKind {
 
 type AdminFilter = 'all' | 'invitation' | 'menu'
 
-export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?: InvitationKind) => void }) {
+export function AdminView({
+  onOpenEditor,
+}: {
+  onOpenEditor: (id?: string, kind?: InvitationKind, template?: string) => void
+}) {
   const [items, setItems] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const [remoteUnavailable, setRemoteUnavailable] = useState(false)
@@ -172,12 +176,7 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
               >
                 + Invitación
               </button>
-              <button
-                onClick={() => onOpenEditor(undefined, 'menu')}
-                className="flex-1 justify-center rounded border border-ink-900 bg-white px-3 py-2 text-xs font-medium text-ink-900 hover:bg-ink-50 md:flex-initial md:py-1.5"
-              >
-                + Menú
-              </button>
+              <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
             </div>
             <button
               onClick={onExport}
@@ -240,9 +239,7 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
             <p className="font-serif text-2xl text-ink-900">Aún no hay nada</p>
             <p className="mt-3 text-sm text-ink-500">Crea tu primera invitación o menú.</p>
             <div className="mt-6 flex items-center justify-center gap-2">
-              <button onClick={() => onOpenEditor(undefined, 'menu')} className="rounded border border-ink-900 bg-white px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-ink-50">
-                Crear menú
-              </button>
+              <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
               <button onClick={() => onOpenEditor(undefined, 'invitation')} className="btn-primary">
                 Crear invitación
               </button>
@@ -332,6 +329,77 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
           Acceso privado · token {ADMIN_TOKEN.slice(0, 6)}…
         </p>
       </main>
+    </div>
+  )
+}
+
+/** "+ Menú" split button. Click the main face → opens a blank menu (same as
+ *  before). Click the chevron → opens a small popover with pre-populated
+ *  restaurant templates so Juan can spin one up with the full content already
+ *  in place. Template slug is passed back to the parent, which encodes it
+ *  into the `new=<slug>` URL param consumed by InvitationBuilder. */
+function NewMenuButton({ onPick }: { onPick: (template?: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [open])
+
+  const templates = [
+    { slug: undefined, label: 'Menú vacío', sub: 'Empieza desde cero' },
+    { slug: 'hannah-michael', label: 'Hannah & Michael', sub: 'Brunch · 16 secciones, 83 items' },
+    { slug: 'cocinoteca', label: 'La Cocinoteca', sub: 'Contemporánea · 24 secciones, ~270 items' },
+  ] as const
+
+  return (
+    <div ref={rootRef} className="relative flex flex-1 md:flex-initial">
+      <button
+        onClick={() => onPick(undefined)}
+        className="flex-1 justify-center rounded-l border border-r-0 border-ink-900 bg-white px-3 py-2 text-xs font-medium text-ink-900 hover:bg-ink-50 md:flex-initial md:py-1.5"
+      >
+        + Menú
+      </button>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Elegir plantilla de menú"
+        aria-expanded={open}
+        className="rounded-r border border-ink-900 bg-white px-2 py-2 text-xs text-ink-900 hover:bg-ink-50 md:py-1.5"
+      >
+        ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded border border-ink-200 bg-white shadow-lg">
+          <p className="border-b border-ink-100 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-ink-400">
+            Crear menú desde…
+          </p>
+          {templates.map((t) => (
+            <button
+              key={t.slug ?? 'blank'}
+              onClick={() => {
+                setOpen(false)
+                onPick(t.slug)
+              }}
+              className="block w-full px-3 py-2.5 text-left hover:bg-ink-50"
+            >
+              <p className="text-sm font-medium text-ink-900">{t.label}</p>
+              <p className="text-[11px] text-ink-500">{t.sub}</p>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
