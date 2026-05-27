@@ -1,67 +1,121 @@
-import type { Invitation, MenuHeaderData, HeroData } from '../types/invitation.types'
+import type {
+  HeroData,
+  Invitation,
+  InvitationBlock,
+  MenuHeaderData,
+} from '../types/invitation.types'
 import { apiUrl } from './apiBase'
+import { detectBackgroundKind } from './pageBackground'
 
 // 1.91:1 — the aspect ratio every major social platform (WhatsApp, iMessage,
-// Facebook, Twitter, LinkedIn) uses for og:image previews. 1200×630 keeps text
-// crisp on retina link cards without being heavy.
+// Facebook, Twitter, LinkedIn) uses for og:image previews.
 const W = 1200
 const H = 630
 
 const ASSETS_ENDPOINT = apiUrl('/api/assets')
 
-interface HeaderContent {
+interface HeaderSnapshot {
   title: string
   subtitle: string
-  /** Hex color used as the card background. */
-  background: string
-  /** Hex color used for text. Chosen for contrast against background. */
+  /** Header background image (header.backgroundImage or global page bg). */
+  backgroundImage: string | null
+  /** Solid color shown behind the title when there is no image. */
+  backgroundColor: string
+  /** Optional logo URL drawn above the title (menus only, when configured). */
+  logo: string | null
+  /** Hex color used for text — picked from header settings or contrast rule. */
   foreground: string
-  /** Optional accent color used for the subtitle and decorative line. */
+  /** Hex color used for the accent line / divider. */
   accent: string
+  /** True when an image background is in use → we draw a dark scrim like the
+   *  real menu-header does so the title is legible. */
+  hasBackgroundImage: boolean
+  /** True when this is a menu (drives layout: uppercase tagline above title,
+   *  no decorative divider) vs. an invitation (eyebrow + divider + serif). */
+  isMenu: boolean
+  /** Text alignment from hero data; menus are always center. */
+  alignment: 'left' | 'center' | 'right'
 }
 
-/** Read the most preview-worthy text out of the invitation: prefer hero/
- *  menu-header for the title and their subtitle/tagline for the secondary
- *  line. Falls back to the document title. */
-function extractHeaderContent(inv: Invitation): HeaderContent {
-  const gs = inv.globalSettings
+/** Walk the invitation looking for the header block and produce a snapshot
+ *  describing how the published header is rendered. The auto OG card uses
+ *  this so the share preview mirrors the actual header design. */
+function snapshotHeader(inv: Invitation): HeaderSnapshot {
+  const gs = inv.globalSettings ?? ({} as Invitation['globalSettings'])
   const blocks = Array.isArray(inv.blocks) ? inv.blocks : []
+  const isMenu =
+    inv.kind === 'menu' || blocks.some((b) => b.type.startsWith('menu-'))
+
+  // Global page background contributes the bg image only when it's actually
+  // an image (the user may have pasted a YouTube link). Videos can't be
+  // captured into a static og:image, so we ignore them.
+  const pageBg = gs.pageBackground
+  const pageBgImage =
+    pageBg?.url && detectBackgroundKind(pageBg.url) === 'image' ? pageBg.url : null
+
   let title = inv.title || ''
   let subtitle = ''
+  let backgroundImage: string | null = null
+  let backgroundColor = ''
+  let logo: string | null = null
+  let foreground = ''
+  let alignment: HeaderSnapshot['alignment'] = 'center'
 
-  for (const b of blocks) {
-    if (!b.visible) continue
-    if (b.type === 'hero') {
-      const d = b.data as HeroData
-      if (d.showTitle !== false && d.title) title = d.title
-      if (d.showSubtitle !== false && d.subtitle) subtitle = d.subtitle
-      break
-    }
-    if (b.type === 'menu-header') {
-      const d = b.data as MenuHeaderData
-      if (d.showTitle !== false && d.title) title = d.title
-      if (d.showTagline !== false && d.tagline) subtitle = d.tagline
-      break
-    }
+  const heroBlock = blocks.find((b) => b.type === 'hero') as
+    | InvitationBlock<'hero'>
+    | undefined
+  const menuHeaderBlock = blocks.find((b) => b.type === 'menu-header') as
+    | InvitationBlock<'menu-header'>
+    | undefined
+
+  if (menuHeaderBlock) {
+    const d = menuHeaderBlock.data as MenuHeaderData
+    if (d.showTitle !== false && d.title) title = d.title
+    if (d.showTagline !== false && d.tagline) subtitle = d.tagline
+    if (d.showLogo !== false && d.logo) logo = d.logo
+    backgroundImage = d.backgroundImage || pageBgImage
+    // menu-header has a hard-coded green fallback (#0b3d2e) so we mirror it.
+    backgroundColor = d.backgroundColor || '#0b3d2e'
+    // The published header uses white text on the dark default; the per-block
+    // text color overrides it when present. Honor that here too.
+    foreground = menuHeaderBlock.style?.textColor || '#ffffff'
+  } else if (heroBlock) {
+    const d = heroBlock.data as HeroData
+    if (d.showTitle !== false && d.title) title = d.title
+    if (d.showSubtitle !== false && d.subtitle) subtitle = d.subtitle
+    alignment = d.alignment ?? 'center'
+    backgroundImage = d.backgroundImage || pageBgImage
+    backgroundColor = d.backgroundColor || gs.colorSecondary || gs.colorPrimary || '#f5efe6'
+    foreground = heroBlock.style?.textColor || ''
+  } else {
+    // No header block at all — fall back to brand colors.
+    backgroundImage = pageBgImage
+    backgroundColor = gs.colorSecondary || gs.colorPrimary || '#f5efe6'
   }
 
-  if (!subtitle) {
-    subtitle = inv.kind === 'menu' ? 'Menú digital' : 'Invitación'
+  if (!subtitle) subtitle = isMenu ? 'Menú digital' : 'Invitación'
+  // Pick a readable foreground when one wasn't set explicitly. When there
+  // IS a background image we'll be drawing on top of a dark scrim, so force
+  // white regardless of the underlying color.
+  if (!foreground) {
+    foreground = backgroundImage ? '#ffffff' : pickContrastingForeground(backgroundColor)
   }
+  const accent = gs.colorAccent || gs.colorPrimary || '#c9a96e'
 
-  // Prefer the secondary color as a card background — that's the same
-  // color that frames the central canvas in the published view, so the
-  // preview card feels visually consistent with the real invitation.
-  const background = gs.colorSecondary || gs.colorPrimary || '#f5efe6'
-  const accent = gs.colorAccent || gs.colorPrimary || '#9caf88'
-  const foreground = pickContrastingForeground(background)
-
-  return { title, subtitle, background, foreground, accent }
+  return {
+    title,
+    subtitle,
+    backgroundImage,
+    backgroundColor,
+    logo,
+    foreground,
+    accent,
+    hasBackgroundImage: !!backgroundImage,
+    isMenu,
+    alignment,
+  }
 }
 
-/** Returns '#1c1917' or '#ffffff' depending on perceived luminance of the
- *  background — gives readable text on either light or dark cards without
- *  the caller having to think about it. */
 function pickContrastingForeground(hex: string): string {
   const m = /^#?([\da-f]{6}|[\da-f]{3})$/i.exec(hex.trim())
   if (!m) return '#1c1917'
@@ -70,13 +124,34 @@ function pickContrastingForeground(hex: string): string {
   const r = parseInt(h.slice(0, 2), 16)
   const g = parseInt(h.slice(2, 4), 16)
   const b = parseInt(h.slice(4, 6), 16)
-  // Relative luminance, sRGB approximation.
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
   return lum > 0.6 ? '#1c1917' : '#ffffff'
 }
 
-/** Wraps `text` to fit `maxWidth` at the current canvas font, returning the
- *  resulting visual lines. Capped at `maxLines` — overflow gets an ellipsis. */
+function withAlpha(hex: string, alpha: number): string {
+  const m = /^#?([\da-f]{6}|[\da-f]{3})$/i.exec(hex.trim())
+  if (!m) return `rgba(0,0,0,${alpha})`
+  let h = m[1]
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+/** Promise wrapper around HTMLImageElement that respects CORS (without
+ *  failing the whole publish if the asset blocks it). */
+function loadImage(url: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.referrerPolicy = 'no-referrer'
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
+}
+
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -98,8 +173,6 @@ function wrapText(
   }
   if (current) {
     if (lines.length >= maxLines) {
-      // Trim the last visible line and add an ellipsis so we don't drop
-      // information silently.
       let last = lines[maxLines - 1]
       while (ctx.measureText(`${last}…`).width > maxWidth && last.length > 0) {
         last = last.slice(0, -1)
@@ -112,84 +185,6 @@ function wrapText(
   return lines.slice(0, maxLines)
 }
 
-/** Renders the OG card into a canvas and returns a `data:image/png;base64,…`. */
-function renderHeaderCard(content: HeaderContent): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas 2D context not available')
-
-  // Background
-  ctx.fillStyle = content.background
-  ctx.fillRect(0, 0, W, H)
-
-  // Subtle vignette so the card has depth even on flat brand colors.
-  const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.9)
-  vignette.addColorStop(0, 'rgba(0,0,0,0)')
-  vignette.addColorStop(1, 'rgba(0,0,0,0.18)')
-  ctx.fillStyle = vignette
-  ctx.fillRect(0, 0, W, H)
-
-  // Thin double border, ~60px inset, in the accent color at low alpha — gives
-  // the card a wedding-stationery feel without depending on a frame asset.
-  ctx.strokeStyle = withAlpha(content.accent, 0.55)
-  ctx.lineWidth = 2
-  ctx.strokeRect(60, 60, W - 120, H - 120)
-  ctx.strokeStyle = withAlpha(content.accent, 0.35)
-  ctx.lineWidth = 1
-  ctx.strokeRect(72, 72, W - 144, H - 144)
-
-  // Subtitle (eyebrow text)
-  ctx.fillStyle = withAlpha(content.foreground, 0.78)
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.font = '600 28px Georgia, "Times New Roman", serif'
-  const subtitleLines = wrapText(ctx, content.subtitle.toUpperCase(), W - 240, 1)
-  let y = H / 2 - 140
-  for (const line of subtitleLines) {
-    // Letter-spaced look via per-char draw.
-    drawSpacedLine(ctx, line, W / 2, y, 6)
-    y += 44
-  }
-
-  // Decorative divider
-  ctx.strokeStyle = content.accent
-  ctx.lineWidth = 1.5
-  const dividerY = H / 2 - 80
-  ctx.beginPath()
-  ctx.moveTo(W / 2 - 60, dividerY)
-  ctx.lineTo(W / 2 + 60, dividerY)
-  ctx.stroke()
-  // Center diamond
-  ctx.fillStyle = content.accent
-  ctx.beginPath()
-  ctx.moveTo(W / 2, dividerY - 5)
-  ctx.lineTo(W / 2 + 5, dividerY)
-  ctx.lineTo(W / 2, dividerY + 5)
-  ctx.lineTo(W / 2 - 5, dividerY)
-  ctx.closePath()
-  ctx.fill()
-
-  // Title — biggest type, serif, allow 2 lines.
-  ctx.fillStyle = content.foreground
-  ctx.font = '500 96px Georgia, "Times New Roman", serif'
-  const titleLines = wrapText(ctx, content.title || 'Invitación', W - 240, 2)
-  const lineHeight = 108
-  const totalHeight = titleLines.length * lineHeight
-  let ty = H / 2 + (titleLines.length === 1 ? 20 : -8)
-  if (titleLines.length === 2) ty = H / 2 - lineHeight / 2 + 30
-  // For single line we keep ty as is; for two lines start above center.
-  let cursor = titleLines.length === 1 ? ty : H / 2 - totalHeight / 2 + lineHeight / 2 + 30
-  for (const line of titleLines) {
-    ctx.fillText(line, W / 2, cursor)
-    cursor += lineHeight
-  }
-
-  return canvas.toDataURL('image/png', 0.92)
-}
-
-/** Draw a horizontally letter-spaced line by stepping through each char. */
 function drawSpacedLine(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -207,22 +202,177 @@ function drawSpacedLine(
   }
 }
 
-function withAlpha(hex: string, alpha: number): string {
-  const m = /^#?([\da-f]{6}|[\da-f]{3})$/i.exec(hex.trim())
-  if (!m) return `rgba(0,0,0,${alpha})`
-  let h = m[1]
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  return `rgba(${r},${g},${b},${alpha})`
+/** Draws `img` into the canvas as a background that covers the full card
+ *  (object-fit: cover semantics). */
+function drawCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+) {
+  const ir = img.naturalWidth / img.naturalHeight
+  const dr = dw / dh
+  let sx = 0
+  let sy = 0
+  let sw = img.naturalWidth
+  let sh = img.naturalHeight
+  if (ir > dr) {
+    sw = img.naturalHeight * dr
+    sx = (img.naturalWidth - sw) / 2
+  } else if (ir < dr) {
+    sh = img.naturalWidth / dr
+    sy = (img.naturalHeight - sh) / 2
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh)
 }
 
-/** Returns true if the invitation already has an image that the share
- *  endpoint would pick (mirror of server's pickShareImage logic). */
+async function renderHeaderCard(snapshot: HeaderSnapshot): Promise<string> {
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas 2D context not available')
+
+  // 1) Base background — solid color, then image on top, then dark scrim.
+  ctx.fillStyle = snapshot.backgroundColor
+  ctx.fillRect(0, 0, W, H)
+
+  if (snapshot.backgroundImage) {
+    const img = await loadImage(snapshot.backgroundImage)
+    if (img) {
+      drawCover(ctx, img, 0, 0, W, H)
+      // Same dark gradient the published menu-header applies so the title
+      // stays legible on busy photos.
+      ctx.fillStyle = 'rgba(0,0,0,0.45)'
+      ctx.fillRect(0, 0, W, H)
+    }
+  } else {
+    // Subtle vignette on flat color cards so they don't feel completely
+    // empty in the share preview.
+    const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.9)
+    vignette.addColorStop(0, 'rgba(0,0,0,0)')
+    vignette.addColorStop(1, 'rgba(0,0,0,0.18)')
+    ctx.fillStyle = vignette
+    ctx.fillRect(0, 0, W, H)
+  }
+
+  // 2) Inset double-line frame in the accent color — only on flat backgrounds.
+  //    On a photo background the frame fights with the image, so we skip it.
+  if (!snapshot.backgroundImage) {
+    ctx.strokeStyle = withAlpha(snapshot.accent, 0.55)
+    ctx.lineWidth = 2
+    ctx.strokeRect(60, 60, W - 120, H - 120)
+    ctx.strokeStyle = withAlpha(snapshot.accent, 0.35)
+    ctx.lineWidth = 1
+    ctx.strokeRect(72, 72, W - 144, H - 144)
+  }
+
+  // 3) Optional logo, centered above the title.
+  let logoBottom = 0
+  if (snapshot.logo) {
+    const logoImg = await loadImage(snapshot.logo)
+    if (logoImg) {
+      const maxLogoH = 110
+      const maxLogoW = 320
+      const r = logoImg.naturalWidth / logoImg.naturalHeight
+      let lh = maxLogoH
+      let lw = lh * r
+      if (lw > maxLogoW) {
+        lw = maxLogoW
+        lh = lw / r
+      }
+      const lx = (W - lw) / 2
+      const ly = H / 2 - 200
+      ctx.drawImage(logoImg, lx, ly, lw, lh)
+      logoBottom = ly + lh
+    }
+  }
+
+  // Alignment defaults to center; menus always render centered.
+  const align = snapshot.alignment
+  const textX =
+    align === 'left' ? 120 : align === 'right' ? W - 120 : W / 2
+  ctx.textAlign = align === 'center' ? 'center' : align
+  ctx.textBaseline = 'middle'
+
+  // 4) Subtitle / tagline. For menus we letter-space and uppercase it (same
+  //    treatment the published header uses); for invitations it's a regular
+  //    eyebrow line above the title.
+  ctx.fillStyle = withAlpha(snapshot.foreground, 0.85)
+  ctx.font = '600 28px Georgia, "Times New Roman", serif'
+  const subtitleText = snapshot.isMenu
+    ? snapshot.subtitle.toUpperCase()
+    : snapshot.subtitle
+  const subtitleLines = wrapText(ctx, subtitleText, W - 240, 1)
+  const subtitleY = snapshot.logo
+    ? Math.max(H / 2 - 80, logoBottom + 60)
+    : H / 2 - 140
+  for (const line of subtitleLines) {
+    if (snapshot.isMenu && align === 'center') {
+      drawSpacedLine(ctx, line, textX, subtitleY, 6)
+    } else {
+      ctx.fillText(line, textX, subtitleY)
+    }
+  }
+
+  // 5) Decorative divider — only when there's no background image and no
+  //    logo (logos already act as a visual anchor; on photo bgs the frame is
+  //    skipped, so a divider would feel arbitrary).
+  if (!snapshot.backgroundImage && !snapshot.logo) {
+    const dividerY = subtitleY + 50
+    ctx.strokeStyle = snapshot.accent
+    ctx.lineWidth = 1.5
+    if (align === 'center') {
+      ctx.beginPath()
+      ctx.moveTo(textX - 60, dividerY)
+      ctx.lineTo(textX + 60, dividerY)
+      ctx.stroke()
+      ctx.fillStyle = snapshot.accent
+      ctx.beginPath()
+      ctx.moveTo(textX, dividerY - 5)
+      ctx.lineTo(textX + 5, dividerY)
+      ctx.lineTo(textX, dividerY + 5)
+      ctx.lineTo(textX - 5, dividerY)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+
+  // 6) Title. Serif, max 2 lines, drop-shadow when sitting on a photo.
+  ctx.fillStyle = snapshot.foreground
+  ctx.font = '500 96px Georgia, "Times New Roman", serif'
+  if (snapshot.backgroundImage) {
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'
+    ctx.shadowBlur = 24
+    ctx.shadowOffsetY = 2
+  }
+  const titleLines = wrapText(ctx, snapshot.title || 'Invitación', W - 240, 2)
+  const lineHeight = 108
+  // Sit the title block below the subtitle/divider area.
+  const titleBlockTop = subtitleLines.length > 0 ? subtitleY + 90 : H / 2 - 40
+  for (let i = 0; i < titleLines.length; i++) {
+    ctx.fillText(titleLines[i], textX, titleBlockTop + i * lineHeight)
+  }
+  ctx.shadowColor = 'transparent'
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetY = 0
+
+  return canvas.toDataURL('image/png', 0.92)
+}
+
+/** Mirror of the server's pickShareImage that also recognizes the global
+ *  page background. Used to decide whether we need to generate a fallback
+ *  card or whether a real image will be picked up. */
 export function hasShareableImage(inv: Invitation): boolean {
-  const gs = inv.globalSettings || {}
+  const gs = inv.globalSettings || ({} as Invitation['globalSettings'])
   if (gs.backgroundImage) return true
+  // Treat the global page background as a "real" image too — when it's set
+  // and resolves to an image (not a video link), the server picks it up.
+  if (gs.pageBackground?.url && detectBackgroundKind(gs.pageBackground.url) === 'image') {
+    return true
+  }
   const blocks = Array.isArray(inv.blocks) ? inv.blocks : []
   for (const b of blocks) {
     if (b?.type === 'hero' && (b.data as HeroData)?.backgroundImage) return true
@@ -245,19 +395,21 @@ export function hasShareableImage(inv: Invitation): boolean {
 }
 
 /**
- * Generates and uploads a fallback share image when the invitation doesn't
- * carry one of its own. Returns the public asset URL, or null if generation
- * or upload failed. Never throws — share-image generation is a nice-to-have,
- * not a publish blocker.
+ * Always generate a styled share card based on the header content (image,
+ * colors, logo, title, tagline). Returns the uploaded asset URL, or null on
+ * any failure — share-image generation is a nice-to-have, not a blocker.
+ *
+ * We deliberately do NOT short-circuit on `hasShareableImage` here anymore:
+ * a custom designed card that integrates the header image looks better as
+ * an og:image than a raw photo, and the user complained that invitations
+ * with only a global background didn't get a generated preview. The caller
+ * decides whether to use this URL or prefer a different one.
  */
 export async function ensureAutoPreviewImage(inv: Invitation): Promise<string | null> {
-  // Don't bother if the user already has an image we'd prefer.
-  if (hasShareableImage(inv)) return null
-
   let dataUri: string
   try {
-    const content = extractHeaderContent(inv)
-    dataUri = renderHeaderCard(content)
+    const snapshot = snapshotHeader(inv)
+    dataUri = await renderHeaderCard(snapshot)
   } catch (e) {
     console.warn('[preview] could not render auto preview image', e)
     return null

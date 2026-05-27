@@ -12,7 +12,7 @@ import type {
 import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
-import { ensureAutoPreviewImage, hasShareableImage } from '../utils/generatePreviewImage'
+import { ensureAutoPreviewImage } from '../utils/generatePreviewImage'
 import { buildTranslations } from '../utils/translation'
 import { apiUrl } from '../utils/apiBase'
 
@@ -309,21 +309,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       translations = undefined
     }
 
-    // If the invitation doesn't carry any uploaded image, render a fallback
-    // share card from the header (title + tagline + brand colors) so the
-    // WhatsApp / iMessage link preview isn't a blank box. We do this AFTER
-    // uploading the user's own assets so `hasShareableImage` sees them as
-    // URLs, not data URIs. Failure here is non-fatal — publish still goes
-    // through, the card just won't have a custom og:image.
+    // Render a styled share card from the header — title, tagline, logo,
+    // background image (header's or global page background), brand colors.
+    // We do this AFTER uploading user assets so the generator can reference
+    // them by their final URL instead of base64. The card is always
+    // regenerated on publish so it stays in sync with header edits;
+    // generation failure is non-fatal (publish still goes through, the
+    // share preview just won't have a custom og:image this time).
     let autoPreviewImage = uploaded.globalSettings.autoPreviewImage
-    if (!hasShareableImage(uploaded)) {
-      const generated = await ensureAutoPreviewImage(uploaded)
-      if (generated) autoPreviewImage = generated
-    } else {
-      // User added a real image since last publish — drop the stale auto
-      // card so the new image takes over the og:image slot.
-      autoPreviewImage = undefined
-    }
+    const generated = await ensureAutoPreviewImage(uploaded)
+    if (generated) autoPreviewImage = generated
 
     const published: Invitation = {
       ...uploaded,

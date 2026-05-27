@@ -13,6 +13,7 @@ import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
 import { EnvelopeIntro } from './EnvelopeIntro'
+import { recordView } from '../../utils/viewTracking'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
   const { globalSettings } = invitation
@@ -85,6 +86,19 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
     ? globalSettings.backgroundMusic
     : ''
   const autoplay = !!globalSettings.backgroundMusicAutoplay
+
+  // Fire one view event per session for the metrics dashboard. We pass the
+  // selected variant so we can see which season visitors actually land on.
+  // Guarded by `publicSlug` so the editor (which doesn't have one) never
+  // pollutes the visit log.
+  useEffect(() => {
+    if (!invitation.publicSlug) return
+    recordView(invitation.publicSlug, { variantId: selectedVariantId })
+    // We intentionally only run on first mount; variant switches don't count
+    // as new visits — they're tracked as separate language/variant signals
+    // we could surface later if useful.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invitation.publicSlug])
 
   const hasPageBackground = !!globalSettings.pageBackground?.url?.trim()
   // When the user adds a page background we assume they want to see it: the

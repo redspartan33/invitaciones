@@ -7,8 +7,10 @@ import type {
   MenuHeaderData,
   MenuItem,
   MenuSectionData,
+  MenuVariant,
 } from '../../types/invitation.types'
 import { LANGUAGE_LABELS } from '../../utils/translation'
+import { loadViewEvents, type ViewEvent } from '../../utils/viewTracking'
 
 interface SectionMetrics {
   id: string
@@ -255,12 +257,17 @@ function Bar({ value, total, color = '#9caf88' }: { value: number; total: number
   )
 }
 
+type Tab = 'behavior' | 'content'
+
 export function MetricsView({ slug }: { slug: string }) {
   const [inv, setInv] = useState<Invitation | null | undefined>(undefined)
+  const [events, setEvents] = useState<ViewEvent[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>('behavior')
 
   const load = async () => {
     setInv(undefined)
+    setEvents([])
     setError(null)
     try {
       const res = await fetch(`${apiUrl(`/api/metrics/${slug}`)}?_=${Date.now()}`, { cache: 'no-store' })
@@ -276,6 +283,10 @@ export function MetricsView({ slug }: { slug: string }) {
       }
       const data = (await res.json()) as Invitation
       setInv(data)
+      // View events are loaded in parallel; failure is silent — the
+      // behavior tab will just say there are no visits yet.
+      const viewsResp = await loadViewEvents(slug)
+      if (viewsResp) setEvents(viewsResp.events)
     } catch (e) {
       setInv(null)
       setError(e instanceof Error ? e.message : 'No se pudo cargar')
@@ -315,12 +326,6 @@ export function MetricsView({ slug }: { slug: string }) {
       ? (headerBlock.data as MenuHeaderData).title
       : inv.title
 
-  const currency = metrics.priceCurrency
-  const pricedPct = metrics.totalItems > 0 ? (metrics.pricedItems / metrics.totalItems) * 100 : 0
-  const descPct =
-    metrics.totalItems > 0 ? (metrics.itemsWithDescription / metrics.totalItems) * 100 : 0
-  const badgePct = metrics.totalItems > 0 ? (metrics.itemsWithBadges / metrics.totalItems) * 100 : 0
-
   return (
     <div className="min-h-screen bg-ink-50">
       <div className="mx-auto max-w-4xl px-5 py-8 md:px-8 md:py-12">
@@ -341,6 +346,48 @@ export function MetricsView({ slug }: { slug: string }) {
           </button>
         </header>
 
+        {/* Tab switcher */}
+        <div className="mt-6 flex items-center gap-1 rounded border border-ink-200 bg-white p-0.5 w-fit">
+          {([
+            { id: 'behavior' as Tab, label: 'Comportamiento' },
+            { id: 'content' as Tab, label: 'Contenido del menú' },
+          ]).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`rounded px-3 py-1.5 text-xs transition-colors ${
+                tab === t.id ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'behavior' ? (
+          <BehaviorTab events={events} variants={inv.menuVariants ?? []} />
+        ) : (
+          <ContentTab metrics={metrics} />
+        )}
+
+        <footer className="mt-12 border-t border-ink-200 pt-4 text-center text-[10px] uppercase tracking-[0.2em] text-ink-400">
+          Dashboard privado · Solo quienes tengan este enlace pueden verlo
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+function ContentTab({ metrics }: { metrics: MenuMetrics }) {
+  const currency = metrics.priceCurrency
+  const pricedPct = metrics.totalItems > 0 ? (metrics.pricedItems / metrics.totalItems) * 100 : 0
+  const descPct =
+    metrics.totalItems > 0 ? (metrics.itemsWithDescription / metrics.totalItems) * 100 : 0
+  const badgePct = metrics.totalItems > 0 ? (metrics.itemsWithBadges / metrics.totalItems) * 100 : 0
+
+  return (
+    <>
         {/* Resumen */}
         <section className="mt-6">
           <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-ink-500">Resumen</h2>
@@ -560,12 +607,365 @@ export function MetricsView({ slug }: { slug: string }) {
           </div>
         </section>
 
-        <footer className="mt-12 border-t border-ink-200 pt-4 text-center text-[10px] uppercase tracking-[0.2em] text-ink-400">
-          Dashboard privado · Solo quienes tengan este enlace pueden verlo
-        </footer>
+    </>
+  )
+}
+
+function BehaviorTab({
+  events,
+  variants,
+}: {
+  events: ViewEvent[]
+  variants: MenuVariant[]
+}) {
+  const stats = useMemo(() => computeBehaviorStats(events, variants), [events, variants])
+
+  if (events.length === 0) {
+    return (
+      <div className="mt-6 rounded-xl border border-dashed border-ink-300 bg-white p-12 text-center">
+        <p className="font-serif text-2xl text-ink-900">Aún no hay visitas</p>
+        <p className="mt-3 max-w-md mx-auto text-sm text-ink-500">
+          Cuando alguien abra el menú publicado, sus visitas aparecerán aquí. Comparte el enlace y vuelve más tarde.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Resumen de tráfico */}
+      <section className="mt-6">
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-ink-500">Resumen de tráfico</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatCard label="Visitas totales" value={String(stats.totalViews)} />
+          <StatCard
+            label="Visitantes únicos"
+            value={String(stats.uniqueVisitors)}
+            hint={stats.totalViews > 0 ? `${stats.viewsPerVisitor.toFixed(1)} visitas / persona` : undefined}
+          />
+          <StatCard
+            label="Últimos 7 días"
+            value={String(stats.last7Days)}
+            hint={stats.last30Days > 0 ? `${stats.last30Days} en 30 días` : undefined}
+          />
+          <StatCard
+            label="Última visita"
+            value={stats.lastVisitRelative}
+            hint={stats.lastVisitDate ? new Date(stats.lastVisitDate).toLocaleString('es-MX') : undefined}
+          />
+        </div>
+      </section>
+
+      {/* Visitas por día */}
+      {stats.daily.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-ink-500">Visitas por día (últimos 30)</h2>
+          <div className="rounded-xl border border-ink-200 bg-white p-4">
+            <div className="flex items-end justify-between gap-1" style={{ height: 120 }}>
+              {stats.daily.map((d) => {
+                const max = Math.max(...stats.daily.map((x) => x.count), 1)
+                const heightPct = (d.count / max) * 100
+                return (
+                  <div key={d.date} className="group relative flex flex-1 flex-col items-center justify-end" title={`${d.date}: ${d.count} visita${d.count === 1 ? '' : 's'}`}>
+                    <div
+                      className="w-full max-w-[14px] rounded-t bg-emerald-400 transition-all group-hover:bg-emerald-600"
+                      style={{ height: `${heightPct}%`, minHeight: d.count > 0 ? 2 : 0 }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-ink-400">
+              <span>{stats.daily[0]?.date}</span>
+              <span>{stats.daily[stats.daily.length - 1]?.date}</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Hora del día */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-ink-500">
+          Horario más activo
+        </h2>
+        <div className="rounded-xl border border-ink-200 bg-white p-4">
+          <div className="flex items-end justify-between gap-1" style={{ height: 90 }}>
+            {stats.hourly.map((h) => {
+              const max = Math.max(...stats.hourly.map((x) => x.count), 1)
+              const pct = (h.count / max) * 100
+              return (
+                <div key={h.hour} className="group flex flex-1 flex-col items-center justify-end" title={`${String(h.hour).padStart(2, '0')}:00 — ${h.count} visita${h.count === 1 ? '' : 's'}`}>
+                  <div
+                    className="w-full max-w-[14px] rounded-t bg-violet-400 transition-all group-hover:bg-violet-600"
+                    style={{ height: `${pct}%`, minHeight: h.count > 0 ? 2 : 0 }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[10px] text-ink-400">
+            <span>00h</span>
+            <span>06h</span>
+            <span>12h</span>
+            <span>18h</span>
+            <span>23h</span>
+          </div>
+          {stats.peakHour !== null && (
+            <p className="mt-3 text-xs text-ink-700">
+              Hora pico:{' '}
+              <span className="font-semibold">
+                {String(stats.peakHour).padStart(2, '0')}:00
+              </span>{' '}
+              <span className="text-ink-500">
+                · {stats.dayOfWeekPeak ? `con mayor actividad el ${stats.dayOfWeekPeak}` : ''}
+              </span>
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Dispositivo / idioma / referrer */}
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <DistributionCard
+          title="Dispositivos"
+          rows={stats.deviceRows}
+          total={stats.totalViews}
+          color="#60a5fa"
+        />
+        <DistributionCard
+          title="Idioma del navegador"
+          rows={stats.languageRows}
+          total={stats.totalViews}
+          color="#34d399"
+        />
+        <DistributionCard
+          title="¿De dónde vienen?"
+          rows={stats.referrerRows}
+          total={stats.totalViews}
+          color="#fbbf24"
+        />
+      </section>
+
+      {/* Variantes / temporadas */}
+      {stats.variantRows.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-ink-500">
+            Temporada vista
+          </h2>
+          <div className="rounded-xl border border-ink-200 bg-white p-4 space-y-3">
+            {stats.variantRows.map((r) => (
+              <Row key={r.label} label={r.label} count={r.count} total={stats.totalViews} pct={(r.count / stats.totalViews) * 100} />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  )
+}
+
+interface DistroRow {
+  label: string
+  count: number
+}
+
+function DistributionCard({
+  title,
+  rows,
+  total,
+  color,
+}: {
+  title: string
+  rows: DistroRow[]
+  total: number
+  color: string
+}) {
+  const max = Math.max(...rows.map((r) => r.count), 1)
+  return (
+    <div className="rounded-xl border border-ink-200 bg-white p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">{title}</p>
+      <div className="mt-3 space-y-2.5">
+        {rows.length === 0 ? (
+          <p className="text-xs text-ink-400">Sin datos</p>
+        ) : (
+          rows.map((r) => {
+            const pct = total > 0 ? (r.count / total) * 100 : 0
+            return (
+              <div key={r.label}>
+                <div className="flex justify-between text-xs text-ink-700">
+                  <span className="truncate">{r.label}</span>
+                  <span className="shrink-0 tabular-nums text-ink-500">
+                    {r.count} · {pct.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-1">
+                  <Bar value={r.count} total={max} color={color} />
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </div>
   )
+}
+
+interface BehaviorStats {
+  totalViews: number
+  uniqueVisitors: number
+  viewsPerVisitor: number
+  last7Days: number
+  last30Days: number
+  lastVisitDate: string | null
+  lastVisitRelative: string
+  daily: { date: string; count: number }[]
+  hourly: { hour: number; count: number }[]
+  peakHour: number | null
+  dayOfWeekPeak: string | null
+  deviceRows: DistroRow[]
+  languageRows: DistroRow[]
+  referrerRows: DistroRow[]
+  variantRows: DistroRow[]
+}
+
+const REFERRER_LABELS: Record<ViewEvent['referrer'], string> = {
+  direct: 'Directo / Link copiado',
+  whatsapp: 'WhatsApp',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  search: 'Buscador',
+  other: 'Otra fuente',
+}
+
+const DEVICE_LABELS: Record<ViewEvent['device'], string> = {
+  mobile: 'Móvil',
+  tablet: 'Tablet',
+  desktop: 'Escritorio',
+}
+
+const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+function computeBehaviorStats(events: ViewEvent[], variants: MenuVariant[]): BehaviorStats {
+  const totalViews = events.length
+  const uniqueVisitors = new Set(events.map((e) => e.viewerId)).size
+  const viewsPerVisitor = uniqueVisitors > 0 ? totalViews / uniqueVisitors : 0
+
+  const now = Date.now()
+  const dayMs = 24 * 60 * 60 * 1000
+  let last7Days = 0
+  let last30Days = 0
+  let lastVisitDate: string | null = null
+  for (const e of events) {
+    const ts = Date.parse(e.ts)
+    if (Number.isNaN(ts)) continue
+    if (now - ts <= 7 * dayMs) last7Days++
+    if (now - ts <= 30 * dayMs) last30Days++
+    if (!lastVisitDate || e.ts > lastVisitDate) lastVisitDate = e.ts
+  }
+
+  // Daily — last 30 days as bars, oldest → newest.
+  const daily: { date: string; count: number }[] = []
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now - i * dayMs)
+    const key = d.toISOString().slice(0, 10)
+    daily.push({ date: key, count: 0 })
+  }
+  for (const e of events) {
+    const key = e.ts.slice(0, 10)
+    const row = daily.find((d) => d.date === key)
+    if (row) row.count++
+  }
+
+  // Hourly distribution (0-23).
+  const hourly: { hour: number; count: number }[] = []
+  for (let h = 0; h < 24; h++) hourly.push({ hour: h, count: 0 })
+  for (const e of events) {
+    const ts = new Date(e.ts)
+    if (!Number.isNaN(ts.getTime())) hourly[ts.getHours()].count++
+  }
+  const peakHourEntry = hourly.reduce((best, cur) => (cur.count > best.count ? cur : best), hourly[0])
+  const peakHour = peakHourEntry.count > 0 ? peakHourEntry.hour : null
+
+  // Day-of-week peak.
+  const dowCounts = [0, 0, 0, 0, 0, 0, 0]
+  for (const e of events) {
+    const ts = new Date(e.ts)
+    if (!Number.isNaN(ts.getTime())) dowCounts[ts.getDay()]++
+  }
+  let dowPeakIdx = -1
+  let dowPeakVal = 0
+  dowCounts.forEach((v, i) => {
+    if (v > dowPeakVal) {
+      dowPeakVal = v
+      dowPeakIdx = i
+    }
+  })
+  const dayOfWeekPeak = dowPeakIdx >= 0 ? WEEKDAYS_ES[dowPeakIdx] : null
+
+  // Distribution helpers.
+  const tally = <K extends string>(values: K[]): Map<K, number> => {
+    const m = new Map<K, number>()
+    for (const v of values) m.set(v, (m.get(v) ?? 0) + 1)
+    return m
+  }
+  const sortDescending = <T extends DistroRow>(rows: T[]): T[] =>
+    rows.slice().sort((a, b) => b.count - a.count)
+
+  const deviceRows = sortDescending(
+    Array.from(tally(events.map((e) => e.device)).entries()).map(([k, count]) => ({
+      label: DEVICE_LABELS[k as ViewEvent['device']] ?? k,
+      count,
+    })),
+  )
+  const referrerRows = sortDescending(
+    Array.from(tally(events.map((e) => e.referrer)).entries()).map(([k, count]) => ({
+      label: REFERRER_LABELS[k as ViewEvent['referrer']] ?? k,
+      count,
+    })),
+  )
+  const languageRows = sortDescending(
+    Array.from(tally(events.map((e) => e.language || 'desconocido')).entries()).map(([k, count]) => ({
+      label: k,
+      count,
+    })),
+  ).slice(0, 6)
+
+  const variantLabel = new Map<string, string>()
+  for (const v of variants) variantLabel.set(v.id, v.label)
+  const variantRows = sortDescending(
+    Array.from(
+      tally(events.map((e) => e.variantId || 'none')).entries(),
+    ).map(([k, count]) => ({
+      label: k === 'none' ? 'Sin variante (menú único)' : variantLabel.get(k) ?? `Temporada ${k.slice(0, 6)}`,
+      count,
+    })),
+  )
+
+  let lastVisitRelative = '—'
+  if (lastVisitDate) {
+    const diff = now - Date.parse(lastVisitDate)
+    if (diff < 60_000) lastVisitRelative = 'Ahora'
+    else if (diff < 3_600_000) lastVisitRelative = `Hace ${Math.floor(diff / 60_000)} min`
+    else if (diff < 86_400_000) lastVisitRelative = `Hace ${Math.floor(diff / 3_600_000)} h`
+    else lastVisitRelative = `Hace ${Math.floor(diff / 86_400_000)} d`
+  }
+
+  return {
+    totalViews,
+    uniqueVisitors,
+    viewsPerVisitor,
+    last7Days,
+    last30Days,
+    lastVisitDate,
+    lastVisitRelative,
+    daily,
+    hourly,
+    peakHour,
+    dayOfWeekPeak,
+    deviceRows,
+    languageRows,
+    referrerRows,
+    variantRows,
+  }
 }
 
 function Row({

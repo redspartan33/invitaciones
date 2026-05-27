@@ -204,22 +204,32 @@ En **Detalles** (solo cuando `kind = menu`) hay una sección **"Métricas"** con
 
 El dashboard ([`MetricsView`](src/components/public/MetricsView.tsx)) consume `/api/metrics/:slug` — un endpoint que escanea `inv/` y devuelve la invitación cuyo `globalSettings.metricsSlug` coincide **y** tiene `enableMetrics = true`. Apagar el toggle desactiva el link sin borrar el slug, así que volver a encenderlo restaura el mismo URL.
 
-Las métricas se computan en el cliente desde la versión activa del menú (o la variante marcada como activa cuando hay temporadas):
+El dashboard tiene **dos tabs**:
 
-- **Resumen** — secciones, platillos, % con precio, idiomas habilitados.
-- **Precios** — promedio, mediana, mínimo, máximo y un histograma de 5 buckets adaptados al rango real del menú. La moneda se detecta del texto (`$`, `MXN`, `USD`, `EUR`); el parser tolera comas como separadores de miles o como decimal.
-- **Platillos por sección** — barras horizontales y promedio por sección.
-- **Top 5 más caros / más económicos** — ranking con sección de origen.
-- **Calidad del contenido** — % con precio, % con descripción, % con etiquetas (badges).
-- **Etiquetas más comunes** — frecuencia de badges parseados desde el texto libre del campo (split por `,`, `|`, `·`, `•`).
-- **Temporadas** — listado con la variante activa marcada y cantidad de platillos por variante.
-- **Estructura** — bloques totales / visibles / ocultos y estado (Publicado / Borrador).
+**Comportamiento (tab principal)** — derivado del log de visitas que el server guarda como JSONL en `views/<publicSlug>.jsonl`. Cada vez que un visitante abre el menú publicado, `PublicInvitationView` llama a [`recordView`](src/utils/viewTracking.ts) que envía un evento mínimo a `POST /api/views/:slug` con `{ viewerId, device, language, referrer, variantId }` — sin IP, sin UA fingerprinting, sin geo. El `viewerId` es un id aleatorio guardado en localStorage para distinguir visitantes únicos. El navegador no registra más de una visita por sesión (idempotencia vía `sessionStorage`). El dashboard pide los eventos con `GET /api/views/by-metrics/:metricsSlug` (auth implícita por el metricsSlug) y muestra:
 
-### Preview automático para invitaciones / menús sin imagen
+- **Resumen de tráfico** — visitas totales, visitantes únicos, visitas/persona, últimos 7 y 30 días, última visita relativa.
+- **Visitas por día (últimos 30)** — gráfico de barras verde.
+- **Horario más activo** — histograma de 24 horas + indicador de hora pico y día de la semana con mayor actividad.
+- **Dispositivos / Idioma / De dónde vienen** — tres distribuciones con barras (mobile/tablet/desktop · idioma del navegador · WhatsApp/Instagram/Facebook/buscador/directo/otra).
+- **Temporada vista** — qué variantes están eligiendo los visitantes (solo aplica si el menú tiene variantes).
 
-Cuando un menú o invitación no tiene ninguna imagen propia (ni `globalSettings.backgroundImage`, ni hero/menu-header con imagen, ni galería con fotos), al publicar se genera automáticamente una **tarjeta de preview 1200×630** desde el contenido del header (título + subtítulo/tagline + colores de marca) con `<canvas>` y se sube como asset normal vía `/api/assets`. La URL queda guardada en `globalSettings.autoPreviewImage`.
+**Contenido del menú (tab secundaria)** — resumen estático del contenido publicado: secciones, platillos, precios (promedio/mediana/min/max + histograma de 5 buckets), top 5 más caros/económicos, calidad del contenido (% con precio / descripción / badges), etiquetas más comunes, lista de temporadas y estructura técnica.
 
-La utilidad vive en [`src/utils/generatePreviewImage.ts`](src/utils/generatePreviewImage.ts) y el server ([server/index.js](server/index.js) → `pickShareImage`) consulta este campo como último recurso al elegir el `og:image`. Cuando el usuario sube una imagen real, el siguiente publish descarta el preview auto para que WhatsApp / iMessage muestren la imagen elegida en su lugar.
+### Preview automático que coincide con el header
+
+Cada vez que se publica una invitación o menú, se regenera una **tarjeta de preview 1200×630** que replica el diseño del header — no un fondo plano genérico — y se sube como asset normal vía `/api/assets`. La URL queda guardada en `globalSettings.autoPreviewImage` y `pickShareImage` la prefiere por encima de cualquier otra imagen (header.backgroundImage, logo, gallery, etc.) porque suele verse mejor en el inline preview de WhatsApp/iMessage que una foto cruda.
+
+[`generatePreviewImage.ts`](src/utils/generatePreviewImage.ts) toma un **snapshot del header** para componer la tarjeta:
+
+- Si hay `menu-header` o `hero` con `backgroundImage` la carga con CORS y la pinta como fondo (cover), con el mismo scrim oscuro `rgba(0,0,0,0.45)` que el header publicado usa para legibilidad.
+- Si no hay imagen del header pero sí `globalSettings.pageBackground` y resuelve a imagen (no video), la usa como fondo. Esto resuelve el caso anterior donde menús con sólo "Fondo de página" no obtenían preview.
+- Si no hay imagen alguna, dibuja una tarjeta con `backgroundColor` del header + marco doble en color de acento + vignette sutil.
+- Logo del menú-header se dibuja arriba del título cuando existe (`showLogo + logo`).
+- El subtítulo / tagline se renderiza letter-spaced y en mayúsculas para menús (espejando lo que hace `menu-header`); para invitaciones es un eyebrow normal + divider decorativo.
+- Color del texto = `block.style.textColor` si está, blanco si hay imagen detrás (legibilidad), o auto-contraste vs `backgroundColor` en caso contrario.
+
+La generación pasa siempre, sin importar si el invitación ya tenía imagen propia — la tarjeta diseñada integra esa imagen pero queda con un look coherente con la marca. Falla silenciosa si la imagen no carga (CORS, 404) → publica igual, simplemente sin og:image custom esa vez.
 
 ### Nombre de la pestaña del navegador
 
