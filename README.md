@@ -346,7 +346,33 @@ GET    /api/asset/<folder>/<file>        → bytes del archivo
 GET    /api/guestlists/<slug>            → [GuestEntry, …]
 POST   /api/guestlists/<slug>            → { ok: true, entry }
 PUT    /api/guestlists/<slug>            → { ok: true }   (inicializa vacía)
+GET    /share/<slug>                     → HTML con og:title/og:image (preview WhatsApp)
 ```
+
+### Storage persistente — IMPORTANTE
+
+Hostinger borra `~/domains/api.lamartinasma.com/nodejs/` en cada redeploy
+(swap atómico con un clone limpio del repo). Por eso el backend guarda
+los datos **fuera** del directorio de la app, en `$HOME` que sí persiste:
+
+- Invitaciones JSON: `~/lamartinasma-data/inv/<slug>.json`
+- Guestlists JSON:   `~/lamartinasma-data/guests/<slug>.json`
+- Imágenes subidas:  `~/lamartinasma-uploads/<folder>/<file>`
+
+Las rutas se pueden sobrescribir con `DATA_DIR` y `UPLOADS_DIR` en
+variables de entorno si en el futuro hay que moverlas a otro disco /
+volumen montado. **Nunca** apuntar de vuelta a algo dentro del repo:
+el siguiente push borraría las invitaciones de los clientes.
+
+### Preview de WhatsApp / iMessage / Twitter
+
+El editor copia URLs con la forma `https://api.lamartinasma.com/share/<slug>`.
+Esa ruta lee la invitación, escoge la mejor imagen disponible (page
+background → hero → menu-header → cualquier imagen de bloque) y devuelve
+un HTML estático con etiquetas `og:title` / `og:image` / `og:description`
++ `twitter:card`, más un `<meta http-equiv="refresh">` que redirige al
+humano a la SPA en lamartinasma.com. Los scrapers ven el preview, los
+visitantes ven la invitación normal.
 
 ### Cómo se compone la URL desde el frontend
 
