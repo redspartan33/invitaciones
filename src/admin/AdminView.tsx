@@ -256,7 +256,17 @@ export function AdminView({ onOpenEditor }: { onOpenEditor: (id?: string, kind?:
           <ul className="space-y-3">
             {filtered.map((inv) => {
               const isPub = inv.status === 'published'
-              const link = isPub ? `${window.location.origin}/?id=${inv.publicSlug || inv.id}` : ''
+              // Build a share URL that points at the API's /share/<slug>
+              // endpoint. That route returns HTML with og:title / og:image
+              // so WhatsApp / iMessage / Twitter / Facebook can render an
+              // inline preview card (title + first header image), then
+              // redirects clicking humans to the SPA on the frontend
+              // origin. In dev (where apiUrl() returns "") this resolves
+              // to a same-origin path which the Vite proxy forwards to
+              // the local Express server at :5050.
+              const link = isPub
+                ? `${apiUrl(`/share/${inv.publicSlug || inv.id}`) || `${window.location.origin}/share/${inv.publicSlug || inv.id}`}`
+                : ''
               const kind = inferKind(inv)
               return (
                 <li

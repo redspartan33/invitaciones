@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import type {
   InvitationBlock,
   Language,
@@ -10,6 +10,7 @@ import { TextEl } from './TextEl'
 import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { LANGUAGE_LABELS } from '../../utils/translation'
+import { ITEM_GAP_PX, PAD_Y_CLASS } from './BlockWrapper'
 
 const EMPTY_BLOCKS: InvitationBlock[] = []
 
@@ -230,10 +231,41 @@ export function MenuHeaderBlock({
 
   const showLangSwitcher = !!languages && languages.length > 1
 
+  // Apply the same block-level layout knobs (padding, item spacing, text
+  // size, text color) that every other block reads via BlockWrapper. Without
+  // this, the sidebar sliders for "Espaciado vertical" and "Separación
+  // entre elementos" silently did nothing on menu headers because this
+  // block hardcoded `py-16` and used a fixed `mt-3` between elements.
+  const blockStyle = block.style
+  const hasCustomPadding = blockStyle?.paddingTop !== undefined || blockStyle?.paddingBottom !== undefined
+  const paddingClass = hasCustomPadding
+    ? 'px-6'
+    : `${PAD_Y_CLASS[blockStyle?.paddingY ?? 'lg']} px-6`
+  const textSizeClass = `block-text-${blockStyle?.textSize ?? 'md'}`
+  const headerInlineStyle: CSSProperties = {
+    ...bgStyle,
+    paddingTop: blockStyle?.paddingTop !== undefined ? `${blockStyle.paddingTop}px` : undefined,
+    paddingBottom: blockStyle?.paddingBottom !== undefined ? `${blockStyle.paddingBottom}px` : undefined,
+    ...(blockStyle?.textColor ? { color: blockStyle.textColor } : undefined),
+  }
+  // Inner-element gap as a CSS variable, so the elements below can use it
+  // via inline style and stay in sync with the universal "Separación entre
+  // elementos internos" control.
+  ;(headerInlineStyle as Record<string, string>)['--item-gap'] = ITEM_GAP_PX[blockStyle?.itemSpacing ?? 'md']
+
   const renderHeaderContent = () => (
-    <div style={bgStyle} className="px-6 py-16 text-center" ref={headerRef}>
+    <div
+      style={headerInlineStyle}
+      className={`block-scale-active ${textSizeClass} ${paddingClass} text-center flex flex-col items-center`}
+      ref={headerRef}
+    >
       {data.showLogo && data.logo && (
-        <img src={data.logo} alt="Logo" className={`mx-auto mb-4 w-auto object-contain ${logoClass}`} />
+        <img
+          src={data.logo}
+          alt="Logo"
+          className={`w-auto object-contain ${logoClass}`}
+          style={{ marginBottom: 'var(--item-gap)' }}
+        />
       )}
       {data.showTitle && data.title && (
         <TextEl block={block} field="title" as="h1" className="font-serif text-5xl font-medium tracking-wide md:text-6xl">
@@ -241,12 +273,21 @@ export function MenuHeaderBlock({
         </TextEl>
       )}
       {data.showTagline && data.tagline && (
-        <TextEl block={block} field="tagline" as="p" className="mt-3 text-sm uppercase tracking-[0.3em] opacity-90">
+        <TextEl
+          block={block}
+          field="tagline"
+          as="p"
+          className="text-sm uppercase tracking-[0.3em] opacity-90"
+          style={{ marginTop: 'var(--item-gap)' }}
+        >
           {data.tagline}
         </TextEl>
       )}
       {showLangSwitcher && (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <div
+          className="flex flex-wrap items-center justify-center gap-3"
+          style={{ marginTop: 'var(--item-gap)' }}
+        >
           {languages!.map((lang) => {
             const active = currentLanguage === lang
             return (

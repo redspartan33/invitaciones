@@ -3,6 +3,7 @@ import { useEditorStore } from '../../store/editorStore'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { CopyIcon, ShareIcon } from '../blocks/icons'
 import { ADMIN_TOKEN } from '../../admin/adminAuth'
+import { apiUrl } from '../../utils/apiBase'
 
 export function EditorHeader() {
   const title = useEditorStore((s) => s.invitation.title)
@@ -21,7 +22,17 @@ export function EditorHeader() {
 
   const isPublished = status === 'published'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const shareLink = invitation.sharedLink || (invitation.publicSlug ? `${origin}/?id=${invitation.publicSlug}` : '')
+  // The shareable URL points at the API's /share/<slug> endpoint, which
+  // serves an HTML page carrying og:title / og:image / og:description
+  // tags so WhatsApp / iMessage / Twitter can render a link preview card.
+  // Clicking the link redirects the human to the SPA on the frontend
+  // origin (target encoded inside /share's <meta http-equiv="refresh">).
+  // In dev the apiUrl() base is empty, so we fall back to a same-origin
+  // path which the Vite proxy forwards to the local Express server.
+  const shareSlug = invitation.publicSlug
+  const shareLink =
+    invitation.sharedLink ||
+    (shareSlug ? apiUrl(`/share/${shareSlug}`) || `${origin}/share/${shareSlug}` : '')
   const qrSrc = shareLink
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=${encodeURIComponent(shareLink)}`
     : ''

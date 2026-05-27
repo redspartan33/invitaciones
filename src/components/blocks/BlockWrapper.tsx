@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { BlockStyle } from '../../types/invitation.types'
 import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
 
-const padMap: Record<NonNullable<BlockStyle['paddingY']>, string> = {
+export const PAD_Y_CLASS: Record<NonNullable<BlockStyle['paddingY']>, string> = {
   sm: 'py-6 md:py-8',
   md: 'py-8 md:py-12',
   lg: 'py-12 md:py-20',
@@ -12,13 +12,16 @@ const padMap: Record<NonNullable<BlockStyle['paddingY']>, string> = {
 /** Vertical gap between repeated/internal elements of a block. Exposed as
  *  a CSS variable so individual blocks pick it up via `style={{gap: 'var(--item-gap)'}}`
  *  or by using utility classes like `space-y-[var(--item-gap)]`. */
-const ITEM_GAP_PX: Record<NonNullable<BlockStyle['itemSpacing']>, string> = {
+export const ITEM_GAP_PX: Record<NonNullable<BlockStyle['itemSpacing']>, string> = {
   xs: '0.25rem',
   sm: '0.5rem',
   md: '1rem',
   lg: '1.75rem',
   xl: '2.75rem',
 }
+
+// Backwards-compat alias for internal use.
+const padMap = PAD_Y_CLASS
 
 const BORDER_RADIUS_PX: Record<NonNullable<BlockStyle['borderRadius']>, string> = {
   none: '0',

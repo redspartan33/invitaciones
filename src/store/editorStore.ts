@@ -13,6 +13,7 @@ import { createBlock, createExampleInvitation, createExampleMenu } from '../util
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
 import { buildTranslations } from '../utils/translation'
+import { apiUrl } from '../utils/apiBase'
 
 const STORAGE_KEY = 'invitation-builder:draft'
 
@@ -273,7 +274,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ? inv.publicSlug
       : generateShortSlug()
     const now = new Date().toISOString()
-    const sharedLink = `${window.location.origin}/?id=${slug}`
+    // sharedLink points at the API's /share/<slug> endpoint, not the
+    // frontend SPA. That endpoint serves an HTML page carrying og:title /
+    // og:image so WhatsApp / iMessage / etc. render a link preview card
+    // (title + first header image). Humans get bounced to the SPA via the
+    // page's <meta http-equiv="refresh">. In dev the API base is empty so
+    // we fall back to a same-origin URL the Vite proxy forwards.
+    const sharedLink =
+      apiUrl(`/share/${slug}`) || `${window.location.origin}/share/${slug}`
 
     let uploaded: Invitation
     try {
