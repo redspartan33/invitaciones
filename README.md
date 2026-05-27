@@ -151,6 +151,15 @@ El override se guarda en `menuHeaderData.navItems`. Los labels custom se incluye
 
 Al crear un menú nuevo desde el admin el editor abre con un esqueleto mínimo (header + 1 sección con 2 platillos + footer vacío) — sin nombres de marca ni contenido de demo. La intención es que el usuario llene su propio menú desde una base limpia.
 
+### Plantillas de menú pre-pobladas
+
+Además del esqueleto vacío hay dos plantillas con el menú real ya cargado, listas para editar diseño y tipografía. Se abren con un parámetro `new=<slug>` en la URL del admin:
+
+- `?admin=<token>&new=hannah-michael` — Hannah & Michael (Guanajuato), brunch/desayuno, 16 secciones y 83 items (Entradas, Bagels, Toast & Sandwich, Waffles & Pancakes, Huevos & Omelettes, Chilaquiles, Especiales, Ligero, Postres, Hidratantes, Smoothies, Café, Malteadas, Jugos, Refrescos, Menú Infantil).
+- `?admin=<token>&new=cocinoteca` — La Cocinoteca (León), cocina contemporánea de Guanajuato, 24 secciones y ~270 items entre cocina (Menú degustación, Entradas, Sopas, Pastas & Arroces, Ensaladas, Pescados, Platos Fuertes, Postres, Niños, Guarniciones) y bebidas (Aperitivos, Cervezas, Coctelería, Mezcal, Tequila, Ginebra, Vodka, Brandy, Whiskey, Cognac, Ron, Bebidas, Refrescos & Agua Mineral, Digestivos).
+
+Las factories viven en [`src/utils/menuTemplates.ts`](src/utils/menuTemplates.ts) (`createHannahMichaelMenu`, `createCocinotecaMenu`) y se enganchan al boot del editor en [`InvitationBuilder.tsx`](src/components/editor/InvitationBuilder.tsx). El contenido (nombres, descripciones, precios) fue extraído del JSON SSR de UberEats (ld+json `Restaurant.hasMenu`) y del `__NEXT_DATA__` del sitio público de La Cocinoteca — son la base, el diseño se termina en el editor.
+
 ### Traducción del menú (ES / EN / FR)
 
 En el panel **Detalles** del editor de menú se puede activar un bloque **"Traducción"** con toggles para `English` y `Français` (el `Español` siempre está activo como idioma original). Cuando hay 2+ idiomas activados:

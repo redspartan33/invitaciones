@@ -6,6 +6,7 @@ import { EditorHeader } from './EditorHeader'
 import { GuideModal } from './GuideModal'
 import { INVITATION_PREFIX, useEditorStore } from '../../store/editorStore'
 import { createExampleInvitation, createExampleMenu } from '../../utils/blockDefaults'
+import { createHannahMichaelMenu, createCocinotecaMenu } from '../../utils/menuTemplates'
 import { loadFromRegistry, saveToRegistry } from '../../utils/inviteRegistry'
 
 // How often (ms) to autosave the draft to the server
@@ -22,8 +23,15 @@ export function InvitationBuilder() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const editId = params.get('edit')
-    const newKind = params.get('new') === 'menu' ? 'menu' : 'invitation'
-    const makeNew = newKind === 'menu' ? createExampleMenu : createExampleInvitation
+    const newParam = params.get('new')
+    const makeNew =
+      newParam === 'menu'
+        ? createExampleMenu
+        : newParam === 'hannah-michael'
+          ? createHannahMichaelMenu
+          : newParam === 'cocinoteca'
+            ? createCocinotecaMenu
+            : createExampleInvitation
 
     async function boot() {
       if (editId) {
