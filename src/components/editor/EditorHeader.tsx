@@ -29,10 +29,15 @@ export function EditorHeader() {
   // origin (target encoded inside /share's <meta http-equiv="refresh">).
   // In dev the apiUrl() base is empty, so we fall back to a same-origin
   // path which the Vite proxy forwards to the local Express server.
+  //
+  // We deliberately ignore invitation.sharedLink even when set: older
+  // records were published with the previous "<origin>/?id=<slug>" format
+  // which gives no link preview, and we always want the current /share/
+  // form here.
   const shareSlug = invitation.publicSlug
-  const shareLink =
-    invitation.sharedLink ||
-    (shareSlug ? apiUrl(`/share/${shareSlug}`) || `${origin}/share/${shareSlug}` : '')
+  const shareLink = shareSlug
+    ? apiUrl(`/share/${shareSlug}`) || `${origin}/share/${shareSlug}`
+    : ''
   const qrSrc = shareLink
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data=${encodeURIComponent(shareLink)}`
     : ''
