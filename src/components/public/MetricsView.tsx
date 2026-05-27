@@ -3,6 +3,7 @@ import { apiUrl } from '../../utils/apiBase'
 import type {
   Invitation,
   InvitationBlock,
+  Language,
   MenuHeaderData,
   MenuItem,
   MenuSectionData,
@@ -33,7 +34,7 @@ interface MenuMetrics {
   topCheapest: { name: string; price: number; section: string }[]
   badgeCounts: { badge: string; count: number }[]
   priceBuckets: { label: string; count: number }[]
-  languages: string[]
+  languages: Language[]
   variants: { id: string; label: string; isActive: boolean; itemCount: number }[]
   totalBlocks: number
   visibleBlocks: number
