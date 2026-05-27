@@ -54,12 +54,17 @@ export function LandingPage() {
           <img
             src="/la-martina-logo.svg"
             alt="La Martina"
-            className="h-14 w-auto"
+            className="h-[168px] w-auto"
           />
 
-          <button className="bg-[#121212] text-white px-6 py-3 rounded-full text-sm">
+          <a
+            href="https://wa.me/524151584244"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[#121212] text-white px-6 py-3 rounded-full text-sm"
+          >
             Contactar
-          </button>
+          </a>
         </nav>
 
         <div className="grid lg:grid-cols-2 gap-14 items-center">
@@ -77,6 +82,7 @@ export function LandingPage() {
               turismo internacional y experiencias de marca memorables.
             </p>
 
+            {/* CTAs comentados temporalmente — implementar después
             <div className="flex gap-4 flex-wrap">
               <button className="bg-[#ff2f68] text-white px-8 py-4 rounded-full">
                 Ver propuesta
@@ -86,6 +92,7 @@ export function LandingPage() {
                 Agendar reunión
               </button>
             </div>
+            */}
           </div>
 
           <div className="bg-white border border-[#ece4dd] rounded-[32px] overflow-hidden shadow-2xl h-[700px]">
