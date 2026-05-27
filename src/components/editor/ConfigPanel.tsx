@@ -617,6 +617,7 @@ function DetailsPanel() {
           onChange={setEnabledLanguages}
         />
       )}
+      {isMenu && <MetricsRow />}
       <div className="rounded border border-ink-200 p-3">
         <p className="text-[11px] uppercase tracking-widest text-ink-400">ID</p>
         <p className="font-mono text-xs text-ink-700">{inv.id}</p>
@@ -1336,6 +1337,114 @@ function ColorField({
         />
       </span>
     </label>
+  )
+}
+
+function generateMetricsSlug(): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const bytes = new Uint8Array(10)
+  crypto.getRandomValues(bytes)
+  let out = ''
+  for (const b of bytes) out += alphabet[b % alphabet.length]
+  return out
+}
+
+function MetricsRow() {
+  const inv = useEditorStore((s) => s.invitation)
+  const updateGlobalSettings = useEditorStore((s) => s.updateGlobalSettings)
+  const enabled = !!inv.globalSettings.enableMetrics
+  const slug = inv.globalSettings.metricsSlug
+  // Public dashboard link — always points to the SPA origin so visitors get
+  // the rendered page even though the invitation itself is served from the
+  // API origin.
+  const origin = typeof window === 'undefined' ? '' : window.location.origin
+  const link = enabled && slug ? `${origin}/?metrics=${slug}` : ''
+
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1500)
+    return () => clearTimeout(t)
+  }, [copied])
+
+  const toggle = () => {
+    if (enabled) {
+      updateGlobalSettings({ enableMetrics: false })
+      return
+    }
+    const nextSlug = slug ?? generateMetricsSlug()
+    updateGlobalSettings({ enableMetrics: true, metricsSlug: nextSlug })
+  }
+
+  const onRegenerate = () => {
+    if (!confirm('¿Generar un nuevo enlace? El link anterior dejará de funcionar.')) return
+    updateGlobalSettings({ metricsSlug: generateMetricsSlug() })
+  }
+
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-ink-400">Métricas</p>
+          <p className="mt-0.5 text-[11px] text-ink-500">
+            Genera un link privado con estadísticas de tu menú (platillos, precios, secciones, idiomas…). Recuerda publicar el menú para que las métricas reflejen la versión más reciente.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors ${
+            enabled ? 'bg-ink-900' : 'bg-ink-200'
+          }`}
+          aria-pressed={enabled}
+        >
+          <span
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+
+      {enabled && link && (
+        <div className="mt-3 space-y-2">
+          <div className="rounded border border-ink-200 bg-ink-50 px-2 py-1.5">
+            <p className="break-all font-mono text-[11px] text-ink-700">{link}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(link).then(() => setCopied(true))
+              }}
+              className="btn-flat flex-1"
+            >
+              {copied ? '✓ Copiado' : 'Copiar enlace'}
+            </button>
+            <a
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-flat flex-1 text-center"
+            >
+              Abrir
+            </a>
+          </div>
+          <button
+            type="button"
+            onClick={onRegenerate}
+            className="w-full text-[10px] uppercase tracking-widest text-ink-500 hover:text-rose-600"
+          >
+            Regenerar enlace
+          </button>
+          {inv.status !== 'published' && (
+            <p className="text-[10px] text-amber-600">
+              El menú aún no está publicado: el dashboard mostrará "no disponible" hasta que publiques.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

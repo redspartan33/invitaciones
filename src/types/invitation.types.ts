@@ -427,6 +427,23 @@ export interface GlobalSettings {
    * and the card slides out before handing off to the real invitation.
    */
   envelopeIntro?: EnvelopeIntroConfig
+  /**
+   * Auto-generated share image (1200×630 PNG) rendered from the header
+   * content at publish time. Used as the og:image when the invitation
+   * doesn't carry any uploaded image. Lives next to the user-controlled
+   * `favicon`/`pageBackground` because it's a page-level asset, not a
+   * per-block one.
+   */
+  autoPreviewImage?: string
+  /**
+   * Public metrics dashboard slug (menus only). When set, a shareable
+   * link `?metrics=<slug>` shows aggregate stats for the menu. The slug
+   * is independent from `publicSlug` so it can be revoked without
+   * breaking the public menu link, and isn't enumerable from it.
+   */
+  metricsSlug?: string
+  /** Whether the metrics dashboard is enabled (drives the toggle UI). */
+  enableMetrics?: boolean
 }
 
 export interface EnvelopeIntroConfig {

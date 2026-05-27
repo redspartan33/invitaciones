@@ -198,6 +198,29 @@ Ambos toggles funcionan igual para invitaciones y menús. Cuando se configura un
 
 En la vista pública, `PageBackgroundLayer` se monta a nivel de `App` (afuera de cualquier stacking context) con `position: fixed`. Como `fixed` se escapa de cualquier `isolation: isolate` en un wrapper, el negative-z del layer quedaba detrás del `background: #fafafa` que `index.css` aplica a `html/body/#root` y el fondo no se veía. La solución: mientras el layer está activo, su `useEffect` agrega la clase `has-page-background` al `<body>` y una regla CSS limpia el `background` de `html/body/#root` para esa visita.
 
+### Métricas del menú (dashboard privado)
+
+En **Detalles** (solo cuando `kind = menu`) hay una sección **"Métricas"** con un toggle. Al activarlo se genera un slug aleatorio independiente del `publicSlug` (`globalSettings.metricsSlug`) y se muestra una URL `?metrics=<slug>` para copiar o abrir. Botón "Regenerar enlace" produce un slug nuevo y revoca el anterior sin afectar el link público del menú.
+
+El dashboard ([`MetricsView`](src/components/public/MetricsView.tsx)) consume `/api/metrics/:slug` — un endpoint que escanea `inv/` y devuelve la invitación cuyo `globalSettings.metricsSlug` coincide **y** tiene `enableMetrics = true`. Apagar el toggle desactiva el link sin borrar el slug, así que volver a encenderlo restaura el mismo URL.
+
+Las métricas se computan en el cliente desde la versión activa del menú (o la variante marcada como activa cuando hay temporadas):
+
+- **Resumen** — secciones, platillos, % con precio, idiomas habilitados.
+- **Precios** — promedio, mediana, mínimo, máximo y un histograma de 5 buckets adaptados al rango real del menú. La moneda se detecta del texto (`$`, `MXN`, `USD`, `EUR`); el parser tolera comas como separadores de miles o como decimal.
+- **Platillos por sección** — barras horizontales y promedio por sección.
+- **Top 5 más caros / más económicos** — ranking con sección de origen.
+- **Calidad del contenido** — % con precio, % con descripción, % con etiquetas (badges).
+- **Etiquetas más comunes** — frecuencia de badges parseados desde el texto libre del campo (split por `,`, `|`, `·`, `•`).
+- **Temporadas** — listado con la variante activa marcada y cantidad de platillos por variante.
+- **Estructura** — bloques totales / visibles / ocultos y estado (Publicado / Borrador).
+
+### Preview automático para invitaciones / menús sin imagen
+
+Cuando un menú o invitación no tiene ninguna imagen propia (ni `globalSettings.backgroundImage`, ni hero/menu-header con imagen, ni galería con fotos), al publicar se genera automáticamente una **tarjeta de preview 1200×630** desde el contenido del header (título + subtítulo/tagline + colores de marca) con `<canvas>` y se sube como asset normal vía `/api/assets`. La URL queda guardada en `globalSettings.autoPreviewImage`.
+
+La utilidad vive en [`src/utils/generatePreviewImage.ts`](src/utils/generatePreviewImage.ts) y el server ([server/index.js](server/index.js) → `pickShareImage`) consulta este campo como último recurso al elegir el `og:image`. Cuando el usuario sube una imagen real, el siguiente publish descarta el preview auto para que WhatsApp / iMessage muestren la imagen elegida en su lugar.
+
 ### Nombre de la pestaña del navegador
 
 En **Detalles** → **"Nombre en la pestaña"** se puede personalizar el `document.title` que ven los invitados en su navegador. Si se deja vacío, se usa el `invitation.title`. Aplicado vía `usePageChrome` ([src/hooks/usePageChrome.ts](src/hooks/usePageChrome.ts)) que guarda/restaura el título original al montar/desmontar.
