@@ -155,11 +155,18 @@ Al crear un menú nuevo desde el admin el editor abre con un esqueleto mínimo (
 
 En el panel **Detalles** del editor de menú se puede activar un bloque **"Traducción"** con toggles para `English` y `Français` (el `Español` siempre está activo como idioma original). Cuando hay 2+ idiomas activados:
 
-- Al pulsar **Publicar** todos los textos visibles del menú (titles, descriptions, names, notes, footer, etc.) se traducen automáticamente vía la API gratuita de [MyMemory](https://mymemory.translated.net/) y quedan guardados en `invitation.translations` (un mapa `{ blockId: { lang: { fieldPath: 'translated' } } }`).
+- Al pulsar **Publicar** todos los textos visibles del menú (titles, descriptions, names, notes, footer, etc.) se traducen automáticamente y quedan guardados en `invitation.translations` (un mapa `{ blockId: { lang: { fieldPath: 'translated' } } }`).
 - En la vista pública el `MenuHeaderBlock` muestra las pastillas con los idiomas activados. El visitante elige y todo el bloque renderiza con los strings traducidos — incluyendo los títulos de la barra sticky de navegación.
 - Si la traducción falla (rate-limit, sin red, etc.) el publish no se bloquea: el menú se publica igual y los botones de idioma simplemente no aparecen hasta que se vuelva a publicar.
 
-El whitelist de campos traducibles vive en [`src/utils/translation.ts`](src/utils/translation.ts) (`TRANSLATABLE`), por tipo de bloque — para evitar traducir URLs, hex de colores, fechas o iconos.
+**Proveedores y contexto** ([`src/utils/translation.ts`](src/utils/translation.ts)). Se intenta primero el endpoint sin auth de **Google Translate** (`translate.googleapis.com/translate_a/single?client=gtx`) y, si falla o devuelve el texto sin cambios, cae a **MyMemory** como respaldo. Sin contexto los proveedores libres traducen palabras cortas de menú catastróficamente ("Carta" → "Letter", "Entradas" → "Tickets/Input", "Platillo de ejemplo" → "Example saucer"), así que cada string se envía precedido por un preámbulo en español que ancla el dominio:
+
+- Bloques `menu-*` → `Menú de restaurante: <texto>`
+- Bloques de invitación → `Invitación de evento: <texto>`
+
+Google traduce el preámbulo a su forma local (`Restaurant menu: …`, `Menu du restaurant: …`) y nosotros lo recortamos partiendo por el primer `": "` (o `" : "` para FR). Con esto las traducciones quedan correctas: "Entradas" → "Starters" / "Entrées", "Carta" → "Menu", "Platillo de ejemplo" → "Example dish" / "Exemple de plat".
+
+El whitelist de campos traducibles vive en `TRANSLATABLE` dentro del mismo archivo, por tipo de bloque — para evitar traducir URLs, hex de colores, fechas o iconos.
 
 ### Menús por temporada (variantes)
 
@@ -223,18 +230,17 @@ El dashboard pide los eventos con `GET /api/views/by-metrics/:metricsSlug` (auth
 
 ### Preview automático que coincide con el header
 
-Cada vez que se publica una invitación o menú, se regenera una **tarjeta de preview 1200×630** que replica el diseño del header — no un fondo plano genérico — y se sube como asset normal vía `/api/assets`. La URL queda guardada en `globalSettings.autoPreviewImage` y `pickShareImage` la prefiere por encima de cualquier otra imagen (header.backgroundImage, logo, gallery, etc.) porque suele verse mejor en el inline preview de WhatsApp/iMessage que una foto cruda.
+Cada vez que se publica una invitación o menú, se regenera una **tarjeta de preview 1200×630** y se sube como asset normal vía `/api/assets`. La URL queda guardada en `globalSettings.autoPreviewImage` y `pickShareImage` la prefiere por encima de cualquier otra imagen (header.backgroundImage, logo, gallery, etc.) porque suele verse mejor en el inline preview de WhatsApp/iMessage que una foto cruda.
 
-[`generatePreviewImage.ts`](src/utils/generatePreviewImage.ts) toma un **snapshot del header** para componer la tarjeta:
+[`captureHeaderPreview.tsx`](src/utils/captureHeaderPreview.tsx) **captura el DOM real** del header con [html-to-image](https://github.com/bubkoo/html-to-image) en lugar de reimplementarlo en `<canvas>`. Esto significa que el preview es **idéntico** a lo que el editor renderiza — mismas fuentes (Google Fonts del usuario), mismos tamaños/padding/colores, mismo overlay del fondo global, mismo logo, mismo nav bar. Antes la versión `<canvas>` tenía frames decorativos, divider falso y fuentes hardcoded en Georgia que no coincidían con el header diseñado.
 
-- Si hay `menu-header` o `hero` con `backgroundImage` la carga con CORS y la pinta como fondo (cover), con el mismo scrim oscuro `rgba(0,0,0,0.45)` que el header publicado usa para legibilidad.
-- Si no hay imagen del header pero sí `globalSettings.pageBackground` y resuelve a imagen (no video), la usa como fondo. Esto resuelve el caso anterior donde menús con sólo "Fondo de página" no obtenían preview.
-- Si no hay imagen alguna, dibuja una tarjeta con `backgroundColor` del header + marco doble en color de acento + vignette sutil.
-- Logo del menú-header se dibuja arriba del título cuando existe (`showLogo + logo`).
-- El subtítulo / tagline se renderiza letter-spaced y en mayúsculas para menús (espejando lo que hace `menu-header`); para invitaciones es un eyebrow normal + divider decorativo.
-- Color del texto = `block.style.textColor` si está, blanco si hay imagen detrás (legibilidad), o auto-contraste vs `backgroundColor` en caso contrario.
+Detalles técnicos no obvios:
 
-La generación pasa siempre, sin importar si el invitación ya tenía imagen propia — la tarjeta diseñada integra esa imagen pero queda con un look coherente con la marca. Falla silenciosa si la imagen no carga (CORS, 404) → publica igual, simplemente sin og:image custom esa vez.
+- El host de captura se monta `position:fixed; left:0; top:0; z-index:-1` (DETRÁS del editor, invisible al usuario). Empujarlo offscreen con `left:-10000px` produce un PNG completamente transparente porque Chromium no renderiza el `foreignObject` SVG de elementos fuera del viewport.
+- Pasamos `skipFonts: true` **y** `fontEmbedCSS: ''` a `toPng()`. Sin esto html-to-image intenta scrapear el `<link>` de Google Fonts vía XHR para inlinearlo como data URI — falla por CORS (SecurityError: cannot read cssRules) y se cuelga ~30 s. Como las fuentes ya están cargadas en el documento, el SVG las usa sin necesidad de embedding.
+- El fondo global (`globalSettings.pageBackground`) se incluye renderizando `<PageBackgroundLayer attachment="scroll">` dentro del host — antes los menús con sólo "Fondo de página" se publicaban sin preview porque el generador de canvas no consideraba este caso.
+
+La generación pasa siempre, sin importar si la invitación ya tenía imagen propia. Falla silenciosa si la imagen externa no carga (CORS, 404) → publica igual, simplemente sin og:image custom esa vez.
 
 ### Nombre de la pestaña del navegador
 

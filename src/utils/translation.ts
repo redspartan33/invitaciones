@@ -54,7 +54,19 @@ interface CollectedString {
   blockId: string
   path: string
   text: string
+  /** Block type the string came from — used by translateOne to pick the
+   *  right context preamble (menu vs invitation). */
+  context: TranslationContext
 }
+
+/** Block types that ship with a restaurant-menu vocabulary. Anything else
+ *  defaults to the generic "invitation" context. */
+const MENU_BLOCK_TYPES = new Set<BlockType>([
+  'menu-header',
+  'menu-section',
+  'menu-footer',
+  'menu-note',
+])
 
 /**
  * Walk every block and produce a flat list of (blockId, path, text) for
@@ -67,12 +79,15 @@ export function collectTranslatableStrings(blocks: InvitationBlock[]): Collected
   for (const block of blocks) {
     const specs = TRANSLATABLE[block.type]
     if (!specs) continue
+    const context: TranslationContext = MENU_BLOCK_TYPES.has(block.type)
+      ? 'menu'
+      : 'invitation'
     const data = block.data as Record<string, unknown>
     for (const spec of specs) {
       if (typeof spec === 'string') {
         const v = data[spec]
         if (typeof v === 'string' && v.trim()) {
-          out.push({ blockId: block.id, path: spec, text: v })
+          out.push({ blockId: block.id, path: spec, text: v, context })
         }
       } else {
         const arr = data[spec.array]
@@ -86,6 +101,7 @@ export function collectTranslatableStrings(blocks: InvitationBlock[]): Collected
                     blockId: block.id,
                     path: `${spec.array}[${i}].${f}`,
                     text: v,
+                    context,
                   })
                 }
               }
@@ -98,29 +114,104 @@ export function collectTranslatableStrings(blocks: InvitationBlock[]): Collected
   return out
 }
 
+/** Why context matters: without a hint, free MT providers strip ambiguity
+ *  out of short menu words. Google turned "Carta" → "Letter", "Entradas" →
+ *  "Tickets", "Platillo de ejemplo" → "Example saucer" — all plausible
+ *  general translations, but catastrophically wrong for a restaurant menu,
+ *  which is what made the user say "las traducciones no están sirviendo".
+ *
+ *  We work around the lack of a `context` field on the gtx endpoint by
+ *  prepending a Spanish category preamble to each string. The whole
+ *  preamble + text is translated as one phrase, so Google can use the
+ *  preamble as semantic context. After translation we strip the leading
+ *  translated preamble back out, so the user only sees the content. */
+type TranslationContext = 'menu' | 'invitation' | 'none'
+
+const CONTEXT_PREAMBLE_ES: Record<TranslationContext, string> = {
+  menu: 'Menú de restaurante: ',
+  invitation: 'Invitación de evento: ',
+  none: '',
+}
+
 /**
- * Translate a single text via the free MyMemory API. The endpoint is
- * CORS-enabled and key-less for low volume (1k words/day anon, ~50k with
- * an email). On any failure we return the original text so the publish
- * flow never blocks on translation.
+ * Translate a single text. We try Google's free, unauthenticated `gtx`
+ * endpoint first (better quality than MyMemory after we add a context
+ * preamble), and fall back to MyMemory if Google fails. Both endpoints
+ * are CORS-enabled and key-less. On any failure we return the original
+ * text so publish never blocks.
  */
-async function translateOne(text: string, target: Language, source: Language = 'es'): Promise<string> {
+async function translateOne(
+  text: string,
+  target: Language,
+  source: Language = 'es',
+  context: TranslationContext = 'none',
+): Promise<string> {
   if (source === target) return text
+  const fromGoogle = await translateViaGoogle(text, target, source, context)
+  if (fromGoogle && fromGoogle !== text) return fromGoogle
+  // Google failed (or returned text unchanged) — try MyMemory as a backup.
+  const fromMyMemory = await translateViaMyMemory(text, target, source)
+  return fromMyMemory || text
+}
+
+/** Google Translate's unauthenticated `gtx` endpoint. Returns an array of
+ *  translation segments; we concatenate them so multi-sentence inputs round-
+ *  trip cleanly. The `context` adds a Spanish preamble for disambiguation
+ *  (see CONTEXT_PREAMBLE_ES) and we strip its translated form back off. */
+async function translateViaGoogle(
+  text: string,
+  target: Language,
+  source: Language,
+  context: TranslationContext,
+): Promise<string | null> {
+  const preamble = source === 'es' ? CONTEXT_PREAMBLE_ES[context] : ''
+  const q = preamble + text
+  try {
+    const url =
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(q)}`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const json = (await res.json()) as unknown
+    // Response shape: [[[ "translated", "original", null, null, ...], ...], ...]
+    if (!Array.isArray(json) || !Array.isArray(json[0])) return null
+    const parts: string[] = []
+    for (const seg of json[0] as unknown[]) {
+      if (Array.isArray(seg) && typeof seg[0] === 'string') parts.push(seg[0])
+    }
+    let out = parts.join('').trim()
+    if (!out) return null
+    // Strip the translated preamble. Google translates "Menú de restaurante: "
+    // into the target language's equivalent ("Restaurant menu: ", "Menu du
+    // restaurant : ", …). We don't know the exact target form, but the colon
+    // separator survives, so splitting on the FIRST ": " (or " : " for FR)
+    // and taking the remainder reliably recovers the translated content even
+    // when the user's own text contains additional colons.
+    if (preamble) {
+      const m = /^[^:]*:\s+/.exec(out)
+      if (m) out = out.slice(m[0].length).trim()
+    }
+    return out || null
+  } catch {
+    return null
+  }
+}
+
+/** MyMemory free tier (1k words/day anon). Kept as the second-stage fallback
+ *  for the rare case where Google's gtx endpoint is blocked or down. */
+async function translateViaMyMemory(text: string, target: Language, source: Language): Promise<string | null> {
   try {
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}`
     const res = await fetch(url)
-    if (!res.ok) return text
+    if (!res.ok) return null
     const json = (await res.json()) as { responseData?: { translatedText?: string } }
     const translated = json.responseData?.translatedText
-    if (typeof translated === 'string' && translated.trim()) {
-      // MyMemory sometimes returns "PLEASE SELECT TWO DISTINCT LANGUAGES" or
-      // HTML-encoded entities — basic guard + decode common entities.
-      if (/^[A-Z\s]+$/.test(translated) && translated.length < 50) return text
-      return decodeHtmlEntities(translated)
-    }
-    return text
+    if (typeof translated !== 'string' || !translated.trim()) return null
+    // MyMemory sometimes echoes guidance strings like "PLEASE SELECT TWO
+    // DISTINCT LANGUAGES" — skip anything that's all uppercase ASCII.
+    if (/^[A-Z\s]+$/.test(translated) && translated.length < 50) return null
+    return decodeHtmlEntities(translated)
   } catch {
-    return text
+    return null
   }
 }
 
@@ -166,7 +257,9 @@ export async function buildTranslations(
   const out: Record<string, TranslationMap> = {}
 
   for (const target of wantedTargets) {
-    const translated = await pMap(strings, 4, (s) => translateOne(s.text, target))
+    const translated = await pMap(strings, 4, (s) =>
+      translateOne(s.text, target, 'es', s.context),
+    )
     strings.forEach((s, i) => {
       const blockEntry = (out[s.blockId] ??= {})
       const langEntry = (blockEntry[target] ??= {})

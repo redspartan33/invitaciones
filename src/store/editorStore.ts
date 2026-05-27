@@ -12,7 +12,7 @@ import type {
 import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
-import { ensureAutoPreviewImage } from '../utils/generatePreviewImage'
+import { captureHeaderPreviewImage } from '../utils/captureHeaderPreview'
 import { buildTranslations } from '../utils/translation'
 import { apiUrl } from '../utils/apiBase'
 
@@ -309,15 +309,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       translations = undefined
     }
 
-    // Render a styled share card from the header — title, tagline, logo,
-    // background image (header's or global page background), brand colors.
-    // We do this AFTER uploading user assets so the generator can reference
-    // them by their final URL instead of base64. The card is always
-    // regenerated on publish so it stays in sync with header edits;
-    // generation failure is non-fatal (publish still goes through, the
-    // share preview just won't have a custom og:image this time).
+    // Capture the actual rendered header DOM as a 1200×630 PNG so the share
+    // card looks identical to what the visitor will see. We do this AFTER
+    // uploading user assets so the capture sees final URLs (not base64) and
+    // the global page background, overlay, logo, and fonts all resolve to
+    // their published values. The card is always regenerated on publish so
+    // it stays in sync with header edits; generation failure is non-fatal
+    // (publish still goes through, the share preview just falls back to the
+    // best raw image the server can find).
     let autoPreviewImage = uploaded.globalSettings.autoPreviewImage
-    const generated = await ensureAutoPreviewImage(uploaded)
+    const generated = await captureHeaderPreviewImage(uploaded)
     if (generated) autoPreviewImage = generated
 
     const published: Invitation = {
