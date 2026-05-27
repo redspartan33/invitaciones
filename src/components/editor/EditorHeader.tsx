@@ -163,8 +163,12 @@ export function EditorHeader() {
 
       {shareOpen && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setShareOpen(false)} />
-          <div className="absolute right-3 left-3 top-14 z-30 rounded border border-ink-200 bg-white p-4 anim-fade-in md:left-auto md:right-6 md:w-[420px]">
+          {/* The ConfigPanel side drawer renders at z-40 on mobile, so the
+              share helper has to sit above it (z-50 backdrop, z-[60] panel)
+              — otherwise the share UI ends up half-hidden behind the sidebar
+              every time the user opens it from the device frame. */}
+          <div className="fixed inset-0 z-50" onClick={() => setShareOpen(false)} />
+          <div className="fixed right-3 left-3 top-14 z-[60] max-h-[calc(100vh-5rem)] overflow-y-auto rounded border border-ink-200 bg-white p-4 anim-fade-in md:left-auto md:right-6 md:w-[420px]">
             <div className="mb-2 flex items-center justify-between">
               <h4 className="text-sm font-medium">
                 {publishMode === 'error'

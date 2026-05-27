@@ -759,6 +759,53 @@ function BehaviorTab({
           </div>
         </section>
       )}
+
+      {/* Interacciones */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-ink-500">
+          Interacciones de los usuarios
+        </h2>
+        {stats.totalInteractions === 0 ? (
+          <div className="rounded-xl border border-dashed border-ink-200 bg-white p-6 text-center text-sm text-ink-500">
+            Aún no hay clics ni interacciones registradas.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <StatCard label="Clics totales" value={String(stats.totalInteractions)} />
+              <StatCard
+                label="Interacciones / visita"
+                value={stats.totalViews > 0 ? (stats.totalInteractions / stats.totalViews).toFixed(2) : '—'}
+              />
+              <StatCard
+                label="Visitantes activos"
+                value={String(stats.activeVisitors)}
+                hint={stats.uniqueVisitors > 0 ? `${((stats.activeVisitors / stats.uniqueVisitors) * 100).toFixed(0)}% de los únicos` : undefined}
+              />
+              <StatCard
+                label="Acción más común"
+                value={stats.topAction ? stats.topAction.count.toString() : '—'}
+                hint={stats.topAction ? stats.topAction.label : undefined}
+              />
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <DistributionCard
+                title="Tipo de acción"
+                rows={stats.actionRows}
+                total={stats.totalInteractions}
+                color="#f472b6"
+              />
+              <DistributionCard
+                title="Destinos más clicados"
+                rows={stats.targetRows}
+                total={stats.totalInteractions}
+                color="#a78bfa"
+              />
+            </div>
+          </>
+        )}
+      </section>
     </>
   )
 }
@@ -825,6 +872,25 @@ interface BehaviorStats {
   languageRows: DistroRow[]
   referrerRows: DistroRow[]
   variantRows: DistroRow[]
+  totalInteractions: number
+  activeVisitors: number
+  topAction: { label: string; count: number } | null
+  actionRows: DistroRow[]
+  targetRows: DistroRow[]
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  'link-click-external': 'Link externo',
+  'link-click-phone': 'Llamada (tel:)',
+  'link-click-whatsapp': 'WhatsApp',
+  'link-click-email': 'Correo',
+  'link-click-map': 'Mapa / ubicación',
+  'link-click-gift': 'Mesa de regalos',
+  'link-click-social': 'Red social',
+  'language-switch': 'Cambio de idioma',
+  'variant-switch': 'Cambio de temporada',
+  'section-nav': 'Nav del menú',
+  'rsvp-submit': 'Confirmó RSVP',
 }
 
 const REFERRER_LABELS: Record<ViewEvent['referrer'], string> = {
@@ -844,7 +910,14 @@ const DEVICE_LABELS: Record<ViewEvent['device'], string> = {
 
 const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 
-function computeBehaviorStats(events: ViewEvent[], variants: MenuVariant[]): BehaviorStats {
+function computeBehaviorStats(allEvents: ViewEvent[], variants: MenuVariant[]): BehaviorStats {
+  // The server keeps everything in one JSONL file — visits AND interactions.
+  // Events with an `action` field are interactions; the rest are plain
+  // page visits. We split them so the visit counters don't get inflated by
+  // every click.
+  const events = allEvents.filter((e) => !e.action)
+  const interactions = allEvents.filter((e) => !!e.action)
+
   const totalViews = events.length
   const uniqueVisitors = new Set(events.map((e) => e.viewerId)).size
   const viewsPerVisitor = uniqueVisitors > 0 ? totalViews / uniqueVisitors : 0
@@ -949,6 +1022,29 @@ function computeBehaviorStats(events: ViewEvent[], variants: MenuVariant[]): Beh
     else lastVisitRelative = `Hace ${Math.floor(diff / 86_400_000)} d`
   }
 
+  // Interaction aggregates. We tally by action type and by target string
+  // (the latter capped to 8 rows so a noisy menu doesn't drown out the
+  // signal). A visitor is "active" if they triggered at least one
+  // interaction event during their visit.
+  const totalInteractions = interactions.length
+  const activeVisitors = new Set(interactions.map((e) => e.viewerId)).size
+  const actionRows = sortDescending(
+    Array.from(tally(interactions.map((e) => e.action || 'other')).entries()).map(([k, count]) => ({
+      label: ACTION_LABELS[k] ?? k,
+      count,
+    })),
+  )
+  const targetRows = sortDescending(
+    Array.from(
+      tally(
+        interactions
+          .map((e) => (e.target || '').trim())
+          .filter((t) => t.length > 0),
+      ).entries(),
+    ).map(([k, count]) => ({ label: k, count })),
+  ).slice(0, 8)
+  const topAction = actionRows[0] ?? null
+
   return {
     totalViews,
     uniqueVisitors,
@@ -965,6 +1061,11 @@ function computeBehaviorStats(events: ViewEvent[], variants: MenuVariant[]): Beh
     languageRows,
     referrerRows,
     variantRows,
+    totalInteractions,
+    activeVisitors,
+    topAction,
+    actionRows,
+    targetRows,
   }
 }
 

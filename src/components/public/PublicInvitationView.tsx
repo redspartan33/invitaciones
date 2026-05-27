@@ -13,7 +13,7 @@ import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
 import { EnvelopeIntro } from './EnvelopeIntro'
-import { recordView } from '../../utils/viewTracking'
+import { recordInteraction, recordView, type InteractionAction } from '../../utils/viewTracking'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
   const { globalSettings } = invitation
@@ -94,11 +94,52 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   useEffect(() => {
     if (!invitation.publicSlug) return
     recordView(invitation.publicSlug, { variantId: selectedVariantId })
-    // We intentionally only run on first mount; variant switches don't count
-    // as new visits — they're tracked as separate language/variant signals
-    // we could surface later if useful.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invitation.publicSlug])
+
+  // Delegated click tracker. One listener on the published view captures
+  // meaningful interactions without each block having to know about
+  // analytics. We classify the click target by:
+  //   1. anchors with tel: / mailto: / wa.me / map links → typed action
+  //   2. anchors to external http(s) hosts → 'link-click-external'
+  //   3. internal #section-anchor clicks → 'section-nav' (e.g. menu nav)
+  //   4. data-track attributes when we want to be explicit (gift store,
+  //      RSVP button, social links — set inline at the block level when
+  //      automatic classification isn't precise enough).
+  // We deliberately do NOT log every click on the page — too noisy and a
+  // privacy concern. The classifier returns null when there's nothing
+  // worth recording.
+  const slug = invitation.publicSlug
+  useEffect(() => {
+    if (!slug) return
+    const onClick = (e: MouseEvent) => {
+      // Walk up from the actual target until we hit something we recognize.
+      const path = e.composedPath ? e.composedPath() : []
+      let anchor: HTMLAnchorElement | null = null
+      let trackedEl: HTMLElement | null = null
+      for (const node of path) {
+        if (!(node instanceof HTMLElement)) continue
+        if (!trackedEl && node.dataset && node.dataset.track) trackedEl = node
+        if (!anchor && node.tagName === 'A') anchor = node as HTMLAnchorElement
+        if (anchor && trackedEl) break
+      }
+      // Explicit data-track wins — it's the block author's intent.
+      if (trackedEl?.dataset.track) {
+        const action = trackedEl.dataset.track as InteractionAction
+        const target = trackedEl.dataset.trackTarget || trackedEl.textContent?.trim().slice(0, 80) || ''
+        recordInteraction(slug, action, target, { variantId: selectedVariantId })
+        return
+      }
+      if (!anchor) return
+      const href = anchor.getAttribute('href') || ''
+      const action = classifyAnchor(href)
+      if (!action) return
+      const target = computeAnchorTarget(href, action)
+      recordInteraction(slug, action, target, { variantId: selectedVariantId })
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [slug, selectedVariantId])
 
   const hasPageBackground = !!globalSettings.pageBackground?.url?.trim()
   // When the user adds a page background we assume they want to see it: the
@@ -164,12 +205,18 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           style={{ background: canvasBg }}
         >
           {showSeasonTabs && firstNonHeaderIdx === -1 && (
-            <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
+            <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={(id) => {
+                if (slug) recordInteraction(slug, 'variant-switch', id, { variantId: id })
+                setSelectedVariantId(id)
+              }} />
           )}
           {visible.map((block, idx) => (
             <div key={block.id}>
               {showSeasonTabs && idx === firstNonHeaderIdx && (
-                <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={setSelectedVariantId} />
+                <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={(id) => {
+                if (slug) recordInteraction(slug, 'variant-switch', id, { variantId: id })
+                setSelectedVariantId(id)
+              }} />
               )}
               {block.type === 'menu-header' ? (
                 <MenuHeaderBlock
@@ -178,7 +225,10 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
                   publicView
                   languages={showLanguageSwitcher ? languages : undefined}
                   currentLanguage={currentLanguage}
-                  onLanguageChange={setCurrentLanguage}
+                  onLanguageChange={(lang) => {
+                    if (slug) recordInteraction(slug, 'language-switch', lang, { variantId: selectedVariantId })
+                    setCurrentLanguage(lang)
+                  }}
                 />
               ) : (
                 <BlockRenderer block={block} />
@@ -284,4 +334,39 @@ function MusicPlayer({ src, autoplay }: { src: string; autoplay: boolean }) {
       </button>
     </>
   )
+}
+
+// Classify an anchor's href into an interaction action. Returns null when
+// the link isn't interesting enough to record (e.g. `#` placeholders).
+function classifyAnchor(href: string): InteractionAction | null {
+  if (!href || href === '#') return null
+  if (href.startsWith('tel:')) return 'link-click-phone'
+  if (href.startsWith('mailto:')) return 'link-click-email'
+  if (/^https?:\/\/(?:wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com)/i.test(href)) {
+    return 'link-click-whatsapp'
+  }
+  if (/^https?:\/\/(?:www\.)?(?:google\.[\w.]+\/maps|maps\.google|goo\.gl\/maps|maps\.apple|apple\.com\/maps)/i.test(href)) {
+    return 'link-click-map'
+  }
+  if (/^https?:\/\/(?:www\.)?(?:instagram\.com|facebook\.com|tiktok\.com|x\.com|twitter\.com|t\.me)/i.test(href)) {
+    return 'link-click-social'
+  }
+  if (href.startsWith('#')) return 'section-nav'
+  if (/^https?:\/\//i.test(href)) return 'link-click-external'
+  return null
+}
+
+// Sanitize the href into a short, dashboard-friendly target string. We
+// never store full URLs (could carry tracking params or PII) — just the
+// host or the section anchor.
+function computeAnchorTarget(href: string, action: InteractionAction): string {
+  if (action === 'section-nav') return href.replace(/^#/, '').slice(0, 60)
+  if (action === 'link-click-phone') return href.replace(/^tel:/, '').slice(0, 30)
+  if (action === 'link-click-email') return href.replace(/^mailto:/, '').split('?')[0].slice(0, 60)
+  try {
+    const url = new URL(href)
+    return url.hostname.slice(0, 80)
+  } catch {
+    return href.slice(0, 80)
+  }
 }

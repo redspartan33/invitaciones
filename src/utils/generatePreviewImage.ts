@@ -17,6 +17,8 @@ const ASSETS_ENDPOINT = apiUrl('/api/assets')
 interface HeaderSnapshot {
   title: string
   subtitle: string
+  /** Optional third line (eventDate for hero, blank for menus). */
+  eyebrowExtra: string
   /** Header background image (header.backgroundImage or global page bg). */
   backgroundImage: string | null
   /** Solid color shown behind the title when there is no image. */
@@ -27,9 +29,11 @@ interface HeaderSnapshot {
   foreground: string
   /** Hex color used for the accent line / divider. */
   accent: string
-  /** True when an image background is in use → we draw a dark scrim like the
-   *  real menu-header does so the title is legible. */
-  hasBackgroundImage: boolean
+  /** How dark the scrim drawn over the background image should be.
+   *  - Menu headers tint 0.45 (matches published MenuHeaderBlock).
+   *  - Hero blocks render the image RAW (no overlay) so the preview also
+   *    skips the scrim. The user picks contrasting text per element. */
+  scrimAlpha: number
   /** True when this is a menu (drives layout: uppercase tagline above title,
    *  no decorative divider) vs. an invitation (eyebrow + divider + serif). */
   isMenu: boolean
@@ -55,11 +59,15 @@ function snapshotHeader(inv: Invitation): HeaderSnapshot {
 
   let title = inv.title || ''
   let subtitle = ''
+  let eyebrowExtra = ''
   let backgroundImage: string | null = null
   let backgroundColor = ''
   let logo: string | null = null
   let foreground = ''
   let alignment: HeaderSnapshot['alignment'] = 'center'
+  // Default to a 0.45 dark scrim (menu behaviour). Hero overrides to 0
+  // because the published HeroBlock draws the image with no overlay.
+  let scrimAlpha = 0.45
 
   const heroBlock = blocks.find((b) => b.type === 'hero') as
     | InvitationBlock<'hero'>
@@ -79,14 +87,24 @@ function snapshotHeader(inv: Invitation): HeaderSnapshot {
     // The published header uses white text on the dark default; the per-block
     // text color overrides it when present. Honor that here too.
     foreground = menuHeaderBlock.style?.textColor || '#ffffff'
+    scrimAlpha = 0.45
   } else if (heroBlock) {
     const d = heroBlock.data as HeroData
     if (d.showTitle !== false && d.title) title = d.title
     if (d.showSubtitle !== false && d.subtitle) subtitle = d.subtitle
+    // Hero shows an event date as a third line below the title; we lift it
+    // into the eyebrow slot above the title so the share card has all three
+    // pieces of information visible without competing with the title weight.
+    if (d.showDate !== false && d.eventDate) {
+      eyebrowExtra = formatHeroDate(d.eventDate, d.dateFormat)
+    }
     alignment = d.alignment ?? 'center'
     backgroundImage = d.backgroundImage || pageBgImage
     backgroundColor = d.backgroundColor || gs.colorSecondary || gs.colorPrimary || '#f5efe6'
     foreground = heroBlock.style?.textColor || ''
+    // HeroBlock comment: "Render the bg image as-is: no dark overlay, no
+    // forced text color." Match that so the share card looks like the hero.
+    scrimAlpha = 0
   } else {
     // No header block at all — fall back to brand colors.
     backgroundImage = pageBgImage
@@ -95,25 +113,50 @@ function snapshotHeader(inv: Invitation): HeaderSnapshot {
 
   if (!subtitle) subtitle = isMenu ? 'Menú digital' : 'Invitación'
   // Pick a readable foreground when one wasn't set explicitly. When there
-  // IS a background image we'll be drawing on top of a dark scrim, so force
-  // white regardless of the underlying color.
+  // is an image AND we apply a dark scrim, white is safe. When the image
+  // shows raw (hero), we can't predict legibility — bias toward white on
+  // photos since most invitation hero images are mid-toned.
   if (!foreground) {
-    foreground = backgroundImage ? '#ffffff' : pickContrastingForeground(backgroundColor)
+    if (backgroundImage) {
+      foreground = '#ffffff'
+    } else {
+      foreground = pickContrastingForeground(backgroundColor)
+    }
   }
   const accent = gs.colorAccent || gs.colorPrimary || '#c9a96e'
 
   return {
     title,
     subtitle,
+    eyebrowExtra,
     backgroundImage,
     backgroundColor,
     logo,
     foreground,
     accent,
-    hasBackgroundImage: !!backgroundImage,
+    scrimAlpha,
     isMenu,
     alignment,
   }
+}
+
+/** Light-weight clone of utils/blockValidation formatDate — kept inline so
+ *  this util has zero extra imports beyond what it already pulls in. */
+function formatHeroDate(iso: string, fmt: HeroData['dateFormat']): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const monthsEs = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  const day = d.getDate()
+  const month = d.getMonth()
+  const year = d.getFullYear()
+  if (fmt === 'DD/MM/YYYY') {
+    return `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`
+  }
+  if (fmt === 'MMMM DD, YYYY') {
+    return `${monthsEs[month]} ${day}, ${year}`
+  }
+  // Default: DD MMMM YYYY
+  return `${day} ${monthsEs[month]} ${year}`
 }
 
 function pickContrastingForeground(hex: string): string {
@@ -139,16 +182,29 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-/** Promise wrapper around HTMLImageElement that respects CORS (without
- *  failing the whole publish if the asset blocks it). */
+/** Promise wrapper around HTMLImageElement that respects CORS.
+ *
+ *  Important subtlety: when the editor already showed this same URL via a
+ *  plain `<img src=>` earlier in the session, the browser cached the
+ *  response WITHOUT a CORS marker — even if the server sends ACAO. A second
+ *  request with `crossOrigin='anonymous'` then gets served from cache and
+ *  the canvas becomes tainted on draw, which makes `toDataURL()` throw and
+ *  silently kills publish-time preview generation. We side-step that by
+ *  appending a unique query param so the browser issues a fresh request
+ *  with CORS semantics. Failures are returned as null so the publish keeps
+ *  going (the preview just won't include the image). */
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.referrerPolicy = 'no-referrer'
     img.onload = () => resolve(img)
-    img.onerror = () => resolve(null)
-    img.src = url
+    img.onerror = (e) => {
+      console.warn('[preview] image load failed (CORS or 404?):', url, e)
+      resolve(null)
+    }
+    const sep = url.includes('?') ? '&' : '?'
+    img.src = `${url}${sep}_ogcors=${Date.now()}`
   })
 }
 
@@ -243,10 +299,21 @@ async function renderHeaderCard(snapshot: HeaderSnapshot): Promise<string> {
     const img = await loadImage(snapshot.backgroundImage)
     if (img) {
       drawCover(ctx, img, 0, 0, W, H)
-      // Same dark gradient the published menu-header applies so the title
-      // stays legible on busy photos.
-      ctx.fillStyle = 'rgba(0,0,0,0.45)'
-      ctx.fillRect(0, 0, W, H)
+      // Apply the same scrim the published block uses (or no scrim at all
+      // for heroes, which render the image raw). When skipping the scrim
+      // we still nudge a tiny bottom-vignette so light text doesn't get
+      // lost on a bright sky area.
+      if (snapshot.scrimAlpha > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${snapshot.scrimAlpha})`
+        ctx.fillRect(0, 0, W, H)
+      } else if (snapshot.foreground.toLowerCase() === '#ffffff') {
+        const grad = ctx.createLinearGradient(0, 0, 0, H)
+        grad.addColorStop(0, 'rgba(0,0,0,0)')
+        grad.addColorStop(0.5, 'rgba(0,0,0,0.08)')
+        grad.addColorStop(1, 'rgba(0,0,0,0.35)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, 0, W, H)
+      }
     }
   } else {
     // Subtle vignette on flat color cards so they don't feel completely
@@ -359,7 +426,28 @@ async function renderHeaderCard(snapshot: HeaderSnapshot): Promise<string> {
   ctx.shadowBlur = 0
   ctx.shadowOffsetY = 0
 
-  return canvas.toDataURL('image/png', 0.92)
+  // 7) Optional third line — event date for invitations. Treated like a
+  //    second eyebrow: uppercase, letter-spaced, sits a bit below the title.
+  if (snapshot.eyebrowExtra) {
+    ctx.fillStyle = withAlpha(snapshot.foreground, 0.85)
+    ctx.font = '600 26px Georgia, "Times New Roman", serif'
+    const extraY = titleBlockTop + titleLines.length * lineHeight + 24
+    const upper = snapshot.eyebrowExtra.toUpperCase()
+    if (align === 'center') {
+      drawSpacedLine(ctx, upper, textX, extraY, 6)
+    } else {
+      ctx.fillText(upper, textX, extraY)
+    }
+  }
+
+  try {
+    return canvas.toDataURL('image/png', 0.92)
+  } catch (e) {
+    // Tainted canvas (CORS) or other browser limits — log and surface so
+    // the caller can fall back gracefully.
+    console.warn('[preview] toDataURL failed', e)
+    throw e
+  }
 }
 
 /** Mirror of the server's pickShareImage that also recognizes the global

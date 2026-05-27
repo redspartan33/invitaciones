@@ -92,6 +92,19 @@ export async function recordView(slug: string, opts: { variantId?: string | null
   }
 }
 
+export type InteractionAction =
+  | 'link-click-external'
+  | 'link-click-phone'
+  | 'link-click-whatsapp'
+  | 'link-click-email'
+  | 'link-click-map'
+  | 'link-click-gift'
+  | 'link-click-social'
+  | 'language-switch'
+  | 'variant-switch'
+  | 'section-nav'
+  | 'rsvp-submit'
+
 export interface ViewEvent {
   ts: string
   viewerId: string
@@ -99,11 +112,47 @@ export interface ViewEvent {
   referrer: 'direct' | 'whatsapp' | 'instagram' | 'facebook' | 'search' | 'other'
   language: string
   variantId: string | null
+  /** Optional — present only on interaction events. Plain visits omit it. */
+  action?: InteractionAction
+  /** Optional — the specific target of the action (a section id, a lang
+   *  code, a sanitized URL host, etc.). Kept short by the server. */
+  target?: string
 }
 
 export interface ViewsResponse {
   events: ViewEvent[]
   publicSlug?: string
+}
+
+/** Records an interaction event (click on a link, language/variant switch,
+ *  RSVP submit, etc.). Unlike `recordView`, this is NOT session-deduped —
+ *  every interaction matters. Best-effort: failures are silent. */
+export async function recordInteraction(
+  slug: string,
+  action: InteractionAction,
+  target?: string,
+  ctx: { variantId?: string | null } = {},
+): Promise<void> {
+  if (!slug) return
+  const payload = {
+    viewerId: getViewerId(),
+    device: deviceClass(),
+    referrer: referrerCategory(),
+    language: browserLanguage(),
+    variantId: ctx.variantId ?? null,
+    action,
+    target: target ? String(target).slice(0, 120) : undefined,
+  }
+  try {
+    await fetch(apiUrl(`/api/views/${slug}`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+  } catch {
+    // ignore
+  }
 }
 
 /** Loads aggregated visit events for the metrics dashboard. */

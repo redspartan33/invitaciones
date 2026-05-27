@@ -206,13 +206,18 @@ El dashboard ([`MetricsView`](src/components/public/MetricsView.tsx)) consume `/
 
 El dashboard tiene **dos tabs**:
 
-**Comportamiento (tab principal)** — derivado del log de visitas que el server guarda como JSONL en `views/<publicSlug>.jsonl`. Cada vez que un visitante abre el menú publicado, `PublicInvitationView` llama a [`recordView`](src/utils/viewTracking.ts) que envía un evento mínimo a `POST /api/views/:slug` con `{ viewerId, device, language, referrer, variantId }` — sin IP, sin UA fingerprinting, sin geo. El `viewerId` es un id aleatorio guardado en localStorage para distinguir visitantes únicos. El navegador no registra más de una visita por sesión (idempotencia vía `sessionStorage`). El dashboard pide los eventos con `GET /api/views/by-metrics/:metricsSlug` (auth implícita por el metricsSlug) y muestra:
+**Comportamiento (tab principal)** — derivado del log de visitas e interacciones que el server guarda como JSONL en `views/<publicSlug>.jsonl`. Cada vez que un visitante abre el menú publicado, `PublicInvitationView` llama a [`recordView`](src/utils/viewTracking.ts) que envía un evento mínimo a `POST /api/views/:slug` con `{ viewerId, device, language, referrer, variantId }` — sin IP, sin UA fingerprinting, sin geo. El `viewerId` es un id aleatorio guardado en localStorage para distinguir visitantes únicos. El navegador no registra más de una visita por sesión (idempotencia vía `sessionStorage`).
+
+Además, `PublicInvitationView` instala un **listener delegado de clics** que captura interacciones significativas vía `recordInteraction(slug, action, target)`. El clasificador detecta enlaces `tel:` / `mailto:` / `wa.me` / Google Maps / redes sociales y los registra con su tipo correspondiente; cambios de idioma y temporada se trackean en los setters; cualquier elemento puede marcarse explícitamente con `data-track="<action>" data-track-target="<target>"`. Los URLs se sanitizan a solo el host antes de guardar (sin params ni PII).
+
+El dashboard pide los eventos con `GET /api/views/by-metrics/:metricsSlug` (auth implícita por el metricsSlug) y muestra:
 
 - **Resumen de tráfico** — visitas totales, visitantes únicos, visitas/persona, últimos 7 y 30 días, última visita relativa.
 - **Visitas por día (últimos 30)** — gráfico de barras verde.
 - **Horario más activo** — histograma de 24 horas + indicador de hora pico y día de la semana con mayor actividad.
 - **Dispositivos / Idioma / De dónde vienen** — tres distribuciones con barras (mobile/tablet/desktop · idioma del navegador · WhatsApp/Instagram/Facebook/buscador/directo/otra).
 - **Temporada vista** — qué variantes están eligiendo los visitantes (solo aplica si el menú tiene variantes).
+- **Interacciones de los usuarios** — clics totales, clics por visita, visitantes activos, acción más común, distribución por tipo de acción (WhatsApp, llamadas, mapa, redes sociales, etc.) y top destinos clicados.
 
 **Contenido del menú (tab secundaria)** — resumen estático del contenido publicado: secciones, platillos, precios (promedio/mediana/min/max + histograma de 5 buckets), top 5 más caros/económicos, calidad del contenido (% con precio / descripción / badges), etiquetas más comunes, lista de temporadas y estructura técnica.
 
