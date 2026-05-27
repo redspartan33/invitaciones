@@ -4,6 +4,7 @@ import { PublicInvitationView } from './components/public/PublicInvitationView'
 import { PageBackgroundLayer } from './components/public/PageBackgroundLayer'
 import { GuestListView } from './components/public/GuestListView'
 import { MetricsView } from './components/public/MetricsView'
+import { LandingPage } from './components/public/LandingPage'
 import { PublicSkeleton, readKindCache, writeKindCache } from './components/public/skeletons'
 import { AdminView, ForbiddenView } from './admin/AdminView'
 import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
@@ -105,18 +106,5 @@ export default function App() {
 
   if (route.kind === 'editor') return <InvitationBuilder />
 
-  return <AccessDeniedView />
-}
-
-function AccessDeniedView() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-50 p-8 text-center">
-      <div>
-        <p className="font-serif text-5xl leading-none text-ink-900">Acceso no permitido</p>
-        <p className="mt-6 max-w-md text-sm text-ink-500">
-          No tienes autorización para ver esta página.
-        </p>
-      </div>
-    </div>
-  )
+  return <LandingPage />
 }
