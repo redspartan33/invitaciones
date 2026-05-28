@@ -17,19 +17,17 @@ import fs from 'node:fs/promises'
 
 const API_BASE = process.env.API_BASE || 'https://api.lamartinasma.com'
 
-// Map invitation publicSlug → which mapping file to apply. publicSlug because
-// that's what the server uses as the filename under /api/invitations/:id.
+// Each menu lives in TWO server files: the published copy (filename =
+// publicSlug) that visitors see, and the editor's working copy
+// (filename = `draft-<invitation id>`). We must patch BOTH — otherwise the
+// next time the menu is opened in the editor it loads the image-less draft
+// and re-publishing wipes the photos again. `slug` is whatever goes in the
+// /api/invitations/:id URL.
 const TARGETS = [
-  {
-    label: 'Hannah & Michael',
-    publicSlug: 'GUKkeGDjg',
-    mapping: '/tmp/menu-image-map-hm.json',
-  },
-  {
-    label: 'La Cocinoteca',
-    publicSlug: 'zAamzQNFa',
-    mapping: '/tmp/menu-image-map-cocinoteca.json',
-  },
+  { label: 'Hannah & Michael — publicado', slug: 'GUKkeGDjg', mapping: '/tmp/menu-image-map-hm.json' },
+  { label: 'Hannah & Michael — draft', slug: 'draft-ea03416a-9238-4542-8e59-543bff1d8817', mapping: '/tmp/menu-image-map-hm.json' },
+  { label: 'La Cocinoteca — publicado', slug: 'zAamzQNFa', mapping: '/tmp/menu-image-map-cocinoteca.json' },
+  { label: 'La Cocinoteca — draft', slug: 'draft-cbc42022-3235-4c12-96ab-2c3e139f0648', mapping: '/tmp/menu-image-map-cocinoteca.json' },
 ]
 
 async function loadInvitation(slug) {
@@ -74,15 +72,15 @@ function patchInvitation(inv, imageByName) {
 async function main() {
   console.log(`API: ${API_BASE}\n`)
   for (const t of TARGETS) {
-    console.log(`── ${t.label} (${t.publicSlug}) ──`)
+    console.log(`── ${t.label} (${t.slug}) ──`)
     const map = JSON.parse(await fs.readFile(t.mapping, 'utf8'))
     console.log(`  manifest: ${Object.keys(map).length} entries`)
-    const inv = await loadInvitation(t.publicSlug)
+    const inv = await loadInvitation(t.slug)
     console.log(`  loaded:   id=${inv.id} blocks=${inv.blocks?.length} status=${inv.status}`)
     const { matched, totalItems, alreadyHadImage } = patchInvitation(inv, map)
     console.log(`  patched:  ${matched}/${totalItems} items now have an image (${alreadyHadImage} already had one)`)
     console.log(`  flag:     enableItemImages = true`)
-    await saveInvitation(t.publicSlug, inv)
+    await saveInvitation(t.slug, inv)
     console.log('  saved ✓\n')
   }
 }

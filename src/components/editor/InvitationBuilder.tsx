@@ -8,6 +8,7 @@ import { INVITATION_PREFIX, useEditorStore } from '../../store/editorStore'
 import { createExampleInvitation, createExampleMenu } from '../../utils/blockDefaults'
 import { createHannahMichaelMenu, createCocinotecaMenu } from '../../utils/menuTemplates'
 import { loadFromRegistry, saveToRegistry } from '../../utils/inviteRegistry'
+import type { Invitation } from '../../types/invitation.types'
 
 // How often (ms) to autosave the draft to the server
 const AUTOSAVE_INTERVAL = 15_000
@@ -37,33 +38,46 @@ export function InvitationBuilder() {
       if (editId) {
         const key = INVITATION_PREFIX + editId
 
-        // 1. Try localStorage first (instant, no network)
+        // 1. Read the cached copy (instant) and paint it right away so the
+        //    first render is fast and offline still works.
+        let local: Invitation | null = null
         const raw = window.localStorage.getItem(key)
         if (raw) {
           try {
-            const inv = JSON.parse(raw)
-            loadInvitation(inv)
+            local = JSON.parse(raw) as Invitation
+            loadInvitation(local)
             setLoading(false)
-            return
           } catch (e) {
             console.error('Failed to parse local invitation', e)
           }
         }
 
-        // 2. Try server (draft blob: `draft-<id>`)
+        // 2. Reconcile with the server copy (draft blob: `draft-<id>`). The
+        //    cache used to win unconditionally, which meant a stale local
+        //    draft could silently clobber newer server-side changes (e.g.
+        //    dish images backfilled out-of-band) the moment autosave fired.
+        //    Now we compare `updatedAt` and only keep the cache when it is
+        //    at least as fresh as the server.
         const remote = await loadFromRegistry(`draft-${editId}`)
         if (remote) {
-          try {
-            window.localStorage.setItem(key, JSON.stringify(remote))
+          const localTime = local ? Date.parse(local.updatedAt || '') || 0 : -1
+          const remoteTime = Date.parse(remote.updatedAt || '') || 0
+          if (!local || remoteTime > localTime) {
+            try {
+              window.localStorage.setItem(key, JSON.stringify(remote))
+            } catch (e) {
+              console.error('Failed to cache remote invitation', e)
+            }
             loadInvitation(remote)
-            setLoading(false)
-            return
-          } catch (e) {
-            console.error('Failed to load remote invitation', e)
           }
+          setLoading(false)
+          return
         }
 
-        // 3. Nothing found — create fresh with that ID
+        // The cache covered us and the server had nothing — keep the cache.
+        if (local) return
+
+        // 3. Nothing found anywhere — create fresh with that ID
         const newInv = makeNew()
         newInv.id = editId
         window.localStorage.setItem(key, JSON.stringify(newInv))
