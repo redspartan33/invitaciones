@@ -14,6 +14,7 @@ import { LANGUAGE_LABELS } from '../../utils/translation'
 import { ITEM_GAP_PX, PAD_Y_CLASS, BG_POSITION_CSS } from './BlockWrapper'
 import { SearchIcon, CloseIcon } from './icons'
 import { PromoSlideCard } from './PromoSlide'
+import { resolveBackgroundSource } from '../../utils/pageBackground'
 
 const EMPTY_BLOCKS: InvitationBlock[] = []
 
@@ -81,11 +82,22 @@ export function MenuHeaderBlock({
   // keep their look.
   const bgImage = block.style?.backgroundImage || data.backgroundImage
   const bgColor = block.style?.backgroundColor || data.backgroundColor
-  const usingImage = !!bgImage && !suppressBg
+  // Video takes precedence over image when set. Resolved the same way as the
+  // global page background (direct file, YouTube or Vimeo) so a pasted URL
+  // "just works".
+  const bgVideoSource = suppressBg
+    ? { kind: 'empty' as const }
+    : resolveBackgroundSource(block.style?.backgroundVideo ? { url: block.style.backgroundVideo, kind: 'video' } : undefined)
+  const usingVideo = bgVideoSource.kind !== 'empty'
+  const usingImage = !usingVideo && !!bgImage && !suppressBg
   const bgStyle = suppressBg
     ? // Global page background is visible behind the header — drop the dark
       // default so it shows through, and let text inherit the canvas color.
       ({} as React.CSSProperties)
+    : usingVideo
+    ? // The <video>/<iframe> layer paints the background; keep a dark fallback
+      // color behind it (shows while the video loads) and white text.
+      { backgroundColor: bgColor || '#0b3d2e', color: '#fff' }
     : usingImage
     ? {
         backgroundImage: `url(${bgImage})`,
@@ -278,11 +290,41 @@ export function MenuHeaderBlock({
 
   // The "header card" — what used to be the only thing this block rendered.
   // Now it's slide 0 of an optional carousel (promos become slides 1+).
+  const videoLayer = usingVideo && (
+    <div aria-hidden className="absolute inset-0 -z-0 overflow-hidden">
+      {bgVideoSource.kind === 'video-file' && (
+        <video
+          className="h-full w-full"
+          style={{ objectFit: 'cover' }}
+          src={bgVideoSource.url}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+        />
+      )}
+      {(bgVideoSource.kind === 'youtube' || bgVideoSource.kind === 'vimeo') && (
+        <iframe
+          title="Fondo del encabezado"
+          src={bgVideoSource.embedUrl}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen={false}
+          tabIndex={-1}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ width: 'max(100%, 177.78vh)', height: 'max(56.25%, 100%)', minWidth: '100%', minHeight: '100%', border: 0 }}
+        />
+      )}
+    </div>
+  )
+
   const headerCard = (
     <div
       style={headerInlineStyle}
-      className={`block-scale-active ${textSizeClass} ${paddingClass} text-center flex flex-col items-center justify-center h-full w-full`}
+      className={`relative overflow-hidden block-scale-active ${textSizeClass} ${paddingClass} text-center flex flex-col items-center justify-center h-full w-full`}
     >
+      {videoLayer}
+      <div className="relative z-10 flex w-full flex-col items-center">
       {data.showLogo && data.logo && (
         <img
           src={data.logo}
@@ -332,6 +374,7 @@ export function MenuHeaderBlock({
           })}
         </div>
       )}
+      </div>
     </div>
   )
 

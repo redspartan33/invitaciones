@@ -468,8 +468,10 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       <BlockBackgroundSection
         backgroundColor={block.style?.backgroundColor}
         backgroundImage={block.style?.backgroundImage}
+        backgroundVideo={block.style?.backgroundVideo}
         backgroundPosition={block.style?.backgroundPosition}
         backgroundSize={block.style?.backgroundSize}
+        showVideo={block.type === 'menu-header'}
         onChange={(patch) => updateBlockStyle(block.id, patch)}
       />
 
@@ -544,17 +546,22 @@ const BG_POSITIONS: { value: NonNullable<import('../../types/invitation.types').
 function BlockBackgroundSection({
   backgroundColor,
   backgroundImage,
+  backgroundVideo,
   backgroundPosition,
   backgroundSize,
+  showVideo,
   onChange,
 }: {
   backgroundColor?: string
   backgroundImage?: string
+  backgroundVideo?: string
   backgroundPosition?: import('../../types/invitation.types').BlockStyle['backgroundPosition']
   backgroundSize?: import('../../types/invitation.types').BlockStyle['backgroundSize']
+  showVideo?: boolean
   onChange: (patch: {
     backgroundColor?: string
     backgroundImage?: string
+    backgroundVideo?: string
     backgroundPosition?: import('../../types/invitation.types').BlockStyle['backgroundPosition']
     backgroundSize?: import('../../types/invitation.types').BlockStyle['backgroundSize']
   }) => void
@@ -652,7 +659,34 @@ function BlockBackgroundSection({
         </p>
       </div>
 
-      {backgroundImage && (
+      {showVideo && (
+        <div>
+          <label className="label-flat">Video de fondo</label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={backgroundVideo ?? ''}
+              onChange={(e) => onChange({ backgroundVideo: e.target.value })}
+              placeholder="URL de MP4, YouTube o Vimeo"
+              className="input-flat flex-1"
+            />
+            {backgroundVideo && (
+              <button
+                type="button"
+                onClick={() => onChange({ backgroundVideo: '' })}
+                className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+              >
+                Quitar
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-[11px] text-ink-400">
+            El video se reproduce en silencio y en bucle detrás del encabezado. Tiene prioridad sobre la imagen.
+          </p>
+        </div>
+      )}
+
+      {backgroundImage && !backgroundVideo && (
         <>
           <div>
             <label className="label-flat">Ajuste de la imagen</label>

@@ -42,6 +42,13 @@ export interface BlockStyle {
   backgroundColor?: string
   /** Optional background image URL (rendered with cover/center). Sits behind block content. */
   backgroundImage?: string
+  /**
+   * Optional background video URL — direct file (mp4/webm/…), YouTube or
+   * Vimeo, auto-detected just like the global page background. Currently
+   * rendered by the menu header, where it sits behind the header content and
+   * autoplays muted/looped. Takes precedence over backgroundImage.
+   */
+  backgroundVideo?: string
   textColor?: string
   paddingY?: 'sm' | 'md' | 'lg' | 'xl'
   paddingTop?: number

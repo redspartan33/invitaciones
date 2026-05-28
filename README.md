@@ -124,7 +124,7 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 
 ### Bloques de menú (kind = `menu`)
 
-- **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección. Tamaño de barra (S/M/XL) y tamaño de logo (S/M/L/XL) configurables. El fondo (color o imagen) se controla desde la sección universal **"Fondo del bloque"** (`block.style`), igual que el resto de bloques — al usar imagen se aplica el overlay oscuro y el texto en blanco. Menús viejos que guardaban el fondo en `data` siguen funcionando vía fallback.
+- **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección. Tamaño de barra (S/M/XL) y tamaño de logo (S/M/L/XL) configurables. El fondo (color, imagen o **video**) se controla desde la sección universal **"Fondo del bloque"** (`block.style`), igual que el resto de bloques — al usar imagen se aplica el texto en blanco. El campo **"Video de fondo"** (solo visible en menu-header, guardado en `block.style.backgroundVideo`) acepta una URL de MP4/WebM, YouTube o Vimeo, auto-detectada con la misma `resolveBackgroundSource` que el fondo global; se reproduce silenciado y en bucle detrás del contenido (`<video>` o `<iframe>` en una capa absoluta, con el texto en una capa `z-10` encima) y tiene prioridad sobre la imagen. Menús viejos que guardaban el fondo en `data` siguen funcionando vía fallback.
 - **Menu section** — Lista de platillos con título, descripción opcional y espaciado entre platillos configurable (XS/SM/MD/LG/XL)
 - **Menu note** — Texto suelto (alérgenos, propina, etc.)
 - **Menu footer** — Dirección, horarios, redes
