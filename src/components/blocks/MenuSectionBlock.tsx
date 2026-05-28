@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { InvitationBlock, MenuSectionData } from '../../types/invitation.types'
 import { BlockWrapper } from './BlockWrapper'
 import { TextEl } from './TextEl'
+import { ImageLightbox } from './ImageLightbox'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { normalizeForSearch, useMenuFeatures } from './MenuFeaturesContext'
 
@@ -8,6 +10,7 @@ export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-secti
   const data = block.data as MenuSectionData
   const anchor = menuSectionAnchor(block.id, data.title, data.customAnchor)
   const { searchQuery, showItemImages } = useMenuFeatures()
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
   const trimmedQuery = searchQuery.trim()
   const filteredItems = trimmedQuery
     ? data.items.filter((it) => {
@@ -74,12 +77,25 @@ export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-secti
                   }
                 >
                   {showImage && (
-                    <img
-                      src={item.image}
-                      alt=""
-                      loading="lazy"
-                      className="h-20 w-20 shrink-0 rounded-md object-cover border border-current/10"
-                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setLightbox({ src: item.image!, alt: item.name ?? '' })
+                      }}
+                      aria-label={`Ver foto de ${item.name ?? 'platillo'}`}
+                      className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-current/10"
+                    >
+                      <img
+                        src={item.image}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      />
+                      <span className="pointer-events-none absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/45 text-[11px] leading-none text-white opacity-80">
+                        ⤢
+                      </span>
+                    </button>
                   )}
                   <div className={showImage ? 'flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-3' : 'contents'}>
                     <div className="min-w-0">
@@ -110,6 +126,13 @@ export function MenuSectionBlock({ block }: { block: InvitationBlock<'menu-secti
           </ul>
         </div>
       </BlockWrapper>
+      {lightbox && (
+        <ImageLightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   )
 }
