@@ -12,6 +12,8 @@ interface ItemSeed {
   name: string
   description?: string
   price?: string
+  /** Optional dish photo URL. Surfaces when globalSettings.enableItemImages is on. */
+  image?: string
 }
 interface SectionSeed {
   title: string
@@ -23,49 +25,49 @@ const HANNAH_MICHAEL_SECTIONS: SectionSeed[] = [
   {
     title: 'Entradas',
     items: [
-      { name: 'Concha con Nata', description: 'De chocolate o vainilla rellena de nata natural de leche', price: '$74' },
-      { name: 'Molletitos', description: 'Tres molletis con frijoles refritos, queso oaxaca y pico de gallo. Molletitos: Pancitos salados.', price: '$89' },
-      { name: 'Parfait', description: 'Copa de yogurt griego sabor natural, granola y frutos del bosque 500 ml. Frutos del bosque:Fresas, cerezas, frambuesas, moras, arándanos.', price: '$99' },
-      { name: 'Concha con Nutella', description: 'De chocolate o vainilla rellena de nutella', price: '$74' },
-      { name: 'Pan Francés Relleno', description: 'Pan brioche, ricotta de vainilla, frutos rojos y almentra tostada. Frutos rojos: Fresas, cerezas, frambuesas.', price: '$160' },
-      { name: 'Plato de Fruta', description: 'Fruta de temporada acompañado de yogurt griego y granola.', price: '$94' },
+      { name: 'Concha con Nata', description: 'De chocolate o vainilla rellena de nata natural de leche', price: '$74', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxmli-6jvt4g.jpg' },
+      { name: 'Molletitos', description: 'Tres molletis con frijoles refritos, queso oaxaca y pico de gallo. Molletitos: Pancitos salados.', price: '$89', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxmzy-uzerh6.jpg' },
+      { name: 'Parfait', description: 'Copa de yogurt griego sabor natural, granola y frutos del bosque 500 ml. Frutos del bosque:Fresas, cerezas, frambuesas, moras, arándanos.', price: '$99', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxneb-q72dd2.jpg' },
+      { name: 'Concha con Nutella', description: 'De chocolate o vainilla rellena de nutella', price: '$74', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxnod-b7o8oy.jpg' },
+      { name: 'Pan Francés Relleno', description: 'Pan brioche, ricotta de vainilla, frutos rojos y almentra tostada. Frutos rojos: Fresas, cerezas, frambuesas.', price: '$160', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxnzm-itta2e.jpg' },
+      { name: 'Plato de Fruta', description: 'Fruta de temporada acompañado de yogurt griego y granola.', price: '$94', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxoap-zjm43a.jpg' },
     ],
   },
   {
     title: 'Bagels',
     items: [
-      { name: 'Bagel de Salmón', description: 'Queso crema, salmón y aguacate. Bagels: Pan en forma de dona.', price: '$199' },
-      { name: 'Bagel Americano', description: 'Queso cheddar, huevo revuelto y tocino de cerdo. Bagels: Pan en forma de dona.', price: '$175' },
+      { name: 'Bagel de Salmón', description: 'Queso crema, salmón y aguacate. Bagels: Pan en forma de dona.', price: '$199', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxoor-63miwb.jpg' },
+      { name: 'Bagel Americano', description: 'Queso cheddar, huevo revuelto y tocino de cerdo. Bagels: Pan en forma de dona.', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxp37-mzqwtz.jpg' },
       { name: 'Bagel Hannah', description: 'Queso crema, jamón serrano y mermelada de cebolla. Bagels: Pan en forma de dona.', price: '$199' },
     ],
   },
   {
     title: 'Toast & Sandwich',
     items: [
-      { name: 'Croque Madame', description: 'Pan brioche relleno de jamón de pavo, aguacate, bañado con salsa de queso y huevo estrellado.', price: '$182' },
-      { name: 'Toast Pochado', description: 'Pan campesiono tostado, jamón de pavo, aguacate y huevo pochado. Toast: Pan tostado.', price: '$137' },
-      { name: 'Toast de Salmón', description: 'Pan campesino tostado con queso crema, salmon, arugula, jitomate cherry y aguacate. Toast: Pan tostado.', price: '$150' },
+      { name: 'Croque Madame', description: 'Pan brioche relleno de jamón de pavo, aguacate, bañado con salsa de queso y huevo estrellado.', price: '$182', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxpfe-rs49d0.jpg' },
+      { name: 'Toast Pochado', description: 'Pan campesiono tostado, jamón de pavo, aguacate y huevo pochado. Toast: Pan tostado.', price: '$137', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxpr7-vusqes.jpg' },
+      { name: 'Toast de Salmón', description: 'Pan campesino tostado con queso crema, salmon, arugula, jitomate cherry y aguacate. Toast: Pan tostado.', price: '$150', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxq46-99d7kl.jpg' },
       { name: 'Toast de Avocado', description: 'Pan campesino tostado con  guacamole, huevo estrellado, arúgula y jitomate cherry.', price: '$131' },
     ],
   },
   {
     title: 'Waffles & Pancakes',
     items: [
-      { name: 'Hot Cakes', description: 'Servidos con miel maple y mantequilla 3 pzas.', price: '$150' },
-      { name: 'Waffle Reese\'s', description: 'Con chispas de chocolate, crema de avellana y cacahuate 1 pza.', price: '$175' },
-      { name: 'Waffle Americano', description: 'Queso cheddar, jamón de pavo y tocino.', price: '$175' },
-      { name: 'Hot Cakes Hannah', description: 'Con ricotta de vainilla y crema de avellana bañados en chocolate 3 pzas.', price: '$182' },
+      { name: 'Hot Cakes', description: 'Servidos con miel maple y mantequilla 3 pzas.', price: '$150', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxqhv-2ahrbm.jpg' },
+      { name: 'Waffle Reese\'s', description: 'Con chispas de chocolate, crema de avellana y cacahuate 1 pza.', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxqt3-yxpl5x.jpg' },
+      { name: 'Waffle Americano', description: 'Queso cheddar, jamón de pavo y tocino.', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxr4l-zvewwx.jpg' },
+      { name: 'Hot Cakes Hannah', description: 'Con ricotta de vainilla y crema de avellana bañados en chocolate 3 pzas.', price: '$182', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxrgs-jy2546.jpg' },
       { name: 'Waffle Sándwich', description: 'Espinacas, crujiente tocino, huevo y miel maple.', price: '$187' },
     ],
   },
   {
     title: 'Huevos & Omelettes',
     items: [
-      { name: 'Huevos Divorciados', description: 'Estrellados sobre tortilla, con salsa verde y roja. 2 pzas.', price: '$125' },
-      { name: 'Huevos al Gusto', description: 'Opción a escoger entre huevos revueltos o estrellados, con jamón, tocino, panela o a la mexicana. 2 pzas.', price: '$137' },
-      { name: 'Huevos Ahogados', description: 'Estrellados y cocinados en salsa de chorizo 2 pzas.', price: '$140' },
-      { name: 'Omelette Chilaquiles', description: 'Relleno de chilaquiles verdes, rojos o suizos (salsa verde cremosa).', price: '$169' },
-      { name: 'Omelette Hannah', description: 'En base de salsa de frijol y relleno de elote, calabaza y queso panela.', price: '$175' },
+      { name: 'Huevos Divorciados', description: 'Estrellados sobre tortilla, con salsa verde y roja. 2 pzas.', price: '$125', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxrui-gmhffa.jpg' },
+      { name: 'Huevos al Gusto', description: 'Opción a escoger entre huevos revueltos o estrellados, con jamón, tocino, panela o a la mexicana. 2 pzas.', price: '$137', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxs02-w1ob6f.jpg' },
+      { name: 'Huevos Ahogados', description: 'Estrellados y cocinados en salsa de chorizo 2 pzas.', price: '$140', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxsc8-7aj3vm.jpg' },
+      { name: 'Omelette Chilaquiles', description: 'Relleno de chilaquiles verdes, rojos o suizos (salsa verde cremosa).', price: '$169', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxso2-b7ud18.jpg' },
+      { name: 'Omelette Hannah', description: 'En base de salsa de frijol y relleno de elote, calabaza y queso panela.', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxsys-dnb5dt.jpg' },
       { name: 'Huevos Benedictos', description: 'Pochados sobre pan tostado y jamón de pavo y bañados en salsa holandesa 2 pzas.', price: '$189' },
       { name: 'Omelette al Gusto', description: 'Con jamón, tocino, espinacas, queso panela o a la mexicana.', price: '$137' },
     ],
@@ -73,29 +75,29 @@ const HANNAH_MICHAEL_SECTIONS: SectionSeed[] = [
   {
     title: 'Chilaquiles',
     items: [
-      { name: 'Chilaquiles Hannah', description: 'En salsa verde cremosa, fajitas de milanesa de pollo, crujiente tocino y aguacate.', price: '$210' },
-      { name: 'Birriaquiles', description: 'Con consome y birria de picaña.', price: '$210' },
-      { name: 'Torta de Chilaquiles', description: 'Verdes, rojos o suizos, servidos con cebolla, cilantro, crema y queso fresco.', price: '$95' },
-      { name: 'Chilaquiles Sencillos', description: 'Verdes o rojos, servidos con frijoles refritos, cebolla, cilantro, crema y queso fresco.', price: '$125' },
-      { name: 'Chilaquiles Suizos', description: 'En salsa verde  cremosa, servidos con pollo y gratinados.', price: '$175' },
-      { name: 'Chilaquiles en su Jugo', description: 'En salsa de carne en su jugo, tocino y carne de res.', price: '$199' },
+      { name: 'Chilaquiles Hannah', description: 'En salsa verde cremosa, fajitas de milanesa de pollo, crujiente tocino y aguacate.', price: '$210', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxtbc-6rmlca.jpg' },
+      { name: 'Birriaquiles', description: 'Con consome y birria de picaña.', price: '$210', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxtm3-lwh23c.jpg' },
+      { name: 'Torta de Chilaquiles', description: 'Verdes, rojos o suizos, servidos con cebolla, cilantro, crema y queso fresco.', price: '$95', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxu23-mafte1.jpg' },
+      { name: 'Chilaquiles Sencillos', description: 'Verdes o rojos, servidos con frijoles refritos, cebolla, cilantro, crema y queso fresco.', price: '$125', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxuiq-1k70yb.jpg' },
+      { name: 'Chilaquiles Suizos', description: 'En salsa verde  cremosa, servidos con pollo y gratinados.', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxuv1-mso51g.jpg' },
+      { name: 'Chilaquiles en su Jugo', description: 'En salsa de carne en su jugo, tocino y carne de res.', price: '$199', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxv8c-8e43it.jpg' },
     ],
   },
   {
     title: 'Especiales',
     items: [
-      { name: 'Enfrijoladas', description: 'Opción de escoger :pollo o chorizo, bañadas en salsa de frijol negro, crema y queso fresco. (4 pzas).', price: '$175' },
-      { name: 'Tamal Oaxaqueño', description: 'De salsa verde con pollo sobre salsa de frijol negro, servido con crema y queso fresco.', price: '$125' },
-      { name: 'Molletes', description: 'Con frijoles refritos, jamón de pavo y queso manchego, acompañados de pico de gallo (2 pzas).', price: '$113' },
-      { name: 'Ennatadas', description: 'Opción de escoger relleno de pollo o queso panela, bañadas en salsa de jitomate con nata, crema y queso fresco. (4 pzas).', price: '$189' },
-      { name: 'Enchiladas Suizas', description: 'De pollo y gratinadas. (4 pzas).', price: '$189' },
+      { name: 'Enfrijoladas', description: 'Opción de escoger :pollo o chorizo, bañadas en salsa de frijol negro, crema y queso fresco. (4 pzas).', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxvj7-28rx6t.jpg' },
+      { name: 'Tamal Oaxaqueño', description: 'De salsa verde con pollo sobre salsa de frijol negro, servido con crema y queso fresco.', price: '$125', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxvvx-5pctsp.jpg' },
+      { name: 'Molletes', description: 'Con frijoles refritos, jamón de pavo y queso manchego, acompañados de pico de gallo (2 pzas).', price: '$113', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxwej-k0xxyd.jpg' },
+      { name: 'Ennatadas', description: 'Opción de escoger relleno de pollo o queso panela, bañadas en salsa de jitomate con nata, crema y queso fresco. (4 pzas).', price: '$189', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxwps-tdovjr.jpg' },
+      { name: 'Enchiladas Suizas', description: 'De pollo y gratinadas. (4 pzas).', price: '$189', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxx1h-v8lvkk.jpg' },
     ],
   },
   {
     title: 'Ligero',
     items: [
-      { name: 'Sándwich', description: 'Espinacas, panela, germen, jitomate y aguacate.', price: '$157' },
-      { name: 'Omelette Michael', description: 'De claras con espinacas en base de salsa de jitomate y relleno de pechuga de pavo y queso panela.', price: '$175' },
+      { name: 'Sándwich', description: 'Espinacas, panela, germen, jitomate y aguacate.', price: '$157', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxxj0-u88yaj.jpg' },
+      { name: 'Omelette Michael', description: 'De claras con espinacas en base de salsa de jitomate y relleno de pechuga de pavo y queso panela.', price: '$175', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxxx2-i719zp.jpg' },
       { name: 'Pancakes Ligeros', description: 'De avena y plátano, servido con frutos rojos y miel de agave (2 pzas).', price: '$150' },
       { name: 'Chilaquiles Ligeros', description: 'Con totopos horneados en salsa de jitomate, queso panela y pechuga de pavo.', price: '$182' },
     ],
@@ -103,9 +105,9 @@ const HANNAH_MICHAEL_SECTIONS: SectionSeed[] = [
   {
     title: 'Postres',
     items: [
-      { name: 'Cheesecake', description: 'Con salsa de frutos rojos, decorado con fresas, frambuesas, zarzamoras y arándanos, y un toque de menta.', price: '$135' },
-      { name: 'Brownie', price: '$125' },
-      { name: 'Pastel de Chocolate', description: 'Pastel de chocolate en dos capas, relleno de crema de chocolate, coronado con arándanos azules, acompañado de fresas y moras.', price: '$135' },
+      { name: 'Cheesecake', description: 'Con salsa de frutos rojos, decorado con fresas, frambuesas, zarzamoras y arándanos, y un toque de menta.', price: '$135', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxdps-sacaoa.jpg' },
+      { name: 'Brownie', price: '$125', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxe3u-xagfyk.jpg' },
+      { name: 'Pastel de Chocolate', description: 'Pastel de chocolate en dos capas, relleno de crema de chocolate, coronado con arándanos azules, acompañado de fresas y moras.', price: '$135', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxehi-coxilx.jpg' },
     ],
   },
   {
@@ -118,9 +120,9 @@ const HANNAH_MICHAEL_SECTIONS: SectionSeed[] = [
   {
     title: 'Smoothies',
     items: [
-      { name: 'Smoothie Berries', description: 'Frutos del bosque y naranja, endulzado con miel de agave (350 ml).', price: '$99' },
-      { name: 'Smoothie Rosa', description: 'Plátano, fresa y naranja, endulzado con miel de agave (350 ml).', price: '$99' },
-      { name: 'Smoothie Amarillo', description: 'Mango, piña y naranja, endulzado con miel de agave (350 ml).', price: '$99' },
+      { name: 'Smoothie Berries', description: 'Frutos del bosque y naranja, endulzado con miel de agave (350 ml).', price: '$99', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxevu-dx0ipn.jpg' },
+      { name: 'Smoothie Rosa', description: 'Plátano, fresa y naranja, endulzado con miel de agave (350 ml).', price: '$99', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxf9a-ap427z.jpg' },
+      { name: 'Smoothie Amarillo', description: 'Mango, piña y naranja, endulzado con miel de agave (350 ml).', price: '$99', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxfki-z09h4o.jpg' },
       { name: 'Morning', description: 'Mango, naranja, zanahoria y jengibre , endulzado con miel de agave (350 ml).', price: '$99' },
       { name: 'Smoothie Verde', description: 'Plátano, espinaca, crema de almendras, linaza y leche de almendras, endulzado con miel de agave (350ml).', price: '$99' },
       { name: 'Smoothie Cacao', description: 'Cacao, plátano y leche de almendra, endulzado con miel de agave (350 ml).', price: '$99' },
@@ -130,16 +132,16 @@ const HANNAH_MICHAEL_SECTIONS: SectionSeed[] = [
   {
     title: 'Café',
     items: [
-      { name: 'Latte', description: 'Elija una opción.', price: '$82' },
-      { name: 'Capuchino', description: 'Elija una opción.', price: '$82' },
-      { name: 'Moka', description: 'Elija una opción.', price: '$101' },
-      { name: 'Taro', description: 'Elija una opción.', price: '$110' },
-      { name: 'Descafeinado', description: 'Elija una opción.', price: '$58' },
-      { name: 'Chocolate', description: 'Elija una opción.', price: '$78' },
-      { name: 'Matcha', description: 'Elija una opción.', price: '$107' },
-      { name: 'Chai', description: 'Elija una opción.', price: '$107' },
-      { name: 'Americano', description: 'Elija una opción.', price: '$58' },
-      { name: 'Golden Milk', description: 'Elija una opción.', price: '$98' },
+      { name: 'Latte', description: 'Elija una opción.', price: '$82', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxfzj-l3a6w3.jpg' },
+      { name: 'Capuchino', description: 'Elija una opción.', price: '$82', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxgat-uwveuy.jpg' },
+      { name: 'Moka', description: 'Elija una opción.', price: '$101', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxgqk-a8ca7x.jpg' },
+      { name: 'Taro', description: 'Elija una opción.', price: '$110', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxh3c-a7zk2i.jpg' },
+      { name: 'Descafeinado', description: 'Elija una opción.', price: '$58', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxhkw-ilexel.jpg' },
+      { name: 'Chocolate', description: 'Elija una opción.', price: '$78', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxhwl-ffxnya.jpg' },
+      { name: 'Matcha', description: 'Elija una opción.', price: '$107', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxiaz-63idm7.jpg' },
+      { name: 'Chai', description: 'Elija una opción.', price: '$107', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxiol-98zixw.jpg' },
+      { name: 'Americano', description: 'Elija una opción.', price: '$58', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxj2b-n6igzq.jpg' },
+      { name: 'Golden Milk', description: 'Elija una opción.', price: '$98', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxjho-d0mzkf.jpg' },
     ],
   },
   {
@@ -158,21 +160,21 @@ const HANNAH_MICHAEL_SECTIONS: SectionSeed[] = [
   {
     title: 'Jugos',
     items: [
-      { name: 'Jugo de Naranja', description: '350 ml.', price: '$46' },
-      { name: 'Jugo Verde', description: '350 ml.', price: '$56' },
+      { name: 'Jugo de Naranja', description: '350 ml.', price: '$46', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxy94-x46gzn.jpg' },
+      { name: 'Jugo Verde', description: '350 ml.', price: '$56', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxyeq-j22mmy.jpg' },
     ],
   },
   {
     title: 'Refrescos',
     items: [
-      { name: 'Coca Cola sin Azúcar', description: '355 ml.', price: '$53' },
-      { name: 'Coca Cola', description: '355 ml.', price: '$53' },
-      { name: 'Coca Cola Light', description: '355 ml.', price: '$53' },
-      { name: 'Sprite', description: '355 ml.', price: '$53' },
-      { name: 'Fanta', price: '$53' },
-      { name: 'Fresca', price: '$53' },
-      { name: 'Agua Mineral Topochico', price: '$63' },
-      { name: 'Agua Mineral Ciel', price: '$53' },
+      { name: 'Coca Cola sin Azúcar', description: '355 ml.', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxju2-b8b1qa.jpg' },
+      { name: 'Coca Cola', description: '355 ml.', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxk58-4732gg.jpg' },
+      { name: 'Coca Cola Light', description: '355 ml.', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxkg5-jdb994.jpg' },
+      { name: 'Sprite', description: '355 ml.', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxkrf-2egzav.jpg' },
+      { name: 'Fanta', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxl25-wvp9qm.jpg' },
+      { name: 'Fresca', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxlfs-9lrjk8.jpg' },
+      { name: 'Agua Mineral Topochico', price: '$63', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxlrx-8jfaon.jpg' },
+      { name: 'Agua Mineral Ciel', price: '$53', image: 'https://api.lamartinasma.com/api/asset/menu-hm/mposxm7f-p901ve.jpg' },
     ],
   },
   {
@@ -202,32 +204,32 @@ const COCINOTECA_SECTIONS: SectionSeed[] = [
     title: 'Entradas',
     description: 'Entrada',
     items: [
-      { name: 'Tacos de Aire con Flor de Calabaza y Quelites', description: 'Taco de aire rellenos de quelites, cremoso de requesón y aguacate y vinagreta de citícos. 3 pzas', price: '$207' },
-      { name: 'Tacos de Pescado Zarandeado', description: 'Posta de pescado zarandeado en adobo de xocnóstle, tzatziki de chile serrano y cilantro, arúgula y tortilla de maíz nixtamalizado en casa. 2 pzas', price: '$211' },
-      { name: 'Tacos de Short Rib Asado y con Papas.', description: 'Short rib asado pasado por la plancha, guacamole, papas fritas corte muy fino y tortilla de maíz nixtamalizado en casa 3 pzas', price: '$219' },
-      { name: 'Tacos de Lengua Ahumada', description: 'Con salsa verde tatemada de tuétano y verdolagas, cebolla blanca encurtida 2 pzas', price: '$242' },
-      { name: 'Tacos de Pork Belly Ahumado', description: 'Banados en nuestra deliciosa Salsa de Cacahuate, Pico de Escabeche, Quelites , Tortilla de maíz nixtamalizado en casa', price: '$185' },
-      { name: 'Chicharrón de Lonja con Cremoso de Chile Cuaresmeno', description: 'Chicharrón elaborado en casa con esquites y cremoso de chile cuaresmeno y cilantro criollo', price: '$287' },
-      { name: 'Carpaccio de Brisket', description: 'Platillo con 12 días de elaboración acompañado de salsa mediterránea y ensalada de arúgula y tomates baby.', price: '$383' },
-      { name: 'Aguachile Negro de Jamón de Papada de Cerdo', description: 'Jamón elaborado en la casa, aguachile negro, cebolla rostizadas aguacate y cilantro criollo', price: '$297' },
-      { name: 'Ceviche Rojo de Mariscos con salsa de Cecina Leonesa', description: 'Camarón, Pulpo y Pescado bañados en nuestra salsa Coctelera de cecina Leonesa. Lleva aguacate y cacahuate.', price: '$414' },
+      { name: 'Tacos de Aire con Flor de Calabaza y Quelites', description: 'Taco de aire rellenos de quelites, cremoso de requesón y aguacate y vinagreta de citícos. 3 pzas', price: '$207', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzmnt-2g2esl.jpg' },
+      { name: 'Tacos de Pescado Zarandeado', description: 'Posta de pescado zarandeado en adobo de xocnóstle, tzatziki de chile serrano y cilantro, arúgula y tortilla de maíz nixtamalizado en casa. 2 pzas', price: '$211', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy2an-s1j563.jpg' },
+      { name: 'Tacos de Short Rib Asado y con Papas.', description: 'Short rib asado pasado por la plancha, guacamole, papas fritas corte muy fino y tortilla de maíz nixtamalizado en casa 3 pzas', price: '$219', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy316-edp4qu.jpg' },
+      { name: 'Tacos de Lengua Ahumada', description: 'Con salsa verde tatemada de tuétano y verdolagas, cebolla blanca encurtida 2 pzas', price: '$242', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy3r9-kwp7cf.jpg' },
+      { name: 'Tacos de Pork Belly Ahumado', description: 'Banados en nuestra deliciosa Salsa de Cacahuate, Pico de Escabeche, Quelites , Tortilla de maíz nixtamalizado en casa', price: '$185', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy1ma-2ms7xl.jpg' },
+      { name: 'Chicharrón de Lonja con Cremoso de Chile Cuaresmeno', description: 'Chicharrón elaborado en casa con esquites y cremoso de chile cuaresmeno y cilantro criollo', price: '$287', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy8ed-hm77ec.jpg' },
+      { name: 'Carpaccio de Brisket', description: 'Platillo con 12 días de elaboración acompañado de salsa mediterránea y ensalada de arúgula y tomates baby.', price: '$383', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy8yx-buvqlq.jpg' },
+      { name: 'Aguachile Negro de Jamón de Papada de Cerdo', description: 'Jamón elaborado en la casa, aguachile negro, cebolla rostizadas aguacate y cilantro criollo', price: '$297', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzyf2-aqi0m4.jpg' },
+      { name: 'Ceviche Rojo de Mariscos con salsa de Cecina Leonesa', description: 'Camarón, Pulpo y Pescado bañados en nuestra salsa Coctelera de cecina Leonesa. Lleva aguacate y cacahuate.', price: '$414', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mpot02yi-gyl3fy.jpg' },
     ],
   },
   {
     title: 'Sopas',
     description: 'Sopas',
     items: [
-      { name: 'Crema de Tomate Ahumada', description: 'Crotón y hongos salteados', price: '$166' },
-      { name: 'Caldo de Pollo Rojo de la Abuela', description: 'Caldo de Pollo con arroz, pollo y verduras', price: '$176' },
+      { name: 'Crema de Tomate Ahumada', description: 'Crotón y hongos salteados', price: '$166', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposyr44-a25y9c.jpg' },
+      { name: 'Caldo de Pollo Rojo de la Abuela', description: 'Caldo de Pollo con arroz, pollo y verduras', price: '$176', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzq6w-8bubxw.jpg' },
     ],
   },
   {
     title: 'Pastas & Arroces',
     description: 'Pastas & Arroces',
     items: [
-      { name: 'El Clásico Fideo seco de La Cocinoteca', description: 'Fideos Secos con Rabo de Toro Ahumado', price: '$297' },
-      { name: 'El Arroz Meloso con Pulpo Zarandeado  y Papada Ahumada.', description: 'Arroz meloso con pulpo a las brasas y papada de cerdo ahumada. (Delicioso)', price: '$650' },
-      { name: 'Fettuchini Artesanal con Salsa de Tomate Cremosa', description: 'Pasta fresca elaborada aquí en casa con crema de jitomate, queso parmesano local, albahaca y tomate cherry.', price: '$280' },
+      { name: 'El Clásico Fideo seco de La Cocinoteca', description: 'Fideos Secos con Rabo de Toro Ahumado', price: '$297', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposypxf-0fun9m.jpg' },
+      { name: 'El Arroz Meloso con Pulpo Zarandeado  y Papada Ahumada.', description: 'Arroz meloso con pulpo a las brasas y papada de cerdo ahumada. (Delicioso)', price: '$650', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzs27-dyv8ei.jpg' },
+      { name: 'Fettuchini Artesanal con Salsa de Tomate Cremosa', description: 'Pasta fresca elaborada aquí en casa con crema de jitomate, queso parmesano local, albahaca y tomate cherry.', price: '$280', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzz8p-1hqdk1.jpg' },
     ],
   },
   {
@@ -235,39 +237,39 @@ const COCINOTECA_SECTIONS: SectionSeed[] = [
     description: 'Ensaladas & Vegetarianos',
     items: [
       { name: 'Vegetales orgánicos salteados', description: 'Con encacahuatado de cítricos y tamarindo', price: '$229' },
-      { name: 'Tacos de Aire con Quelites y Flor de Calabaza', description: 'Taco de aire relleno de quelites, cremoso de requesón y aguacate.', price: '$207' },
-      { name: 'Ensalada de Betabeles Asados , Salsa de Burrata y Palomitas de Sorgo', description: 'Betabeles asados, salsa de burrata y requesón local, arúgula, palomitas de sorgo y pepino en escabeche.', price: '$217' },
-      { name: 'Ensalada de Lechuga Asada a las Brasas', description: 'Fresca Lechuga Asada, Aguacate, Ejotes, Coles de Bruselas, Semilla de Calabaza, Vinagreta de Miel de Agave.', price: '$281' },
+      { name: 'Tacos de Aire con Quelites y Flor de Calabaza', description: 'Taco de aire relleno de quelites, cremoso de requesón y aguacate.', price: '$207', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposznay-928460.jpg' },
+      { name: 'Ensalada de Betabeles Asados , Salsa de Burrata y Palomitas de Sorgo', description: 'Betabeles asados, salsa de burrata y requesón local, arúgula, palomitas de sorgo y pepino en escabeche.', price: '$217', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzo1o-nien7j.jpg' },
+      { name: 'Ensalada de Lechuga Asada a las Brasas', description: 'Fresca Lechuga Asada, Aguacate, Ejotes, Coles de Bruselas, Semilla de Calabaza, Vinagreta de Miel de Agave.', price: '$281', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mpot02fg-xfzuw5.jpg' },
     ],
   },
   {
     title: 'Pescados & Mariscos',
     description: 'Pescados & Mariscos',
     items: [
-      { name: 'Lomo de Trucha Salmonada de Zitácuaro Zarandeada', description: 'Con adobo de xoconostle y encacahuatado de cítricos.', price: '$469' },
-      { name: 'Pulpo Asado a las Brasas', description: 'Pulpo zarandeado acompañado puré de papa y esquites.', price: '$536' },
-      { name: 'Ceviche Rojo de Mariscos con salsa de Cecina Leonesa', description: 'Camarón, Pescado y Pulpo bañados en nuestra salsa coctelera de cecina Leonesa. Cacahuate, Aguacate y sorbete de Mango y Chamoy. Tostada tatemada a la brasa.', price: '$397' },
+      { name: 'Lomo de Trucha Salmonada de Zitácuaro Zarandeada', description: 'Con adobo de xoconostle y encacahuatado de cítricos.', price: '$469', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposynrm-aljpx8.jpg' },
+      { name: 'Pulpo Asado a las Brasas', description: 'Pulpo zarandeado acompañado puré de papa y esquites.', price: '$536', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposypeq-7p7gn5.jpg' },
+      { name: 'Ceviche Rojo de Mariscos con salsa de Cecina Leonesa', description: 'Camarón, Pescado y Pulpo bañados en nuestra salsa coctelera de cecina Leonesa. Cacahuate, Aguacate y sorbete de Mango y Chamoy. Tostada tatemada a la brasa.', price: '$397', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mpot02yi-gyl3fy.jpg' },
     ],
   },
   {
     title: 'Platos Fuertes',
     description: 'Platos Fuertes',
     items: [
-      { name: 'Steak de Papada de Cerdo Ahumada', description: 'Con mojo de menta y pimiento asado', price: '$333' },
-      { name: 'Suprema de Pollo a las brasas con Chimuchurri Leonés.', description: 'Bañada con nuestra versión de chimichurri leonés, puré de papa y esquites salteados', price: '$395' },
-      { name: 'La Lengua de Res Ahumada con Verdolagas', description: 'Lengua Ahumada acompañado de salsa verde tatemada con tuétano y verdolagas', price: '$495' },
-      { name: 'Enchiladas Mineras con Mole de Nuez', description: 'Enchiladas mineras rellenas de zanahoria, papa, calabaza, servidas con crema y queso local Macouzet', price: '$259' },
+      { name: 'Steak de Papada de Cerdo Ahumada', description: 'Con mojo de menta y pimiento asado', price: '$333', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposyf80-uc7j8s.jpg' },
+      { name: 'Suprema de Pollo a las brasas con Chimuchurri Leonés.', description: 'Bañada con nuestra versión de chimichurri leonés, puré de papa y esquites salteados', price: '$395', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposyjt8-2lpx6t.jpg' },
+      { name: 'La Lengua de Res Ahumada con Verdolagas', description: 'Lengua Ahumada acompañado de salsa verde tatemada con tuétano y verdolagas', price: '$495', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposyhvu-3cmaj7.jpg' },
+      { name: 'Enchiladas Mineras con Mole de Nuez', description: 'Enchiladas mineras rellenas de zanahoria, papa, calabaza, servidas con crema y queso local Macouzet', price: '$259', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposzufn-ob5of1.jpg' },
     ],
   },
   {
     title: 'Postres',
     description: 'Postres',
     items: [
-      { name: 'Volcán de Chococajeta', description: 'Chocolate y Cajeta de Celaya', price: '$173' },
-      { name: 'Fresas con crema', description: 'Y queso mascarpone', price: '$207' },
-      { name: 'Pan de elote con cajeta, cacahuate', description: 'Y helado de Caramel Cream de San Felipe, Guanajuato', price: '$173' },
-      { name: 'Cajeta de membrillo', description: 'Con queso manchego curado de oveja', price: '$173' },
-      { name: 'Caminos de Guanajuato', description: 'Fresas con crema, pan de elote y cajeta de membrillo', price: '$176' },
+      { name: 'Volcán de Chococajeta', description: 'Chocolate y Cajeta de Celaya', price: '$173', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposy9ic-s6vhg3.jpg' },
+      { name: 'Fresas con crema', description: 'Y queso mascarpone', price: '$207', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposya2s-1wl5kj.jpg' },
+      { name: 'Pan de elote con cajeta, cacahuate', description: 'Y helado de Caramel Cream de San Felipe, Guanajuato', price: '$173', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposyaqc-kp1eb8.jpg' },
+      { name: 'Cajeta de membrillo', description: 'Con queso manchego curado de oveja', price: '$173', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposyb9z-6uj73m.jpg' },
+      { name: 'Caminos de Guanajuato', description: 'Fresas con crema, pan de elote y cajeta de membrillo', price: '$176', image: 'https://api.lamartinasma.com/api/asset/menu-cocinoteca/mposycfi-oku807.jpg' },
     ],
   },
   {
@@ -647,6 +649,7 @@ function buildMenuFromSeeds(args: {
         name: it.name,
         description: it.description ?? '',
         price: it.price ?? '',
+        ...(it.image ? { image: it.image } : {}),
       })),
     }
     block.data = data
@@ -676,6 +679,9 @@ function buildMenuFromSeeds(args: {
       colorSecondary: '#ffffff',
       colorAccent: args.accent,
       fontFamily: 'serif',
+      // Pre-populated menus ship with item photos so the per-item image
+      // feature is on by default. Users can turn it off from the editor.
+      enableItemImages: true,
     },
   }
 }

@@ -168,6 +168,8 @@ Además del esqueleto vacío hay dos plantillas con el menú real ya cargado, li
 
 Las factories viven en [`src/utils/menuTemplates.ts`](src/utils/menuTemplates.ts) (`createHannahMichaelMenu`, `createCocinotecaMenu`) y se enganchan al boot del editor en [`InvitationBuilder.tsx`](src/components/editor/InvitationBuilder.tsx). El contenido (nombres, descripciones, precios) fue extraído del JSON SSR de UberEats (ld+json `Restaurant.hasMenu`) y del `__NEXT_DATA__` del sitio público de La Cocinoteca — son la base, el diseño se termina en el editor.
 
+**Fotos de los platillos.** Las plantillas vienen con foto por item donde la fuente la publica: 59 de 83 items para H&M (Uber sólo expone foto en ~71% del menú) y 29 de 270 visibles para Cocinoteca (su CMS sólo tiene foto en las secciones de comida sólida — toda la barra de bebidas y la degustación están sin foto). Las URLs se re-alojan en el blob propio (`/api/assets`) para no depender del CDN ajeno: dos scripts unique-shot, `scripts/scrape-menu-images.mjs` (parsea las fuentes, descarga, sube y emite un manifest por restaurante) y `scripts/backfill-menu-images.mjs` (aplica el manifest a invitaciones ya guardadas en el servidor, vía `GET`/`PUT /api/invitations/<publicSlug>`, y enciende `globalSettings.enableItemImages`). Las factories también activan `enableItemImages: true` por defecto.
+
 ### Traducción del menú (ES / EN / FR)
 
 En el panel **Detalles** del editor de menú se puede activar un bloque **"Traducción"** con toggles para `English` y `Français` (el `Español` siempre está activo como idioma original). Cuando hay 2+ idiomas activados:
