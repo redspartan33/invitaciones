@@ -88,7 +88,7 @@ export function MenuHeaderBlock({
       ({} as React.CSSProperties)
     : usingImage
     ? {
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${bgImage})`,
+        backgroundImage: `url(${bgImage})`,
         backgroundSize: block.style?.backgroundSize ?? 'cover',
         backgroundPosition: BG_POSITION_CSS[block.style?.backgroundPosition ?? 'center'],
         color: '#fff',
