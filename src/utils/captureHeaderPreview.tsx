@@ -260,6 +260,8 @@ export function hasShareableImage(inv: Invitation): boolean {
   const blocks = Array.isArray(inv.blocks) ? inv.blocks : []
   for (const b of blocks) {
     const d = (b?.data ?? {}) as Record<string, unknown>
+    const s = (b?.style ?? {}) as Record<string, unknown>
+    if (typeof s.backgroundImage === 'string' && s.backgroundImage) return true
     if (typeof d.backgroundImage === 'string' && d.backgroundImage) return true
     if (typeof d.logo === 'string' && d.logo) return true
     if (typeof d.image === 'string' && d.image) return true

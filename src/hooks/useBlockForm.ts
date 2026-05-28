@@ -270,8 +270,6 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
           { name: 'title', label: 'Nombre del restaurante', kind: 'text' },
           { name: 'tagline', label: 'Subtítulo / tagline', kind: 'text' },
           { name: 'logo', label: 'Logo (URL)', kind: 'image' },
-          { name: 'backgroundImage', label: 'Imagen de fondo (URL)', kind: 'image' },
-          { name: 'backgroundColor', label: 'Color de fondo', kind: 'color' },
         ],
       },
       {

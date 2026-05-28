@@ -119,8 +119,6 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       title: 'Mi Restaurante',
       tagline: 'Carta',
       logo: '',
-      backgroundImage: '',
-      backgroundColor: '#1f2937',
       navBackgroundColor: '#111827',
       navTextColor: '#f8fafc',
       stickyHeader: false,
@@ -161,7 +159,7 @@ export function createBlock<T extends BlockType>(type: T, order: number): Invita
     data: defaultBlockData(type),
     order,
     visible: true,
-    style: { paddingY: 'lg' },
+    style: type === 'menu-header' ? { paddingY: 'lg', backgroundColor: '#1f2937' } : { paddingY: 'lg' },
     metadata: { createdAt: now, lastEdited: now },
   } as InvitationBlock
 }
@@ -194,8 +192,6 @@ export function createExampleMenu(): Invitation {
     title: 'Mi Restaurante',
     tagline: 'Carta',
     logo: '',
-    backgroundImage: '',
-    backgroundColor: '#1f2937',
     navBackgroundColor: '#111827',
     navTextColor: '#f8fafc',
     stickyHeader: false,
@@ -204,6 +200,7 @@ export function createExampleMenu(): Invitation {
     showTitle: true,
     showTagline: true,
   }
+  header.style = { ...header.style, backgroundColor: '#1f2937' }
 
   const section: InvitationBlock<'menu-section'> = {
     ...(createBlock('menu-section', 1) as InvitationBlock<'menu-section'>),

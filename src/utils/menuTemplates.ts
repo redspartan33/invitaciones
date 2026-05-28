@@ -628,8 +628,6 @@ function buildMenuFromSeeds(args: {
     title: args.title,
     tagline: args.tagline,
     logo: '',
-    backgroundImage: '',
-    backgroundColor: args.brandColor,
     navBackgroundColor: args.navColor,
     navTextColor: args.navText,
     stickyHeader: false,
@@ -638,6 +636,7 @@ function buildMenuFromSeeds(args: {
     showTitle: true,
     showTagline: true,
   }
+  header.style = { ...header.style, backgroundColor: args.brandColor }
 
   const sectionBlocks: InvitationBlock[] = args.sections.map((sec, i) => {
     const block = createBlock('menu-section', i + 1) as InvitationBlock<'menu-section'>

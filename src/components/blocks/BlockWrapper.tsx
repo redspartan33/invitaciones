@@ -33,7 +33,7 @@ const BORDER_RADIUS_PX: Record<NonNullable<BlockStyle['borderRadius']>, string> 
   full: '9999px',
 }
 
-const BG_POSITION_CSS: Record<NonNullable<BlockStyle['backgroundPosition']>, string> = {
+export const BG_POSITION_CSS: Record<NonNullable<BlockStyle['backgroundPosition']>, string> = {
   center: 'center',
   top: 'top',
   bottom: 'bottom',

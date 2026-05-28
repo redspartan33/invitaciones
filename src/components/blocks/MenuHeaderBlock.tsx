@@ -11,7 +11,7 @@ import { useSuppressBlockBackgrounds } from './BlockBackgroundContext'
 import { useMenuFeatures } from './MenuFeaturesContext'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { LANGUAGE_LABELS } from '../../utils/translation'
-import { ITEM_GAP_PX, PAD_Y_CLASS } from './BlockWrapper'
+import { ITEM_GAP_PX, PAD_Y_CLASS, BG_POSITION_CSS } from './BlockWrapper'
 import { SearchIcon, CloseIcon } from './icons'
 import { PromoSlideCard } from './PromoSlide'
 
@@ -76,20 +76,25 @@ export function MenuHeaderBlock({
   )
   const sections = navOverride ?? sectionsOverride ?? sectionsFromStore
   const suppressBg = useSuppressBlockBackgrounds()
-  const usingImage = !!data.backgroundImage && !suppressBg
+  // Background lives on block.style (the universal "Fondo del bloque" control),
+  // falling back to legacy data.* fields so menus saved before the migration
+  // keep their look.
+  const bgImage = block.style?.backgroundImage || data.backgroundImage
+  const bgColor = block.style?.backgroundColor || data.backgroundColor
+  const usingImage = !!bgImage && !suppressBg
   const bgStyle = suppressBg
     ? // Global page background is visible behind the header — drop the dark
       // default so it shows through, and let text inherit the canvas color.
       ({} as React.CSSProperties)
     : usingImage
     ? {
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${data.backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${bgImage})`,
+        backgroundSize: block.style?.backgroundSize ?? 'cover',
+        backgroundPosition: BG_POSITION_CSS[block.style?.backgroundPosition ?? 'center'],
         color: '#fff',
       }
-    : data.backgroundColor
-    ? { backgroundColor: data.backgroundColor, color: '#fff' }
+    : bgColor
+    ? { backgroundColor: bgColor, color: '#fff' }
     : { backgroundColor: '#0b3d2e', color: '#fff' }
 
   const navBg = data.navBackgroundColor || '#0b3d2e'
@@ -137,7 +142,7 @@ export function MenuHeaderBlock({
     if (!headerEl || !navEl) return
     setHeaderHeight(headerEl.offsetHeight)
     setNavHeight(navEl.offsetHeight)
-  }, [data.title, data.tagline, data.backgroundImage, data.showLogo, data.showTitle, data.showTagline, navSize, logoSize, sections.length])
+  }, [data.title, data.tagline, bgImage, data.showLogo, data.showTitle, data.showTagline, navSize, logoSize, sections.length])
 
   useEffect(() => {
     if (!isPublicView || !stickyNavOnly || headerHeight <= 0) {
