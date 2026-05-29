@@ -400,13 +400,83 @@ export async function captureHeaderPreviewImage(
 }
 
 /**
- * Build a guaranteed share image from the invitation's text/colors, with no
- * DOM rendering or font loading. Used as a last-resort fallback when
- * html-to-image fails (e.g. tainted canvas from cross-origin images, CSS the
- * library can't serialize, or the foreignObject pipeline silently producing a
- * blank PNG). An SVG data URI always renders inline previews on WhatsApp /
- * iMessage / Facebook / Twitter even when the rich capture path falls over,
- * so the share card is never empty for a published invitation.
+ * Build a guaranteed share image as a real PNG using a 2D canvas — no DOM, no
+ * fonts, no cross-origin images, no html-to-image. WhatsApp's scraper
+ * (Facebook's externalhit) refuses to render SVG as og:image, so PNG is the
+ * only format we can rely on for the inline preview to actually show up.
+ */
+function buildFallbackSharePng(inv: Invitation): string | null {
+  if (typeof document === 'undefined') return null
+  const gs = inv.globalSettings || ({} as Invitation['globalSettings'])
+  const bg = gs.colorSecondary || '#ffffff'
+  const accent = gs.colorAccent || '#b08968'
+  const ink = gs.colorPrimary || '#18181b'
+
+  let headline = inv.title || 'Invitación'
+  let subhead = ''
+  const hero = inv.blocks.find((b) => b.type === 'hero') as
+    | InvitationBlock<'hero'>
+    | undefined
+  if (hero) {
+    headline = hero.data.title || headline
+    subhead = hero.data.subtitle || ''
+  } else if (inv.layoutMode === 'fixed-canvas') {
+    const firstText = inv.blocks.find((b) => b.type === 'text') as
+      | InvitationBlock<'text'>
+      | undefined
+    if (firstText) headline = firstText.data.text || headline
+    const secondText = inv.blocks
+      .filter((b) => b.type === 'text')
+      .slice(1)[0] as InvitationBlock<'text'> | undefined
+    if (secondText) subhead = (secondText.data as { text?: string }).text || ''
+  }
+
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+
+    // Background
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, W, H)
+
+    // Decorative inner border in the accent color
+    ctx.strokeStyle = accent
+    ctx.lineWidth = 3
+    ctx.strokeRect(80, 80, W - 160, H - 160)
+
+    // Headline (two lines max), serif so it reads like an invitation
+    ctx.fillStyle = ink
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const lines = wrapHeadline(headline, 26)
+    ctx.font = '700 92px Georgia, "Times New Roman", serif'
+    const headlineCenterY = subhead ? 280 : 315
+    lines.forEach((line, i) => {
+      ctx.fillText(line, W / 2, headlineCenterY + i * 100, W - 240)
+    })
+
+    if (subhead) {
+      ctx.font = '400 36px Georgia, "Times New Roman", serif'
+      ctx.globalAlpha = 0.75
+      const subY = headlineCenterY + lines.length * 100 + 50
+      ctx.fillText(subhead.slice(0, 80), W / 2, subY, W - 240)
+      ctx.globalAlpha = 1
+    }
+
+    return canvas.toDataURL('image/png')
+  } catch (e) {
+    console.warn('[preview-fallback] canvas PNG failed', e)
+    return null
+  }
+}
+
+/**
+ * Legacy SVG fallback — kept only as an absolute last resort if even the
+ * canvas PNG fails (e.g. very locked-down browser). WhatsApp won't render
+ * this inline but the link still resolves.
  */
 function buildFallbackShareSvg(inv: Invitation): string {
   const gs = inv.globalSettings || ({} as Invitation['globalSettings'])
@@ -481,33 +551,70 @@ function wrapHeadline(text: string, maxCharsPerLine: number): string[] {
 
 /**
  * Public capture entrypoint with a guaranteed fallback. Tries the rich DOM
- * capture first; if it fails or returns null, uploads the SVG fallback so the
- * share card is never empty.
+ * capture first; if it fails or returns null, builds and uploads a 2D-canvas
+ * PNG fallback so the share card is never empty AND WhatsApp's scraper will
+ * actually render it inline (it ignores SVG, but happily renders PNG).
  */
 export async function captureShareImage(inv: Invitation): Promise<string | null> {
+  console.info('[share-image] starting capture for', inv.publicSlug || inv.id, {
+    layoutMode: inv.layoutMode,
+    kind: inv.kind,
+    blockCount: inv.blocks.length,
+  })
   const captured = await captureHeaderPreviewImage(inv)
-  if (captured) return captured
-  // Rich capture failed — generate and upload the deterministic SVG fallback.
-  const dataUri = buildFallbackShareSvg(inv)
+  if (captured) {
+    console.info('[share-image] rich capture succeeded ->', captured)
+    return captured
+  }
+  console.warn('[share-image] rich capture failed/empty, using PNG fallback')
+
   const folder = `inv-${inv.publicSlug || inv.id}`.replace(/[^a-zA-Z0-9_-]/g, '')
+
+  // Preferred fallback: real PNG built with a 2D canvas. WhatsApp/Facebook
+  // require a raster format for inline previews; SVG is not supported by
+  // their scrapers.
+  const pngUri = buildFallbackSharePng(inv)
+  if (pngUri) {
+    try {
+      const res = await fetch(ASSETS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUri: pngUri, folder }),
+      })
+      if (res.ok) {
+        const json = (await res.json()) as { url?: string }
+        if (typeof json.url === 'string') {
+          console.info('[share-image] PNG fallback uploaded ->', json.url)
+          return json.url
+        }
+      } else {
+        console.warn('[share-image] PNG fallback upload failed', res.status, await res.text().catch(() => ''))
+      }
+    } catch (e) {
+      console.warn('[share-image] PNG fallback upload error', e)
+    }
+  }
+
+  // Absolute last resort — SVG data URI. Won't render inline on WhatsApp,
+  // but the publish flow still completes and other platforms (iMessage,
+  // Twitter, browsers) can show it.
+  const svgUri = buildFallbackShareSvg(inv)
   try {
     const res = await fetch(ASSETS_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dataUri, folder }),
+      body: JSON.stringify({ dataUri: svgUri, folder }),
     })
-    if (!res.ok) {
-      console.warn('[preview-fallback] upload failed', res.status)
-      // As an absolute last resort, return the data URI itself. WhatsApp /
-      // Facebook generally won't fetch base64 og:image directly, but the
-      // share endpoint still emits a valid <meta> so the link doesn't 4xx.
-      return dataUri
+    if (res.ok) {
+      const json = (await res.json()) as { url?: string }
+      console.info('[share-image] SVG last-resort uploaded ->', json.url)
+      return typeof json.url === 'string' ? json.url : svgUri
     }
-    const json = (await res.json()) as { url?: string }
-    return typeof json.url === 'string' ? json.url : dataUri
+    console.warn('[share-image] SVG upload failed', res.status)
+    return svgUri
   } catch (e) {
-    console.warn('[preview-fallback] upload error', e)
-    return dataUri
+    console.warn('[share-image] SVG upload error', e)
+    return svgUri
   }
 }
 
