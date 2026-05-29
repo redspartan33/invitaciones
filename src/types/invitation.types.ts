@@ -11,6 +11,11 @@ export type InvitationBlockType =
   | 'gallery'
   | 'image-set'
   | 'map'
+  // Free-form elements (invitation editor only). These can be placed in the
+  // stacked flow OR freely positioned on a fixed-canvas invitation.
+  | 'text'
+  | 'image'
+  | 'shape'
 
 export type MenuBlockType =
   | 'menu-header'
@@ -282,6 +287,50 @@ export interface ImageSetData {
   aspect?: 'square' | 'portrait' | 'landscape' | 'auto'
 }
 
+// ── Free-form element data (invitation editor only) ─────────────────────────
+
+/** A standalone text box. On a fixed canvas it can be moved, rotated, resized
+ *  and layered freely; in the stacked flow it renders as a simple text block. */
+export interface TextElementData {
+  text: string
+  align?: Alignment
+  /** 'inherit' uses the invitation's global font; otherwise force a family. */
+  fontFamily?: FontFamily | 'inherit'
+  color?: string
+  /** Font size in px, expressed at the canvas design width (scales with the canvas). */
+  fontSize?: number
+  bold?: boolean
+  italic?: boolean
+  /** Unitless line-height multiplier. Defaults to 1.25. */
+  lineHeight?: number
+  /** Letter spacing in em. */
+  letterSpacing?: number
+  uppercase?: boolean
+}
+
+export interface ImageElementData {
+  url: string
+  alt?: string
+  /** How the image fills its box. Defaults to 'cover'. */
+  fit?: 'cover' | 'contain'
+  /** Corner radius in px (at design width). */
+  radius?: number
+  /** 0-100. Defaults to 100. */
+  opacity?: number
+}
+
+export interface ShapeElementData {
+  shape: 'rectangle' | 'ellipse' | 'line'
+  fill?: string
+  stroke?: string
+  /** Stroke width in px (at design width). */
+  strokeWidth?: number
+  /** Rectangle corner radius in px (at design width). */
+  radius?: number
+  /** 0-100. Defaults to 100. */
+  opacity?: number
+}
+
 // ── Menu block data ─────────────────────────────────────────────────────────
 
 export interface MenuHeaderData {
@@ -373,10 +422,36 @@ export type BlockDataMap = {
   gallery: GalleryData
   'image-set': ImageSetData
   map: MapData
+  text: TextElementData
+  image: ImageElementData
+  shape: ShapeElementData
   'menu-header': MenuHeaderData
   'menu-section': MenuSectionData
   'menu-note': MenuNoteData
   'menu-footer': MenuFooterData
+}
+
+/**
+ * Free-form placement for an element on a fixed canvas (or as a floating
+ * overlay). All values are percentages relative to the canvas box so the
+ * whole layout scales identically on any screen size. Only consulted when the
+ * invitation's `layoutMode` is 'fixed-canvas'.
+ */
+export interface ElementLayout {
+  /** Left edge, 0-100 as % of canvas width. */
+  xPct: number
+  /** Top edge, 0-100 as % of canvas height. */
+  yPct: number
+  /** Width as % of canvas width. */
+  wPct: number
+  /** Height as % of canvas height. */
+  hPct: number
+  /** Rotation in degrees. Defaults to 0. */
+  rotation?: number
+  /** Stacking order. Higher = in front. */
+  zIndex?: number
+  /** When true the element can't be moved/resized in the editor. */
+  locked?: boolean
 }
 
 export interface InvitationBlock<T extends BlockType = BlockType> {
@@ -386,6 +461,8 @@ export interface InvitationBlock<T extends BlockType = BlockType> {
   order: number
   visible: boolean
   style?: BlockStyle
+  /** Free-form placement on a fixed canvas. Ignored in stacked layout. */
+  layout?: ElementLayout
   metadata?: BlockMetadata
 }
 
@@ -570,12 +647,29 @@ export interface MenuVariant {
   blocks: InvitationBlock[]
 }
 
+/**
+ * How the invitation editor and public view lay out blocks.
+ *  - 'stacked'      : the classic vertical flow (default; every existing
+ *                     invitation and all menus use this). Fully responsive.
+ *  - 'fixed-canvas' : a Canva-style fixed-proportion card where every element
+ *                     is freely positioned/rotated/layered and the whole card
+ *                     scales to fit any screen. Invitation editor only.
+ */
+export type LayoutMode = 'stacked' | 'fixed-canvas'
+
+/** Aspect ratio of a fixed canvas. */
+export type CanvasAspect = '4:5' | '9:16' | '1:1' | 'a4'
+
 export interface Invitation {
   id: string
   kind?: InvitationKind
   title: string
   blocks: InvitationBlock[]
   globalSettings: GlobalSettings
+  /** Layout model. Absent / 'stacked' = classic vertical flow. */
+  layoutMode?: LayoutMode
+  /** Aspect ratio when layoutMode === 'fixed-canvas'. Defaults to '4:5'. */
+  canvasAspect?: CanvasAspect
   template?: string
   status: 'draft' | 'published' | 'archived'
   createdAt: string
@@ -605,6 +699,19 @@ export interface Invitation {
 }
 
 export type ViewportMode = 'mobile' | 'tablet' | 'desktop'
+
+/** Width/height ratio (w/h) and a human label for each fixed-canvas aspect. */
+export const CANVAS_ASPECTS: Record<CanvasAspect, { ratio: number; label: string }> = {
+  '4:5': { ratio: 4 / 5, label: 'Vertical 4:5' },
+  '9:16': { ratio: 9 / 16, label: 'Historia 9:16' },
+  '1:1': { ratio: 1, label: 'Cuadrado 1:1' },
+  a4: { ratio: 210 / 297, label: 'A4 vertical' },
+}
+
+/** Logical design width (px) of a fixed canvas. Layout math and px-based
+ *  element sizes (font size, radius, stroke) are expressed at this width and
+ *  scale linearly with the rendered canvas. */
+export const CANVAS_DESIGN_WIDTH = 1080
 
 export interface BlockTypeInfo {
   type: BlockType

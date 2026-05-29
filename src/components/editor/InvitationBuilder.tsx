@@ -8,7 +8,7 @@ import { INVITATION_PREFIX, useEditorStore } from '../../store/editorStore'
 import { createExampleInvitation, createExampleMenu } from '../../utils/blockDefaults'
 import { createHannahMichaelMenu, createCocinotecaMenu } from '../../utils/menuTemplates'
 import { loadFromRegistry, saveToRegistry } from '../../utils/inviteRegistry'
-import type { Invitation } from '../../types/invitation.types'
+import type { CanvasAspect, Invitation, LayoutMode } from '../../types/invitation.types'
 
 // How often (ms) to autosave the draft to the server
 const AUTOSAVE_INTERVAL = 15_000
@@ -25,6 +25,8 @@ export function InvitationBuilder() {
     const params = new URLSearchParams(window.location.search)
     const editId = params.get('edit')
     const newParam = params.get('new')
+    const modeParam = params.get('mode') as LayoutMode | null
+    const aspectParam = params.get('aspect') as CanvasAspect | null
     const makeNew =
       newParam === 'menu'
         ? createExampleMenu
@@ -32,7 +34,11 @@ export function InvitationBuilder() {
           ? createHannahMichaelMenu
           : newParam === 'cocinoteca'
             ? createCocinotecaMenu
-            : createExampleInvitation
+            : () =>
+                createExampleInvitation({
+                  mode: modeParam ?? undefined,
+                  aspect: aspectParam ?? undefined,
+                })
 
     async function boot() {
       if (editId) {

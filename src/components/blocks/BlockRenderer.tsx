@@ -10,6 +10,9 @@ import { ImageSetBlock } from './ImageSetBlock'
 import { RsvpInfoBlock } from './RsvpInfoBlock'
 import { TimelineBlock } from './TimelineBlock'
 import { MapBlock } from './MapBlock'
+import { TextBlock } from './TextBlock'
+import { ImageBlock } from './ImageBlock'
+import { ShapeBlock } from './ShapeBlock'
 import { MenuHeaderBlock } from './MenuHeaderBlock'
 import { MenuSectionBlock } from './MenuSectionBlock'
 import { MenuNoteBlock } from './MenuNoteBlock'
@@ -42,6 +45,12 @@ function renderInner(block: InvitationBlock) {
       return <ImageSetBlock block={block as InvitationBlock<'image-set'>} />
     case 'map':
       return <MapBlock block={block as InvitationBlock<'map'>} />
+    case 'text':
+      return <TextBlock block={block as InvitationBlock<'text'>} />
+    case 'image':
+      return <ImageBlock block={block as InvitationBlock<'image'>} />
+    case 'shape':
+      return <ShapeBlock block={block as InvitationBlock<'shape'>} />
     case 'menu-header':
       return <MenuHeaderBlock block={block as InvitationBlock<'menu-header'>} />
     case 'menu-section':

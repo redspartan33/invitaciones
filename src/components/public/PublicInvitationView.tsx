@@ -14,6 +14,7 @@ import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { applyBlockTranslation } from '../../utils/translation'
 import { EnvelopeIntro } from './EnvelopeIntro'
+import { FixedCanvasView } from './FixedCanvasView'
 import { recordInteraction, recordView, type InteractionAction } from '../../utils/viewTracking'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
@@ -155,6 +156,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
 
   const showSeasonTabs = hasVariants && variants.length > 1
   const firstNonHeaderIdx = visible.findIndex((b) => b.type !== 'menu-header')
+  const isFixedCanvas = invitation.layoutMode === 'fixed-canvas' && !isMenu
 
   // Envelope intro overlay — only on invitations (not menus), only when
   // enabled, and only once per browser session.
@@ -206,6 +208,11 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
           showItemImages={isMenu && !!globalSettings.enableItemImages}
           promoBanner={isMenu ? globalSettings.promoBanner : undefined}
         >
+        {isFixedCanvas ? (
+          <div className="mx-auto max-w-[920px] px-3 py-6 md:py-10">
+            <FixedCanvasView invitation={invitation} />
+          </div>
+        ) : (
         <div
           className="relative mx-auto max-w-[920px] border-x border-black/5"
           style={{ background: canvasBg }}
@@ -242,6 +249,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
             </div>
           ))}
         </div>
+        )}
         </MenuFeaturesProvider>
       </BlockBackgroundProvider>
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}

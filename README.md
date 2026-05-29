@@ -41,7 +41,51 @@ src/
 
 10. **Image set** — Bloque de 1 a 3 imágenes en una sola fila. La regla de columnas es fija tanto en mobile como en desktop: 1 imagen → centrada en columna única, 2 imágenes → dos columnas, 3 imágenes → tres columnas. Cada cell tiene proporción configurable (cuadrada/vertical/horizontal/original) y pie de foto opcional. El botón "Añadir imagen" se deshabilita al llegar al máximo de 3.
 
+11. **Texto** — Caja de texto libre (fuente, tamaño, color, alineación, B/I/MAYÚS, interlineado, espaciado). Solo invitaciones.
+
+12. **Imagen / sticker** — Foto, ilustración o PNG flotante (ajuste cover/contain, esquinas redondeadas, opacidad). Solo invitaciones.
+
+13. **Forma / línea** — Rectángulo, círculo o línea vectorial (relleno, borde, grosor, esquinas, opacidad). Solo invitaciones.
+
 Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
+
+### Modos de invitación: secciones apiladas vs. lienzo libre
+
+Al crear una invitación, el botón **"+ Invitación"** del panel admin es un split-button:
+la cara principal crea una invitación **clásica (secciones apiladas)** — el flujo
+vertical responsive de siempre, que usan todas las invitaciones existentes — y el
+chevron abre un popover para crear en su lugar un **lienzo libre** (estilo Canva /
+Paperless Post) eligiendo proporción: **Vertical 4:5**, **Historia 9:16**,
+**Cuadrado 1:1** o **A4 vertical**.
+
+El modo se guarda en `Invitation.layoutMode` (`'stacked'` por defecto —
+retrocompatibilidad total, ninguna invitación vieja se migra) y la proporción en
+`Invitation.canvasAspect`. Solo aplica a invitaciones; **los menús no se ven
+afectados** (todo lo nuevo está condicionado a `kind === 'invitation'`).
+
+**Lienzo libre (`fixed-canvas`):**
+
+- Tarjeta de proporción fija autorada a un ancho de diseño lógico
+  (`CANVAS_DESIGN_WIDTH = 1080px`) que se **escala uniformemente** para caber en
+  cualquier pantalla, así se ve idéntica en móvil sin reacomodar nada
+  (`FixedCanvasStage` usa `ResizeObserver` + `transform: scale`).
+- Cada elemento se coloca con **posición/tamaño en %** del lienzo (`block.layout`:
+  `xPct/yPct/wPct/hPct`), más **rotación** (`rotation`), **capas** (`zIndex`) y
+  **bloqueo** (`locked`). Al ser porcentajes, el layout escala junto con la tarjeta.
+- En el editor (`FreeCanvas`) los elementos se **arrastran, redimensionan** (handles
+  en las 4 esquinas) y **rotan** (handle superior, con snap a 15° manteniendo Shift).
+  `Supr`/`Backspace` borra el elemento seleccionado. El panel lateral
+  (`TransformControls`) permite ajustes numéricos de X/Y/ancho/alto/rotación, traer
+  al frente / enviar al fondo y bloquear.
+- Los elementos libres (texto/imagen/forma) tienen su propio panel `ElementForm`;
+  los bloques ricos existentes (galería, mapa, RSVP, itinerario…) también pueden
+  colocarse en el lienzo y reusan el `BlockRenderer` normal vía `FreeElementContent`.
+- La vista pública (`FixedCanvasView`) renderiza la misma tarjeta escalada al ancho
+  disponible, idéntica al editor.
+
+**Secciones apiladas (`stacked`):** sin cambios respecto al editor previo —
+`@dnd-kit` reordena verticalmente y los nuevos elementos libres, si se añaden, se
+muestran como bloques en el flujo.
 
 ### Animaciones de entrada por bloque
 

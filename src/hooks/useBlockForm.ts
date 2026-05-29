@@ -1,5 +1,9 @@
 import type { BlockType } from '../types/invitation.types'
 
+/** Block types that use the schema-driven DynamicBlockForm. The free-form
+ *  elements (text/image/shape) have their own ElementForm and are excluded. */
+type FormBlockType = Exclude<BlockType, 'text' | 'image' | 'shape'>
+
 export interface BlockFormFieldBase {
   name: string
   label: string
@@ -15,7 +19,7 @@ export interface BlockFormSchema {
   sections: { title: string; fields: BlockFormField[] }[]
 }
 
-export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
+export const blockFormSchemas: Record<FormBlockType, BlockFormSchema> = {
   hero: {
     sections: [
       {
@@ -367,5 +371,7 @@ export const blockFormSchemas: Record<BlockType, BlockFormSchema> = {
 }
 
 export function useBlockForm(type: BlockType): BlockFormSchema {
-  return blockFormSchemas[type]
+  // DynamicBlockForm is never rendered for the free-form element types, so the
+  // lookup is always defined in practice.
+  return blockFormSchemas[type as FormBlockType]
 }

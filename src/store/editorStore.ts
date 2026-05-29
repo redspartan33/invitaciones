@@ -2,14 +2,17 @@ import { create } from 'zustand'
 import { v4 as uuid } from 'uuid'
 import type {
   BlockType,
+  CanvasAspect,
+  ElementLayout,
   GlobalSettings,
   Invitation,
   InvitationBlock,
   Language,
+  LayoutMode,
   MenuVariant,
   ViewportMode,
 } from '../types/invitation.types'
-import { createBlock, createExampleInvitation, createExampleMenu } from '../utils/blockDefaults'
+import { createBlock, createExampleInvitation, createExampleMenu, defaultLayoutFor } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
 import { captureHeaderPreviewImage } from '../utils/captureHeaderPreview'
@@ -49,11 +52,16 @@ interface EditorState {
   setViewport: (v: ViewportMode) => void
   updateBlockData: (id: string, data: Record<string, unknown>) => void
   updateBlockStyle: (id: string, style: Record<string, unknown>) => void
+  updateBlockLayout: (id: string, layout: Partial<ElementLayout>) => void
+  bringToFront: (id: string) => void
+  sendToBack: (id: string) => void
   toggleBlockVisibility: (id: string) => void
   addBlock: (type: BlockType) => void
   deleteBlock: (id: string) => void
   duplicateBlock: (id: string) => void
   reorderBlocks: (fromId: string, toId: string) => void
+  setLayoutMode: (mode: LayoutMode, aspect?: CanvasAspect) => void
+  setCanvasAspect: (aspect: CanvasAspect) => void
   updateGlobalSettings: (patch: Partial<GlobalSettings>) => void
   setEnabledLanguages: (langs: Language[]) => void
   updateTitle: (title: string) => void
@@ -141,6 +149,51 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ),
     })),
 
+  updateBlockLayout: (id, layout) =>
+    set((s) => ({
+      invitation: mergeBlocks(
+        s.invitation,
+        s.invitation.blocks.map((b) =>
+          b.id === id
+            ? {
+                ...b,
+                layout: { ...(b.layout ?? defaultLayoutFor(b.type)), ...layout },
+              }
+            : b,
+        ),
+      ),
+    })),
+
+  bringToFront: (id) =>
+    set((s) => {
+      const maxZ = s.invitation.blocks.reduce((m, b) => Math.max(m, b.layout?.zIndex ?? 0), 0)
+      return {
+        invitation: mergeBlocks(
+          s.invitation,
+          s.invitation.blocks.map((b) =>
+            b.id === id
+              ? { ...b, layout: { ...(b.layout ?? defaultLayoutFor(b.type)), zIndex: maxZ + 1 } }
+              : b,
+          ),
+        ),
+      }
+    }),
+
+  sendToBack: (id) =>
+    set((s) => {
+      const minZ = s.invitation.blocks.reduce((m, b) => Math.min(m, b.layout?.zIndex ?? 0), 0)
+      return {
+        invitation: mergeBlocks(
+          s.invitation,
+          s.invitation.blocks.map((b) =>
+            b.id === id
+              ? { ...b, layout: { ...(b.layout ?? defaultLayoutFor(b.type)), zIndex: minZ - 1 } }
+              : b,
+          ),
+        ),
+      }
+    }),
+
   toggleBlockVisibility: (id) =>
     set((s) => ({
       invitation: mergeBlocks(
@@ -152,7 +205,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addBlock: (type) =>
     set((s) => {
       const order = s.invitation.blocks.length
-      const block = createBlock(type, order)
+      // On a fixed canvas every new block needs a starting position/size so it
+      // is reachable and selectable. On stacked layouts blocks just flow.
+      const isCanvas = s.invitation.layoutMode === 'fixed-canvas'
+      const maxZ = s.invitation.blocks.reduce((m, b) => Math.max(m, b.layout?.zIndex ?? 0), 0)
+      const block = createBlock(type, order, isCanvas ? { layout: defaultLayoutFor(type, maxZ + 1) } : undefined)
       return {
         invitation: mergeBlocks(s.invitation, [...s.invitation.blocks, block]),
         selectedBlockId: block.id,
@@ -207,6 +264,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ),
       }
     }),
+
+  setLayoutMode: (mode, aspect) =>
+    set((s) => ({
+      invitation: {
+        ...s.invitation,
+        layoutMode: mode,
+        canvasAspect: mode === 'fixed-canvas' ? (aspect ?? s.invitation.canvasAspect ?? '4:5') : s.invitation.canvasAspect,
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  setCanvasAspect: (aspect) =>
+    set((s) => ({
+      invitation: { ...s.invitation, canvasAspect: aspect, updatedAt: new Date().toISOString() },
+    })),
 
   updateGlobalSettings: (patch) =>
     set((s) => ({

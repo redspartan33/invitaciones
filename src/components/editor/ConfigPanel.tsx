@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { useSelectedBlock } from '../../hooks/useSelectedBlock'
 import { DynamicBlockForm } from '../forms/DynamicBlockForm'
+import { ElementForm } from '../forms/ElementForm'
+import { TransformControls } from './TransformControls'
 import { BLOCK_CATALOG } from '../../utils/blockDefaults'
 import type {
   EnvelopeIntroConfig,
   FontFamily,
   Invitation,
+  InvitationBlock,
   Language,
   PageBackground,
   PromoBannerConfig,
@@ -73,7 +76,7 @@ export function ConfigPanel() {
         ) : selected ? (
           <>
             <SelectedHeader />
-            <DynamicBlockForm block={selected} />
+            <SelectedBlockBody block={selected} />
           </>
         ) : (
           <EmptyPanel />
@@ -114,6 +117,17 @@ function PanelHeader({ onClose }: { onClose: () => void }) {
         </svg>
       </button>
     </div>
+  )
+}
+
+function SelectedBlockBody({ block }: { block: InvitationBlock }) {
+  const layoutMode = useEditorStore((s) => s.invitation.layoutMode)
+  const isElement = block.type === 'text' || block.type === 'image' || block.type === 'shape'
+  return (
+    <>
+      {layoutMode === 'fixed-canvas' && <TransformControls block={block} />}
+      {isElement ? <ElementForm block={block} /> : <DynamicBlockForm block={block} />}
+    </>
   )
 }
 

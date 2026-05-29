@@ -21,6 +21,7 @@ import { MenuFeaturesProvider } from '../blocks/MenuFeaturesContext'
 import { DragIcon, EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
 import { usePageChrome } from '../../hooks/usePageChrome'
 import { PageBackgroundLayer } from '../public/PageBackgroundLayer'
+import { FreeCanvas } from './FreeCanvas'
 
 // Width of the simulated device frame for each viewport mode.
 // Heights mimic common physical dimensions but cap to the available canvas
@@ -32,6 +33,12 @@ const VIEWPORT_DIMS: Record<ViewportMode, { width: number; height: number; chrom
 }
 
 export function Canvas() {
+  const layoutMode = useEditorStore((s) => s.invitation.layoutMode)
+  if (layoutMode === 'fixed-canvas') return <FreeCanvas />
+  return <StackedCanvas />
+}
+
+function StackedCanvas() {
   const blocks = useEditorStore((s) => [...s.invitation.blocks].sort((a, b) => a.order - b.order))
   const selectedId = useEditorStore((s) => s.selectedBlockId)
   const selectBlock = useEditorStore((s) => s.selectBlock)

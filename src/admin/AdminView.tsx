@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { INVITATION_PREFIX, useEditorStore } from '../store/editorStore'
-import type { Invitation, InvitationKind } from '../types/invitation.types'
+import type { CanvasAspect, Invitation, InvitationKind, LayoutMode } from '../types/invitation.types'
+import { CANVAS_ASPECTS } from '../types/invitation.types'
 import { ADMIN_TOKEN } from './adminAuth'
 import { listFromRegistry, deleteFromRegistry } from '../utils/inviteRegistry'
 import { apiUrl } from '../utils/apiBase'
@@ -66,10 +67,20 @@ function inferKind(inv: Invitation): InvitationKind {
 
 type AdminFilter = 'all' | 'invitation' | 'menu'
 
+export interface NewInvitationOptions {
+  mode?: LayoutMode
+  aspect?: CanvasAspect
+}
+
 export function AdminView({
   onOpenEditor,
 }: {
-  onOpenEditor: (id?: string, kind?: InvitationKind, template?: string) => void
+  onOpenEditor: (
+    id?: string,
+    kind?: InvitationKind,
+    template?: string,
+    opts?: NewInvitationOptions,
+  ) => void
 }) {
   const [items, setItems] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -170,12 +181,9 @@ export function AdminView({
               row to avoid crowding the primary actions. */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => onOpenEditor(undefined, 'invitation')}
-                className="btn-primary flex-1 justify-center md:flex-initial"
-              >
-                + Invitación
-              </button>
+              <NewInvitationButton
+                onPick={(opts) => onOpenEditor(undefined, 'invitation', undefined, opts)}
+              />
               <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
             </div>
             <button
@@ -240,9 +248,9 @@ export function AdminView({
             <p className="mt-3 text-sm text-ink-500">Crea tu primera invitación o menú.</p>
             <div className="mt-6 flex items-center justify-center gap-2">
               <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
-              <button onClick={() => onOpenEditor(undefined, 'invitation')} className="btn-primary">
-                Crear invitación
-              </button>
+              <NewInvitationButton
+                onPick={(opts) => onOpenEditor(undefined, 'invitation', undefined, opts)}
+              />
             </div>
           </div>
         ) : filtered.length === 0 ? (
@@ -329,6 +337,88 @@ export function AdminView({
           Acceso privado · token {ADMIN_TOKEN.slice(0, 6)}…
         </p>
       </main>
+    </div>
+  )
+}
+
+/** "+ Invitación" split button. The main face opens a classic stacked
+ *  invitation (fully responsive, what every existing invitation uses). The
+ *  chevron opens a popover to instead start a free fixed-canvas invitation at
+ *  a chosen aspect ratio (Canva-style: free positioning, rotation, layers). */
+function NewInvitationButton({ onPick }: { onPick: (opts?: NewInvitationOptions) => void }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onEsc)
+    }
+  }, [open])
+
+  const aspects = (Object.keys(CANVAS_ASPECTS) as CanvasAspect[]).map((a) => ({
+    aspect: a,
+    label: CANVAS_ASPECTS[a].label,
+  }))
+
+  return (
+    <div ref={rootRef} className="relative flex flex-1 md:flex-initial">
+      <button
+        onClick={() => onPick({ mode: 'stacked' })}
+        className="flex-1 justify-center rounded-l border border-r-0 border-ink-900 bg-ink-900 px-3 py-2 text-xs font-medium text-white hover:bg-ink-800 md:flex-initial md:py-1.5"
+      >
+        + Invitación
+      </button>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Elegir tipo de invitación"
+        aria-expanded={open}
+        className="rounded-r border border-ink-900 bg-ink-900 px-2 py-2 text-xs text-white hover:bg-ink-800 md:py-1.5"
+      >
+        ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded border border-ink-200 bg-white shadow-lg">
+          <p className="border-b border-ink-100 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-ink-400">
+            Crear invitación
+          </p>
+          <button
+            onClick={() => {
+              setOpen(false)
+              onPick({ mode: 'stacked' })
+            }}
+            className="block w-full px-3 py-2.5 text-left hover:bg-ink-50"
+          >
+            <p className="text-sm font-medium text-ink-900">Clásico (secciones)</p>
+            <p className="text-[11px] text-ink-500">Bloques apilados, responsive. Recomendado para contenido largo.</p>
+          </button>
+          <p className="border-t border-ink-100 px-3 pt-2 pb-1 text-[10px] uppercase tracking-[0.18em] text-ink-400">
+            Lienzo libre
+          </p>
+          {aspects.map((a) => (
+            <button
+              key={a.aspect}
+              onClick={() => {
+                setOpen(false)
+                onPick({ mode: 'fixed-canvas', aspect: a.aspect })
+              }}
+              className="block w-full px-3 py-2.5 text-left hover:bg-ink-50"
+            >
+              <p className="text-sm font-medium text-ink-900">{a.label}</p>
+              <p className="text-[11px] text-ink-500">Posición libre, rotación y capas. Escala igual en móvil.</p>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
