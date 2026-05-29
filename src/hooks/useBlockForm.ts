@@ -191,6 +191,23 @@ export const blockFormSchemas: Record<FormBlockType, BlockFormSchema> = {
           { name: 'whatsappButtonLabel', label: 'Texto del botón', kind: 'text', helper: 'Default: “Confirmar asistencia”.' },
         ],
       },
+      {
+        title: 'Formulario',
+        fields: [
+          {
+            name: 'messageLabel',
+            label: 'Título del campo Mensaje',
+            kind: 'text',
+            helper: 'Aparece sobre el textarea y también identifica el mensaje en la lista de confirmados.',
+          },
+          {
+            name: 'messagePlaceholder',
+            label: 'Placeholder del campo Mensaje',
+            kind: 'text',
+            helper: 'Texto guía dentro del textarea.',
+          },
+        ],
+      },
     ],
   },
   footer: {

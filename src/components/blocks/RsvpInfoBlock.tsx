@@ -214,11 +214,11 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                     placeholder="Nombre completo"
                     className="input-flat w-full"
                   />
-                  <label className="label-flat">Mensaje (opcional)</label>
+                  <label className="label-flat">{data.messageLabel?.trim() || 'Mensaje (opcional)'}</label>
                   <textarea
                     value={guestMessage}
                     onChange={(e) => setGuestMessage(e.target.value)}
-                    placeholder="Escribe un mensaje breve..."
+                    placeholder={data.messagePlaceholder?.trim() || 'Escribe un mensaje breve...'}
                     rows={5}
                     className="input-flat w-full min-h-[140px] resize-none"
                   />

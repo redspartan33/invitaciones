@@ -110,6 +110,31 @@ export async function submitGuestEntry(
   return { ok: true, name }
 }
 
+export interface GuestListMeta {
+  messageLabel: string
+  messagePlaceholder: string
+}
+
+/**
+ * Fetch the custom field labels the editor configured for this guestlist's RSVP
+ * block. Falls back to empty strings on any failure — callers should then use
+ * their own defaults. Never throws.
+ */
+export async function loadGuestListMeta(slug: string): Promise<GuestListMeta> {
+  const empty: GuestListMeta = { messageLabel: '', messagePlaceholder: '' }
+  try {
+    const res = await fetch(apiUrl(`/api/guestlists/${slug}/meta?_=${Date.now()}`), { cache: 'no-store' })
+    if (!res.ok) return empty
+    const data = (await res.json()) as Partial<GuestListMeta>
+    return {
+      messageLabel: typeof data?.messageLabel === 'string' ? data.messageLabel : '',
+      messagePlaceholder: typeof data?.messagePlaceholder === 'string' ? data.messagePlaceholder : '',
+    }
+  } catch {
+    return empty
+  }
+}
+
 export type LoadResult =
   | { ok: true; entries: GuestEntry[] }
   | { ok: false; reason: 'network' | 'server' | 'not-found'; detail?: string }

@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import { loadGuestList, type GuestEntry } from '../../utils/guestlistClient'
+import { loadGuestList, loadGuestListMeta, type GuestEntry } from '../../utils/guestlistClient'
 
 export function GuestListView({ slug }: { slug: string }) {
   const [entries, setEntries] = useState<GuestEntry[] | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [messageLabel, setMessageLabel] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+    loadGuestListMeta(slug).then((meta) => {
+      if (!cancelled) setMessageLabel(meta.messageLabel?.trim() || '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [slug])
 
   const loadEntries = async () => {
     setEntries(undefined)
@@ -117,7 +128,16 @@ export function GuestListView({ slug }: { slug: string }) {
                 <div className="font-medium">{e.name}</div>
                 <div className="text-xs text-ink-500">{new Date(e.createdAt).toLocaleString()}</div>
               </div>
-              {e.message && <div className="mt-2 text-sm text-ink-700">{e.message}</div>}
+              {e.message && (
+                <div className="mt-2">
+                  {messageLabel && (
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">
+                      {messageLabel}
+                    </div>
+                  )}
+                  <div className="text-sm text-ink-700">{e.message}</div>
+                </div>
+              )}
             </div>
           ))}
         </div>

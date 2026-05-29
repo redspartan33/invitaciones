@@ -234,6 +234,10 @@ export interface RsvpInfoData {
   whatsappButtonLabel?: string
   /** Toggle: when true guests confirm via inline form instead of WhatsApp. */
   useRsvpForm?: boolean
+  /** Custom label shown above the message textarea in the inline RSVP form. */
+  messageLabel?: string
+  /** Placeholder text shown inside the message textarea in the inline RSVP form. */
+  messagePlaceholder?: string
   /** When using form, a public guestlist link is generated and tied to this invitation (slug only). */
   enableGuestList?: boolean
   /** Generated guestlist slug (short id). */

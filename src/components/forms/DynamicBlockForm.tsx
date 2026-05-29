@@ -125,6 +125,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
 
   const useRsvpForm = !!((block.data as Record<string, unknown>)['useRsvpForm'])
   const whatsappFields = new Set(['rsvpLink', 'whatsappPhone', 'whatsappMessage', 'whatsappButtonLabel'])
+  const rsvpFormFields = new Set(['messageLabel', 'messagePlaceholder'])
 
   // Reorder a subset of fieldOrder by moving `fromId` to `toId`'s slot. The
   // section keys outside this slice are kept untouched so reordering one
@@ -144,7 +145,12 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
   return (
     <div className="space-y-6">
       {schema.sections.map((section) => {
-        const visible = section.fields.filter((f) => !(useRsvpForm && whatsappFields.has(f.name)))
+        const visible = section.fields.filter((f) => {
+          if (useRsvpForm && whatsappFields.has(f.name)) return false
+          if (!useRsvpForm && rsvpFormFields.has(f.name)) return false
+          return true
+        })
+        if (visible.length === 0) return null
         const textualFields = visible.filter((f) => TEXTUAL_KINDS.has(f.kind))
         const nonTextual = visible.filter((f) => !TEXTUAL_KINDS.has(f.kind))
         const textualNames = textualFields.map((f) => f.name)
