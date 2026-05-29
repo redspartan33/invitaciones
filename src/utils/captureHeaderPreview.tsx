@@ -5,10 +5,13 @@ import type {
   InvitationBlock,
   MenuSectionData,
 } from '../types/invitation.types'
+import { CANVAS_ASPECTS, CANVAS_DESIGN_WIDTH } from '../types/invitation.types'
 import { HeroBlock } from '../components/blocks/HeroBlock'
 import { MenuHeaderBlock } from '../components/blocks/MenuHeaderBlock'
 import { BlockBackgroundProvider } from '../components/blocks/BlockBackgroundContext'
 import { PageBackgroundLayer } from '../components/public/PageBackgroundLayer'
+import { FreeElementContent } from '../components/blocks/FreeElementContent'
+import { defaultLayoutFor } from './blockDefaults'
 import { menuSectionAnchor } from './menuNav'
 import { detectBackgroundKind } from './pageBackground'
 import { apiUrl } from './apiBase'
@@ -23,7 +26,95 @@ const ASSETS_ENDPOINT = apiUrl('/api/assets')
 /** Renders the published header into a fixed-size frame. The output is what
  *  the public visitor sees above the fold — same fonts, same colors, same
  *  page background, same overlays. */
+/**
+ * Free fixed-canvas invitations have no hero/menu-header block — they're a
+ * Canva-style card of freely positioned elements. Render the whole card,
+ * scaled to fit the OG frame, so the share preview matches the real design.
+ */
+function FixedCanvasPreviewCard({ invitation }: { invitation: Invitation }) {
+  const gs = invitation.globalSettings
+  const bg = gs.colorSecondary || '#ffffff'
+  const aspect = invitation.canvasAspect ?? '4:5'
+  const ratio = CANVAS_ASPECTS[aspect]?.ratio ?? CANVAS_ASPECTS['4:5'].ratio
+  const designW = CANVAS_DESIGN_WIDTH
+  const designH = Math.round(designW / ratio)
+  // Fit the card within the 1200x630 frame with a small margin.
+  const scale = Math.min(W / designW, H / designH) * 0.94
+
+  const fontClass =
+    gs.fontFamily === 'serif'
+      ? 'font-serif'
+      : gs.fontFamily === 'script'
+      ? 'font-script'
+      : 'font-sans'
+  const headingFont = gs.headingFont?.trim()
+  const bodyFont = gs.bodyFont?.trim()
+
+  const blocks = (Array.isArray(invitation.blocks) ? invitation.blocks : [])
+    .filter((b) => b.visible)
+    .sort((a, b) => (a.layout?.zIndex ?? 0) - (b.layout?.zIndex ?? 0))
+
+  const cssVars = {
+    ['--color-accent' as never]: gs.colorAccent,
+    ['--color-primary' as never]: gs.colorPrimary,
+    ['--color-secondary' as never]: gs.colorSecondary,
+    ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
+    ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
+    fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined,
+    width: W,
+    height: H,
+    overflow: 'hidden',
+    position: 'relative',
+    background: bg,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as React.CSSProperties
+
+  return (
+    <div className={`invitation-canvas ${fontClass}`} style={cssVars}>
+      <div
+        style={{
+          width: designW,
+          height: designH,
+          position: 'relative',
+          overflow: 'hidden',
+          background: bg,
+          transform: `scale(${scale})`,
+          transformOrigin: 'center center',
+        }}
+      >
+        {blocks.map((block) => {
+          const l = block.layout ?? defaultLayoutFor(block.type)
+          return (
+            <div
+              key={block.id}
+              style={{
+                position: 'absolute',
+                left: `${l.xPct}%`,
+                top: `${l.yPct}%`,
+                width: `${l.wPct}%`,
+                height: `${l.hPct}%`,
+                transform: `rotate(${l.rotation ?? 0}deg)`,
+                transformOrigin: 'center center',
+                zIndex: l.zIndex ?? 0,
+              }}
+            >
+              <FreeElementContent block={block} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function PreviewCard({ invitation }: { invitation: Invitation }) {
+  // Free-canvas invitations have no hero/menu-header — render the whole card.
+  if (invitation.layoutMode === 'fixed-canvas' && invitation.kind !== 'menu') {
+    return <FixedCanvasPreviewCard invitation={invitation} />
+  }
+
   const gs = invitation.globalSettings
   const hasPageBackground = !!gs.pageBackground?.url?.trim()
   // Same defaults as PublicInvitationView so the captured DOM matches what
@@ -265,6 +356,8 @@ export function hasShareableImage(inv: Invitation): boolean {
     if (typeof d.backgroundImage === 'string' && d.backgroundImage) return true
     if (typeof d.logo === 'string' && d.logo) return true
     if (typeof d.image === 'string' && d.image) return true
+    // Free-canvas image element keeps its URL directly on data.url.
+    if (b?.type === 'image' && typeof d.url === 'string' && d.url) return true
     const imgs = d.images as Array<{ url?: string }> | undefined
     if (Array.isArray(imgs) && imgs[0]?.url) return true
   }

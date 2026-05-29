@@ -40,8 +40,10 @@ export function ImageSetBlock({ block }: { block: InvitationBlock<'image-set'> }
           style={{ gap: 'var(--item-gap)' }}
         >
           {images.map((img) => (
+            // Bare image: no background, no border, no rounded corners — the
+            // photo itself is the only thing on screen.
             <figure key={img.id} className="m-0">
-              <div className={`overflow-hidden border accent-border bg-black/5 ${aspectCls}`}>
+              <div className={`overflow-hidden ${aspectCls}`}>
                 <img
                   src={img.url}
                   alt={img.caption ?? ''}
