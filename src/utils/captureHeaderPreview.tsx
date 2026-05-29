@@ -28,18 +28,37 @@ const ASSETS_ENDPOINT = apiUrl('/api/assets')
  *  page background, same overlays. */
 /**
  * Free fixed-canvas invitations have no hero/menu-header block — they're a
- * Canva-style card of freely positioned elements. Render the whole card,
- * scaled to fit the OG frame, so the share preview matches the real design.
+ * Canva-style card of freely positioned elements. Render the card directly at
+ * the pixel dimensions that fit inside the 1200×630 OG frame (no CSS
+ * `transform: scale`, which html-to-image silently miscaptures inside its
+ * foreignObject pipeline). Children use percentages of the sized container so
+ * the layout scales naturally with the chosen card dimensions.
  */
 function FixedCanvasPreviewCard({ invitation }: { invitation: Invitation }) {
   const gs = invitation.globalSettings
   const bg = gs.colorSecondary || '#ffffff'
   const aspect = invitation.canvasAspect ?? '4:5'
   const ratio = CANVAS_ASPECTS[aspect]?.ratio ?? CANVAS_ASPECTS['4:5'].ratio
-  const designW = CANVAS_DESIGN_WIDTH
-  const designH = Math.round(designW / ratio)
-  // Fit the card within the 1200x630 frame with a small margin.
-  const scale = Math.min(W / designW, H / designH) * 0.94
+
+  // Fit the card inside the 1200×630 frame, leaving a small margin. The card
+  // keeps its authored aspect ratio; the frame is filled with the secondary
+  // brand color around it.
+  const margin = 0.94
+  let cardW: number
+  let cardH: number
+  if (W / H > ratio) {
+    // Frame is wider than the card — height-constrain.
+    cardH = H * margin
+    cardW = cardH * ratio
+  } else {
+    cardW = W * margin
+    cardH = cardW / ratio
+  }
+  // The percentage-positioned children expect their parent to be exactly the
+  // logical design width so px-based font sizes scale proportionally. We
+  // approximate that by scaling px-fields linearly when the rendered card is
+  // smaller than the design width.
+  const sizeScale = cardW / CANVAS_DESIGN_WIDTH
 
   const fontClass =
     gs.fontFamily === 'serif'
@@ -75,13 +94,11 @@ function FixedCanvasPreviewCard({ invitation }: { invitation: Invitation }) {
     <div className={`invitation-canvas ${fontClass}`} style={cssVars}>
       <div
         style={{
-          width: designW,
-          height: designH,
+          width: `${Math.round(cardW)}px`,
+          height: `${Math.round(cardH)}px`,
           position: 'relative',
           overflow: 'hidden',
           background: bg,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
         }}
       >
         {blocks.map((block) => {
@@ -100,13 +117,58 @@ function FixedCanvasPreviewCard({ invitation }: { invitation: Invitation }) {
                 zIndex: l.zIndex ?? 0,
               }}
             >
-              <FreeElementContent block={block} />
+              <ScaledFreeElement block={block} sizeScale={sizeScale} />
             </div>
           )
         })}
       </div>
     </div>
   )
+}
+
+/** Renders a free element scaling its px-based fields (font size, radius,
+ *  stroke width) to match the rendered card width. Without this a text element
+ *  authored at 84px inside a 1080-wide design renders as 84px inside a
+ *  474-wide capture — way too large. */
+function ScaledFreeElement({
+  block,
+  sizeScale,
+}: {
+  block: InvitationBlock
+  sizeScale: number
+}) {
+  let scaled = block
+  if (block.type === 'text') {
+    const t = block as InvitationBlock<'text'>
+    scaled = {
+      ...t,
+      data: {
+        ...t.data,
+        fontSize: t.data.fontSize ? Math.max(1, t.data.fontSize * sizeScale) : undefined,
+        letterSpacing: t.data.letterSpacing,
+      },
+    } as InvitationBlock
+  } else if (block.type === 'image') {
+    const i = block as InvitationBlock<'image'>
+    scaled = {
+      ...i,
+      data: {
+        ...i.data,
+        radius: i.data.radius ? Math.max(0, i.data.radius * sizeScale) : i.data.radius,
+      },
+    } as InvitationBlock
+  } else if (block.type === 'shape') {
+    const s = block as InvitationBlock<'shape'>
+    scaled = {
+      ...s,
+      data: {
+        ...s.data,
+        radius: s.data.radius ? Math.max(0, s.data.radius * sizeScale) : s.data.radius,
+        strokeWidth: s.data.strokeWidth ? Math.max(0, s.data.strokeWidth * sizeScale) : s.data.strokeWidth,
+      },
+    } as InvitationBlock
+  }
+  return <FreeElementContent block={scaled} />
 }
 
 function PreviewCard({ invitation }: { invitation: Invitation }) {
@@ -334,6 +396,118 @@ export async function captureHeaderPreviewImage(
   } catch (e) {
     console.warn('[preview] upload error', e)
     return null
+  }
+}
+
+/**
+ * Build a guaranteed share image from the invitation's text/colors, with no
+ * DOM rendering or font loading. Used as a last-resort fallback when
+ * html-to-image fails (e.g. tainted canvas from cross-origin images, CSS the
+ * library can't serialize, or the foreignObject pipeline silently producing a
+ * blank PNG). An SVG data URI always renders inline previews on WhatsApp /
+ * iMessage / Facebook / Twitter even when the rich capture path falls over,
+ * so the share card is never empty for a published invitation.
+ */
+function buildFallbackShareSvg(inv: Invitation): string {
+  const gs = inv.globalSettings || ({} as Invitation['globalSettings'])
+  const bg = gs.colorSecondary || '#ffffff'
+  const accent = gs.colorAccent || '#b08968'
+  const ink = gs.colorPrimary || '#18181b'
+  // Headline: prefer the hero title for stacked invitations, the first text
+  // element for fixed-canvas, or the invitation's own title.
+  let headline = inv.title || 'Invitación'
+  let subhead = ''
+  const hero = inv.blocks.find((b) => b.type === 'hero') as
+    | InvitationBlock<'hero'>
+    | undefined
+  if (hero) {
+    headline = hero.data.title || headline
+    subhead = hero.data.subtitle || ''
+  } else if (inv.layoutMode === 'fixed-canvas') {
+    const firstText = inv.blocks.find((b) => b.type === 'text') as
+      | InvitationBlock<'text'>
+      | undefined
+    if (firstText) headline = firstText.data.text || headline
+    const secondText = inv.blocks
+      .filter((b) => b.type === 'text')
+      .slice(1)[0] as InvitationBlock<'text'> | undefined
+    if (secondText) subhead = (secondText.data as { text?: string }).text || ''
+  }
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const fontStack = '"Times New Roman", Georgia, serif'
+  // Multi-line wrap by inserting <tspan> per word group when the headline is
+  // long. We keep it simple — at most two lines for the headline.
+  const lines = wrapHeadline(headline, 28)
+  const headlineSvg = lines
+    .map((line, i) => `<tspan x="600" dy="${i === 0 ? 0 : 110}">${esc(line)}</tspan>`)
+    .join('')
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="100%" height="100%" fill="${esc(bg)}"/>
+  <rect x="80" y="80" width="${W - 160}" height="${H - 160}" fill="none" stroke="${esc(accent)}" stroke-width="3"/>
+  <text x="600" y="${subhead ? 280 : 320}" text-anchor="middle" font-family='${fontStack}' font-size="92" fill="${esc(ink)}">
+    ${headlineSvg}
+  </text>
+  ${subhead ? `<text x="600" y="${280 + lines.length * 110 + 60}" text-anchor="middle" font-family='${fontStack}' font-size="36" fill="${esc(ink)}" opacity="0.7">${esc(subhead.slice(0, 80))}</text>` : ''}
+</svg>`
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+}
+
+function wrapHeadline(text: string, maxCharsPerLine: number): string[] {
+  const t = (text || '').trim()
+  if (!t) return ['Invitación']
+  if (t.length <= maxCharsPerLine) return [t.slice(0, 60)]
+  const words = t.split(/\s+/)
+  const out: string[] = []
+  let line = ''
+  for (const w of words) {
+    const next = line ? `${line} ${w}` : w
+    if (next.length > maxCharsPerLine && line) {
+      out.push(line)
+      line = w
+      if (out.length === 1) break // cap at 2 lines
+    } else {
+      line = next
+    }
+  }
+  if (line) out.push(line)
+  // Stop after 2 lines, with ellipsis if there's more.
+  if (out.length === 2 && (out.join(' ').length < t.length)) {
+    out[1] = out[1].slice(0, maxCharsPerLine - 1) + '…'
+  }
+  return out.slice(0, 2)
+}
+
+/**
+ * Public capture entrypoint with a guaranteed fallback. Tries the rich DOM
+ * capture first; if it fails or returns null, uploads the SVG fallback so the
+ * share card is never empty.
+ */
+export async function captureShareImage(inv: Invitation): Promise<string | null> {
+  const captured = await captureHeaderPreviewImage(inv)
+  if (captured) return captured
+  // Rich capture failed — generate and upload the deterministic SVG fallback.
+  const dataUri = buildFallbackShareSvg(inv)
+  const folder = `inv-${inv.publicSlug || inv.id}`.replace(/[^a-zA-Z0-9_-]/g, '')
+  try {
+    const res = await fetch(ASSETS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataUri, folder }),
+    })
+    if (!res.ok) {
+      console.warn('[preview-fallback] upload failed', res.status)
+      // As an absolute last resort, return the data URI itself. WhatsApp /
+      // Facebook generally won't fetch base64 og:image directly, but the
+      // share endpoint still emits a valid <meta> so the link doesn't 4xx.
+      return dataUri
+    }
+    const json = (await res.json()) as { url?: string }
+    return typeof json.url === 'string' ? json.url : dataUri
+  } catch (e) {
+    console.warn('[preview-fallback] upload error', e)
+    return dataUri
   }
 }
 

@@ -15,7 +15,7 @@ import type {
 import { createBlock, createExampleInvitation, createExampleMenu, defaultLayoutFor } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
-import { captureHeaderPreviewImage } from '../utils/captureHeaderPreview'
+import { captureShareImage } from '../utils/captureHeaderPreview'
 import { buildTranslations } from '../utils/translation'
 import { apiUrl } from '../utils/apiBase'
 
@@ -390,7 +390,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // (publish still goes through, the share preview just falls back to the
     // best raw image the server can find).
     let autoPreviewImage = uploaded.globalSettings.autoPreviewImage
-    const generated = await captureHeaderPreviewImage(uploaded)
+    // captureShareImage tries the rich DOM capture first and falls back to a
+    // deterministic SVG card when html-to-image returns blank/null — so a
+    // published invitation always has a share preview, even free-canvas ones
+    // where the DOM capture historically failed.
+    const generated = await captureShareImage(uploaded)
     if (generated) autoPreviewImage = generated
 
     const published: Invitation = {
