@@ -587,6 +587,7 @@ function DetailsPanel() {
   const totalBlocks = inv.blocks.length
   const visible = inv.blocks.filter((b) => b.visible).length
   const favicon = inv.globalSettings.favicon ?? ''
+  const shareImage = inv.globalSettings.shareImage ?? ''
   const pageTitle = inv.globalSettings.pageTitle ?? ''
   const isMenu = inv.kind === 'menu'
   return (
@@ -597,6 +598,7 @@ function DetailsPanel() {
         onChange={(v) => updateGlobalSettings({ pageTitle: v })}
       />
       <FaviconRow value={favicon} onChange={(v) => updateGlobalSettings({ favicon: v })} />
+      <ShareImageRow value={shareImage} onChange={(v) => updateGlobalSettings({ shareImage: v })} />
       <PageBackgroundRow
         bg={inv.globalSettings.pageBackground}
         transparentCanvas={inv.globalSettings.transparentCanvas !== false}
@@ -781,6 +783,71 @@ function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) 
           ref={fileRef}
           type="file"
           accept="image/png,image/svg+xml,image/x-icon,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onFile(f)
+            e.target.value = ''
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ShareImageRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const onFile = (file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert('La imagen del link preview debe pesar menos de 2 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result))
+    reader.readAsDataURL(file)
+  }
+  return (
+    <div className="rounded border border-ink-200 p-3">
+      <p className="text-[11px] uppercase tracking-widest text-ink-400">Imagen para link preview</p>
+      <p className="mt-0.5 text-[11px] text-ink-500">
+        Se muestra cuando alguien comparte el link por WhatsApp / iMessage. Si lo dejas vacío, se usa el favicon. Recomendado: 1200×630 px (1.91:1).
+      </p>
+      <div className="mt-2 flex items-center gap-2">
+        {value ? (
+          <img
+            src={value}
+            alt="Preview"
+            className="h-12 w-[92px] rounded border border-ink-200 bg-white object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-[92px] items-center justify-center rounded border border-dashed border-ink-300 text-[10px] text-ink-400">
+            1200×630
+          </div>
+        )}
+        <input
+          type="url"
+          value={value.startsWith('data:') ? '' : value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="URL o sube archivo →"
+          className="input-flat flex-1"
+        />
+        <button type="button" onClick={() => fileRef.current?.click()} className="btn-flat shrink-0">
+          Subir
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="btn-ghost shrink-0 text-rose-600"
+            title="Quitar imagen del preview"
+          >
+            ×
+          </button>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0]

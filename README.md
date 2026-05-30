@@ -140,7 +140,7 @@ Las listas dentro de los bloques (timeline, galería, registry, menú) se reorde
 
 Antes, subir varias imágenes vía FileReader generaba un JSON de invitación con `data:image/...;base64,...` embebidos que excedía el límite de body de Vercel (4.5 MB) y el publish fallaba en silencio — el síntoma reportado era "no se publica" y "no respeta las tipografías" (porque el publish no completó y nada se persistió).
 
-Al publicar, `extractAndUploadAssets` (en `src/utils/publishAssets.ts`) recorre toda la invitación, encuentra cada `data:` URI en campos de imagen conocidos (`backgroundImage`, `logo`, `image`, `inspirationImage`, `url` de galería, `favicon`), los sube al blob público vía `/api/assets` y reemplaza por URLs en el JSON. El payload final queda muy por debajo del límite. Si la subida falla se muestra un error claro y el publish no marca la invitación como publicada.
+Al publicar, `extractAndUploadAssets` (en `src/utils/publishAssets.ts`) recorre toda la invitación, encuentra cada `data:` URI en campos de imagen conocidos (`backgroundImage`, `logo`, `image`, `inspirationImage`, `url` de galería, `favicon`, `shareImage`), los sube al blob público vía `/api/assets` y reemplaza por URLs en el JSON. El payload final queda muy por debajo del límite. Si la subida falla se muestra un error claro y el publish no marca la invitación como publicada.
 
 ### Sidebar y viewport realista
 
@@ -291,19 +291,19 @@ El dashboard pide los eventos con `GET /api/views/by-metrics/:metricsSlug` (auth
 
 **Contenido del menú (tab secundaria)** — resumen estático del contenido publicado: secciones, platillos, precios (promedio/mediana/min/max + histograma de 5 buckets), top 5 más caros/económicos, calidad del contenido (% con precio / descripción / badges), etiquetas más comunes, lista de temporadas y estructura técnica.
 
-### Preview automático que coincide con el header
+### Preview de WhatsApp / iMessage controlado por el usuario
 
-Cada vez que se publica una invitación o menú, se regenera una **tarjeta de preview 1200×630** y se sube como asset normal vía `/api/assets`. La URL queda guardada en `globalSettings.autoPreviewImage` y `pickShareImage` la prefiere por encima de cualquier otra imagen (header.backgroundImage, logo, gallery, etc.) porque suele verse mejor en el inline preview de WhatsApp/iMessage que una foto cruda.
+El editor expone en **Detalles → "Imagen para link preview"** un campo donde se sube una imagen (recomendado 1200×630, máx 2 MB) que se usa como `og:image` cuando alguien comparte el link en WhatsApp, iMessage, Facebook, etc. El walker de `extractAndUploadAssets` la sube al blob público al publicar (el campo `shareImage` está en el set `IMAGE_KEYS`).
 
-[`captureHeaderPreview.tsx`](src/utils/captureHeaderPreview.tsx) **captura el DOM real** del header con [html-to-image](https://github.com/bubkoo/html-to-image) en lugar de reimplementarlo en `<canvas>`. Esto significa que el preview es **idéntico** a lo que el editor renderiza — mismas fuentes (Google Fonts del usuario), mismos tamaños/padding/colores, mismo overlay del fondo global, mismo logo, mismo nav bar. Antes la versión `<canvas>` tenía frames decorativos, divider falso y fuentes hardcoded en Georgia que no coincidían con el header diseñado.
+El endpoint `/share/:slug` ([server/index.js](server/index.js)) compone el HTML con etiquetas `og:*` así:
 
-Detalles técnicos no obvios:
+- **Imagen** (`pickShareImage`): `globalSettings.shareImage` → si no hay, `globalSettings.favicon` → si tampoco, ninguna y el preview cae a "summary" (sin imagen grande).
+- **Título**: `globalSettings.pageTitle` (también editable en Detalles) → `invitation.title` → fallback `"Menú"` / `"Invitación"`.
+- **Descripción** (`pickShareDescription`) — **auto-generada según el contenido**:
+  - **Menús**: cuenta `menu-section` y suma `items.length` → *"Carta con 4 secciones y 28 platillos."* Si hay `menu-header.tagline`, se antepone: *"Cocina de mercado · Carta con 4 secciones y 28 platillos."*
+  - **Invitaciones**: lee el primer bloque `event-details` y arma *"Te esperamos el 15 de junio en Hacienda El Roble."* (formato día/mes en español vía `Intl.DateTimeFormat`). Si sólo hay date o sólo location se usa la frase truncada. Cae a `hero.subtitle` y por último a `"Invitación"`.
 
-- El host de captura se monta `position:fixed; left:0; top:0; z-index:-1` (DETRÁS del editor, invisible al usuario). Empujarlo offscreen con `left:-10000px` produce un PNG completamente transparente porque Chromium no renderiza el `foreignObject` SVG de elementos fuera del viewport.
-- Pasamos `skipFonts: true` **y** `fontEmbedCSS: ''` a `toPng()`. Sin esto html-to-image intenta scrapear el `<link>` de Google Fonts vía XHR para inlinearlo como data URI — falla por CORS (SecurityError: cannot read cssRules) y se cuelga ~30 s. Como las fuentes ya están cargadas en el documento, el SVG las usa sin necesidad de embedding.
-- El fondo global (`globalSettings.pageBackground`) se incluye renderizando `<PageBackgroundLayer attachment="scroll">` dentro del host — antes los menús con sólo "Fondo de página" se publicaban sin preview porque el generador de canvas no consideraba este caso.
-
-La generación pasa siempre, sin importar si la invitación ya tenía imagen propia. Falla silenciosa si la imagen externa no carga (CORS, 404) → publica igual, simplemente sin og:image custom esa vez.
+Reemplaza una versión anterior que renderizaba el header al DOM con `html-to-image` para generar la tarjeta — fallaba con frecuencia (foreignObject + web-fonts + free-canvas) y se eliminó por completo (`src/utils/captureHeaderPreview.tsx` borrado, dependencia `html-to-image` removida).
 
 ### Nombre de la pestaña del navegador
 

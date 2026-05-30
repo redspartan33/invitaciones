@@ -519,13 +519,12 @@ export interface GlobalSettings {
    */
   envelopeIntro?: EnvelopeIntroConfig
   /**
-   * Auto-generated share image (1200×630 PNG) rendered from the header
-   * content at publish time. Used as the og:image when the invitation
-   * doesn't carry any uploaded image. Lives next to the user-controlled
-   * `favicon`/`pageBackground` because it's a page-level asset, not a
-   * per-block one.
+   * Image rendered as the link preview (og:image) when the invitation /
+   * menu URL is shared on WhatsApp, iMessage, Facebook, etc. User uploads
+   * it from the "Detalles" panel. When empty, the server falls back to
+   * `favicon`. Recommended aspect 1.91:1 (e.g. 1200×630).
    */
-  autoPreviewImage?: string
+  shareImage?: string
   /**
    * Public metrics dashboard slug (menus only). When set, a shareable
    * link `?metrics=<slug>` shows aggregate stats for the menu. The slug

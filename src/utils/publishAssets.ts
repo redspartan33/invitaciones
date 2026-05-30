@@ -88,6 +88,7 @@ const IMAGE_KEYS = new Set([
   'image',
   'logo',
   'favicon',
+  'shareImage',
   'url',
 ])
 

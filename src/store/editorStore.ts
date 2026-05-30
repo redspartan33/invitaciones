@@ -15,7 +15,6 @@ import type {
 import { createBlock, createExampleInvitation, createExampleMenu, defaultLayoutFor } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
-import { captureShareImage } from '../utils/captureHeaderPreview'
 import { buildTranslations } from '../utils/translation'
 import { apiUrl } from '../utils/apiBase'
 
@@ -381,22 +380,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       translations = undefined
     }
 
-    // Capture the actual rendered header DOM as a 1200×630 PNG so the share
-    // card looks identical to what the visitor will see. We do this AFTER
-    // uploading user assets so the capture sees final URLs (not base64) and
-    // the global page background, overlay, logo, and fonts all resolve to
-    // their published values. The card is always regenerated on publish so
-    // it stays in sync with header edits; generation failure is non-fatal
-    // (publish still goes through, the share preview just falls back to the
-    // best raw image the server can find).
-    let autoPreviewImage = uploaded.globalSettings.autoPreviewImage
-    // captureShareImage tries the rich DOM capture first and falls back to a
-    // deterministic SVG card when html-to-image returns blank/null — so a
-    // published invitation always has a share preview, even free-canvas ones
-    // where the DOM capture historically failed.
-    const generated = await captureShareImage(uploaded)
-    if (generated) autoPreviewImage = generated
-
     const published: Invitation = {
       ...uploaded,
       publicSlug: slug,
@@ -404,7 +387,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       updatedAt: now,
       sharedLink,
       translations,
-      globalSettings: { ...uploaded.globalSettings, autoPreviewImage },
     }
 
     const ok = await saveToRegistry(slug, published)
