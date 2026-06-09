@@ -18,6 +18,7 @@ import type {
 import { v4 as uuid } from 'uuid'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
+import { processShareImage } from '../../utils/processShareImage'
 
 export function ConfigPanel() {
   const activePanel = useEditorStore((s) => s.activePanel)
@@ -797,20 +798,31 @@ function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) 
 
 function ShareImageRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null)
-  const onFile = (file: File) => {
-    if (file.size > 2 * 1024 * 1024) {
-      alert('La imagen del link preview debe pesar menos de 2 MB.')
+  const [processing, setProcessing] = useState(false)
+  const onFile = async (file: File) => {
+    // Hard cap on the source file — anything bigger than ~10 MB is almost
+    // certainly a phone-camera dump we can't realistically load to canvas
+    // on low-memory devices.
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen es demasiado grande (máx 10 MB).')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => onChange(String(reader.result))
-    reader.readAsDataURL(file)
+    setProcessing(true)
+    try {
+      const dataUri = await processShareImage(file)
+      onChange(dataUri)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo procesar la imagen.'
+      alert(msg)
+    } finally {
+      setProcessing(false)
+    }
   }
   return (
     <div className="rounded border border-ink-200 p-3">
       <p className="text-[11px] uppercase tracking-widest text-ink-400">Imagen para link preview</p>
       <p className="mt-0.5 text-[11px] text-ink-500">
-        Se muestra cuando alguien comparte el link por WhatsApp / iMessage. Si lo dejas vacío, se usa el favicon. Recomendado: 1200×630 px (1.91:1).
+        Se muestra cuando alguien comparte el link por WhatsApp / iMessage. Si lo dejas vacío, se usa el favicon. Se recortará a 1200×630 y se comprimirá a JPG para que WhatsApp la muestre siempre.
       </p>
       <div className="mt-2 flex items-center gap-2">
         {value ? (
@@ -830,11 +842,17 @@ function ShareImageRow({ value, onChange }: { value: string; onChange: (v: strin
           onChange={(e) => onChange(e.target.value)}
           placeholder="URL o sube archivo →"
           className="input-flat flex-1"
+          disabled={processing}
         />
-        <button type="button" onClick={() => fileRef.current?.click()} className="btn-flat shrink-0">
-          Subir
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="btn-flat shrink-0"
+          disabled={processing}
+        >
+          {processing ? 'Procesando…' : 'Subir'}
         </button>
-        {value && (
+        {value && !processing && (
           <button
             type="button"
             onClick={() => onChange('')}
@@ -847,11 +865,11 @@ function ShareImageRow({ value, onChange }: { value: string; onChange: (v: strin
         <input
           ref={fileRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/png,image/jpeg"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0]
-            if (f) onFile(f)
+            if (f) void onFile(f)
             e.target.value = ''
           }}
         />

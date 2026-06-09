@@ -293,15 +293,17 @@ El dashboard pide los eventos con `GET /api/views/by-metrics/:metricsSlug` (auth
 
 ### Preview de WhatsApp / iMessage controlado por el usuario
 
-El editor expone en **Detalles → "Imagen para link preview"** un campo donde se sube una imagen (recomendado 1200×630, máx 2 MB) que se usa como `og:image` cuando alguien comparte el link en WhatsApp, iMessage, Facebook, etc. El walker de `extractAndUploadAssets` la sube al blob público al publicar (el campo `shareImage` está en el set `IMAGE_KEYS`).
+El editor expone en **Detalles → "Imagen para link preview"** un campo donde se sube una imagen que se usa como `og:image` cuando alguien comparte el link en WhatsApp, iMessage, Facebook, etc. Al subir, la imagen se procesa en el cliente con [`src/utils/processShareImage.ts`](src/utils/processShareImage.ts): se recorta a 1200×630 (cover-crop) y se exporta como JPEG con calidad iterativamente bajada hasta llegar a ≤ 300 KB. Esto es lo que hace que WhatsApp efectivamente muestre la tarjeta — Facebook tolera imágenes grandes y WebP, WhatsApp no. El walker de `extractAndUploadAssets` la sube al blob público al publicar (el campo `shareImage` está en el set `IMAGE_KEYS`).
 
 El endpoint `/share/:slug` ([server/index.js](server/index.js)) compone el HTML con etiquetas `og:*` así:
 
-- **Imagen** (`pickShareImage`): `globalSettings.shareImage` → si no hay, `globalSettings.favicon` → si tampoco, ninguna y el preview cae a "summary" (sin imagen grande).
+- **Imagen** (`pickShareImage`): `globalSettings.shareImage` → si no hay, `globalSettings.favicon` → si tampoco, ninguna y el preview cae a "summary" (sin imagen grande). Se emite con `og:image:width="1200"` y `og:image:height="630"` (WhatsApp los exige en muchos casos), el `og:image:type` se infiere de la extensión, y la URL se resuelve absoluta contra el mismo host del share (no contra `FRONTEND_ORIGIN`) — `og:url` también apunta a la URL del propio share para evitar que scrapers estrictos rechacen la card por inconsistencia.
 - **Título**: `globalSettings.pageTitle` (también editable en Detalles) → `invitation.title` → fallback `"Menú"` / `"Invitación"`.
 - **Descripción** (`pickShareDescription`) — **auto-generada según el contenido**:
   - **Menús**: cuenta `menu-section` y suma `items.length` → *"Carta con 4 secciones y 28 platillos."* Si hay `menu-header.tagline`, se antepone: *"Cocina de mercado · Carta con 4 secciones y 28 platillos."*
   - **Invitaciones**: lee el primer bloque `event-details` y arma *"Te esperamos el 15 de junio en Hacienda El Roble."* (formato día/mes en español vía `Intl.DateTimeFormat`). Si sólo hay date o sólo location se usa la frase truncada. Cae a `hero.subtitle` y por último a `"Invitación"`.
+
+A los user-agents conocidos de link-preview (WhatsApp, facebookexternalhit, Twitterbot, Telegram, Slack, Discord, LinkedIn, iMessage/Skype, etc.) el endpoint sirve un HTML **mínimo**: solo `<head>` con los `og:*` y un `<body>` con texto plano — sin `<script>`, sin redirect, sin CSS. Los humanos siguen recibiendo el HTML normal con el `window.location.replace` que los manda a la SPA en `FRONTEND_ORIGIN`. La respuesta incluye `Vary: User-Agent` para no envenenar caches intermedios.
 
 Reemplaza una versión anterior que renderizaba el header al DOM con `html-to-image` para generar la tarjeta — fallaba con frecuencia (foreignObject + web-fonts + free-canvas) y se eliminó por completo (`src/utils/captureHeaderPreview.tsx` borrado, dependencia `html-to-image` removida).
 
