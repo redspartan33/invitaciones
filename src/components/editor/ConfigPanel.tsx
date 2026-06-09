@@ -18,7 +18,7 @@ import type {
 import { v4 as uuid } from 'uuid'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
-import { processShareImage } from '../../utils/processShareImage'
+import { processShareImage, processShareImageUrl } from '../../utils/processShareImage'
 
 export function ConfigPanel() {
   const activePanel = useEditorStore((s) => s.activePanel)
@@ -799,10 +799,18 @@ function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) 
 function ShareImageRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [processing, setProcessing] = useState(false)
+  // Local copy of the input string while the user is typing/pasting.
+  // We only commit (process + onChange) on blur — committing on every
+  // keystroke would re-fetch the URL with each character.
+  const inputValue = value.startsWith('data:') ? '' : value
+  const [draft, setDraft] = useState(inputValue)
+  // Keep the draft in sync when the parent value changes for an unrelated
+  // reason (e.g. switching invitations, clearing via the × button).
+  useEffect(() => {
+    setDraft(value.startsWith('data:') ? '' : value)
+  }, [value])
+
   const onFile = async (file: File) => {
-    // Hard cap on the source file — anything bigger than ~10 MB is almost
-    // certainly a phone-camera dump we can't realistically load to canvas
-    // on low-memory devices.
     if (file.size > 10 * 1024 * 1024) {
       alert('La imagen es demasiado grande (máx 10 MB).')
       return
@@ -818,11 +826,45 @@ function ShareImageRow({ value, onChange }: { value: string; onChange: (v: strin
       setProcessing(false)
     }
   }
+
+  const commitUrl = async (raw: string) => {
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      onChange('')
+      return
+    }
+    // Same value as before? nothing to do.
+    if (trimmed === value) return
+    // Only attempt to process http(s) URLs. Anything else (relative
+    // paths, blob:, etc.) is passed through unchanged.
+    if (!/^https?:\/\//i.test(trimmed)) {
+      onChange(trimmed)
+      return
+    }
+    setProcessing(true)
+    try {
+      const dataUri = await processShareImageUrl(trimmed)
+      onChange(dataUri)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo procesar la URL.'
+      const keepAnyway = confirm(
+        `${msg}\n\nWhatsApp probablemente no muestre el preview con esta URL tal cual (peso/tamaño/CORS).\n\n¿Guardar la URL sin procesar de todos modos?`,
+      )
+      if (keepAnyway) {
+        onChange(trimmed)
+      } else {
+        setDraft(value.startsWith('data:') ? '' : value)
+      }
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   return (
     <div className="rounded border border-ink-200 p-3">
       <p className="text-[11px] uppercase tracking-widest text-ink-400">Imagen para link preview</p>
       <p className="mt-0.5 text-[11px] text-ink-500">
-        Se muestra cuando alguien comparte el link por WhatsApp / iMessage. Si lo dejas vacío, se usa el favicon. Se recortará a 1200×630 y se comprimirá a JPG para que WhatsApp la muestre siempre.
+        Se muestra cuando alguien comparte el link por WhatsApp / iMessage. Si lo dejas vacío, se usa el favicon. Las imágenes (subidas o pegadas como URL) se recortan a 1200×630 y se comprimen a JPG para que WhatsApp las muestre siempre.
       </p>
       <div className="mt-2 flex items-center gap-2">
         {value ? (
@@ -838,9 +880,16 @@ function ShareImageRow({ value, onChange }: { value: string; onChange: (v: strin
         )}
         <input
           type="url"
-          value={value.startsWith('data:') ? '' : value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="URL o sube archivo →"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={(e) => void commitUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              ;(e.target as HTMLInputElement).blur()
+            }
+          }}
+          placeholder="Pega URL o sube archivo →"
           className="input-flat flex-1"
           disabled={processing}
         />

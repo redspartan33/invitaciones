@@ -7,6 +7,8 @@
 // iteratively lowered quality until ≤ TARGET_BYTES. Always returns a
 // JPEG data URI (or throws on a totally unreadable source).
 
+import { apiUrl } from './apiBase'
+
 const TARGET_W = 1200
 const TARGET_H = 630
 const TARGET_BYTES = 300 * 1024 // 300 KB — WhatsApp's comfort zone
@@ -15,6 +17,9 @@ const MIN_QUALITY = 0.45 // below this the JPEG looks visibly muddy
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    // Required for canvas.toBlob() to work on cross-origin images
+    // (data URIs ignore this attribute, so it's safe to always set).
+    img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('No se pudo leer la imagen.'))
     img.src = src
@@ -47,6 +52,42 @@ function blobToDataUri(blob: Blob): Promise<string> {
     reader.onerror = () => reject(new Error('No se pudo serializar la imagen.'))
     reader.readAsDataURL(blob)
   })
+}
+
+async function fetchAsFile(url: string): Promise<File> {
+  const res = await fetch(url, { mode: 'cors', credentials: 'omit' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const blob = await res.blob()
+  if (!blob.type.startsWith('image/')) {
+    throw new Error(`Not an image (Content-Type: ${blob.type || 'unknown'})`)
+  }
+  const ext = blob.type.split('/')[1]?.split(';')[0] || 'bin'
+  return new File([blob], `remote.${ext}`, { type: blob.type })
+}
+
+// Fetches a remote image and runs it through the same pipeline as an
+// uploaded File. Most CMS-served images don't send
+// Access-Control-Allow-Origin, so the direct fetch fails — when that
+// happens we fall through to the server-side proxy, which downloads the
+// image server-to-server and serves it back to us same-origin.
+export async function processShareImageUrl(url: string): Promise<string> {
+  let file: File
+  try {
+    file = await fetchAsFile(url)
+  } catch (directErr) {
+    // Fall back to the proxy. We do this for ANY fetch failure (CORS,
+    // network, non-2xx) because the proxy uniformly returns a same-origin
+    // image with permissive CORS, so any of those errors are resolvable.
+    const proxied = apiUrl(`/api/assets/proxy?u=${encodeURIComponent(url)}`)
+    try {
+      file = await fetchAsFile(proxied)
+    } catch (proxyErr) {
+      const direct = directErr instanceof Error ? directErr.message : String(directErr)
+      const proxy = proxyErr instanceof Error ? proxyErr.message : String(proxyErr)
+      throw new Error(`No pude descargar la imagen — directo: ${direct}; vía proxy: ${proxy}`)
+    }
+  }
+  return processShareImage(file)
 }
 
 export async function processShareImage(file: File): Promise<string> {
