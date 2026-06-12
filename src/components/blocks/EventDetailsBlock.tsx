@@ -25,13 +25,13 @@ export function EventDetailsBlock({ block }: { block: InvitationBlock<'event-det
     switch (field) {
       case 'date':
         return showDate && data.date ? (
-          <TextEl key="date" block={block} field="date" as="p" className="font-serif text-2xl">
+          <TextEl key="date" block={block} field="date" as="p" className="inv-date font-serif text-2xl">
             {formatDate(data.date, 'DD MMMM YYYY')}
           </TextEl>
         ) : null
       case 'time':
         return showTime && data.time ? (
-          <TextEl key="time" block={block} field="time" as="p" className="text-sm uppercase tracking-widest opacity-70">
+          <TextEl key="time" block={block} field="time" as="p" className="inv-date text-sm uppercase tracking-widest opacity-70">
             {timeFormatted}
           </TextEl>
         ) : null
@@ -61,7 +61,7 @@ export function EventDetailsBlock({ block }: { block: InvitationBlock<'event-det
   return (
     <BlockWrapper style={block.style}>
       <div className="flex flex-col items-center text-center" style={{ gap: 'var(--item-gap)' }}>
-        {data.icon && !block.style?.hideIcons && <EventIcon kind={data.icon} className="h-10 w-10 accent" />}
+        {data.icon && !block.style?.hideIcons && <EventIcon kind={data.icon} className="inv-icon h-10 w-10" />}
         {order.map((f) => renderField(f))}
       </div>
     </BlockWrapper>

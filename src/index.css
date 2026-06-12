@@ -10,11 +10,54 @@
   --color-accent: #b08968;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   UI theme tokens. Dark by default (editor + admin). The Tailwind `ink`
+   scale reads these vars, so the semantic is contrast level, not lightness:
+   ink-900 = max-contrast text, ink-50 = subtle surface tint.
+   Future UI refinements only need to touch these two blocks.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --ui-bg: #101012;
+  --ui-surface: #17171a;
+  --ui-on-accent: #101012;
+  --ui-accent: #f4f4f5;
+  --ui-ink-50: #1a1a1e;
+  --ui-ink-100: #202024;
+  --ui-ink-200: #2b2b31;
+  --ui-ink-300: #3f3f46;
+  --ui-ink-400: #6b6b74;
+  --ui-ink-500: #8e8e98;
+  --ui-ink-600: #a8a8b1;
+  --ui-ink-700: #c9c9cf;
+  --ui-ink-800: #e2e2e6;
+  --ui-ink-900: #f4f4f5;
+}
+
+/* Light values — applied to guest-facing public pages (via .theme-light on
+   <html>) and inside the invitation canvas, which must never go dark. */
+.theme-light,
+.invitation-canvas {
+  --ui-bg: #fafafa;
+  --ui-surface: #ffffff;
+  --ui-on-accent: #ffffff;
+  --ui-accent: #18181b;
+  --ui-ink-50: #fafafa;
+  --ui-ink-100: #f4f4f5;
+  --ui-ink-200: #e4e4e7;
+  --ui-ink-300: #d4d4d8;
+  --ui-ink-400: #a1a1aa;
+  --ui-ink-500: #71717a;
+  --ui-ink-600: #52525b;
+  --ui-ink-700: #3f3f46;
+  --ui-ink-800: #27272a;
+  --ui-ink-900: #18181b;
+}
+
 html, body, #root {
   min-height: 100%;
   margin: 0;
-  background: #fafafa;
-  color: #18181b;
+  background: var(--ui-bg);
+  color: var(--ui-ink-900);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -36,17 +79,17 @@ body.has-page-background #root {
    cascade can still override them. */
 @layer components {
   .flat-card {
-    border: 1px solid #e4e4e7;
-    background: #ffffff;
+    border: 1px solid var(--ui-ink-200);
+    background: var(--ui-surface);
   }
 
   .flat-card-muted {
-    border: 1px solid #e4e4e7;
-    background: #fafafa;
+    border: 1px solid var(--ui-ink-200);
+    background: var(--ui-ink-50);
   }
 
   .input-flat {
-    @apply w-full rounded border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 outline-none transition-colors focus:border-ink-900;
+    @apply w-full rounded border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-900 outline-none transition-colors focus:border-ink-900;
   }
 
   .label-flat {
@@ -54,11 +97,11 @@ body.has-page-background #root {
   }
 
   .btn-flat {
-    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-200 bg-surface px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100 disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-900 bg-ink-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-ink-800 active:bg-black disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-ink-900 bg-ink-900 px-3 py-1.5 text-sm font-medium text-on-accent transition-colors hover:bg-ink-800 active:bg-ink-700 disabled:opacity-50;
   }
 
   .btn-ghost {
@@ -80,18 +123,44 @@ body.has-page-background #root {
 }
 
 .canvas-block.selected {
-  border-color: #18181b;
+  border-color: var(--ui-accent);
 }
 
 /* Invitation canvas scope — these styles ONLY apply inside the rendered
    invitation, so the user's color choices never leak into the editor UI. */
 .invitation-canvas {
-  background-color: var(--color-secondary);
-  color: var(--color-primary);
+  background-color: var(--inv-bg, var(--color-secondary));
+  color: var(--inv-body, var(--color-primary));
+  --inv-scale: var(--inv-size-body, 1);
 }
 .invitation-canvas h1,
 .invitation-canvas h2 {
-  color: var(--color-primary);
+  color: var(--inv-heading, var(--color-primary));
+}
+.invitation-canvas h1,
+.invitation-canvas h2,
+.invitation-canvas h3 {
+  --inv-scale: var(--inv-size-heading, 1);
+}
+/* Role classes — global theme roles set from the palette/typography panels.
+   Per-block overrides are inline styles, so they still win. */
+.invitation-canvas .inv-subtitle {
+  color: var(--inv-subheading, var(--color-accent));
+  font-family: var(--inv-font-subheading, var(--font-body, inherit));
+  --inv-scale: var(--inv-size-subheading, 1);
+}
+.invitation-canvas .inv-date {
+  color: var(--inv-date, var(--color-primary));
+  font-family: var(--inv-font-date, var(--font-body, inherit));
+  --inv-scale: var(--inv-size-date, 1);
+}
+.invitation-canvas .inv-icon {
+  color: var(--inv-icon, var(--color-accent));
+}
+/* Filled icon chip (e.g. timeline act bullets): icon role as background. */
+.invitation-canvas .inv-icon-bg {
+  background-color: var(--inv-icon, var(--color-accent));
+  color: var(--inv-bg, var(--color-secondary));
 }
 /* Google Fonts overrides: when --font-heading / --font-body are set on the
    .invitation-canvas root we route headings and body text to them. With
@@ -106,7 +175,7 @@ body.has-page-background #root {
 .invitation-canvas h2,
 .invitation-canvas h3,
 .invitation-canvas .font-serif {
-  font-family: var(--font-heading, inherit);
+  font-family: var(--inv-font-heading, var(--font-heading, inherit));
 }
 .invitation-canvas p,
 .invitation-canvas li,
@@ -114,39 +183,48 @@ body.has-page-background #root {
 .invitation-canvas a,
 .invitation-canvas input,
 .invitation-canvas button {
-  font-family: var(--font-body, inherit);
+  font-family: var(--inv-font-body, var(--font-body, inherit));
+}
+/* Re-apply role fonts after the generic body rule so spans/ps tagged with a
+   role class use their role's font. */
+.invitation-canvas .inv-subtitle {
+  font-family: var(--inv-font-subheading, var(--font-body, inherit));
+}
+.invitation-canvas .inv-date {
+  font-family: var(--inv-font-date, var(--font-body, inherit));
 }
 .invitation-canvas .accent {
-  color: var(--color-accent);
+  color: var(--inv-icon, var(--color-accent));
 }
 .invitation-canvas .accent-border {
-  border-color: var(--color-accent);
+  border-color: var(--inv-divider, var(--color-accent));
 }
 .invitation-canvas .accent-bg {
-  background-color: var(--color-accent);
-  color: var(--color-secondary);
+  background-color: var(--inv-divider, var(--color-accent));
+  color: var(--inv-bg, var(--color-secondary));
 }
 .invitation-canvas .primary-bg {
   background-color: var(--color-primary);
   color: var(--color-secondary);
 }
 .invitation-canvas .invitation-link {
-  color: var(--color-accent);
-  text-decoration-color: var(--color-accent);
+  color: var(--inv-link, var(--color-accent));
+  text-decoration-color: var(--inv-link, var(--color-accent));
 }
 .invitation-canvas .invitation-btn {
-  border: 1px solid var(--color-primary);
-  color: var(--color-primary);
+  border: 1px solid var(--inv-button, var(--color-primary));
+  color: var(--inv-button, var(--color-primary));
+  font-family: var(--inv-font-button, var(--font-body, inherit));
   padding: 12px 24px;
   text-transform: uppercase;
   letter-spacing: 0.3em;
-  font-size: 11px;
+  font-size: calc(11px * var(--inv-size-button, 1));
   display: inline-block;
   transition: background-color .2s, color .2s;
 }
 .invitation-canvas .invitation-btn:hover {
-  background: var(--color-primary);
-  color: var(--color-secondary);
+  background: var(--inv-button, var(--color-primary));
+  color: var(--inv-bg, var(--color-secondary));
 }
 
 .canvas-block.dragging {
@@ -159,11 +237,11 @@ body.has-page-background #root {
   height: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: var(--ui-ink-300);
   border-radius: 4px;
 }
 .scroll-thin::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  background: var(--ui-ink-400);
 }
 
 @keyframes fade-in {
@@ -183,14 +261,14 @@ body.has-page-background #root {
 .block-text-xl { --block-text-scale: 1.35; }
 
 .block-scale-active { font-size: calc(1rem * var(--block-text-scale, 1)); }
-.block-scale-active .text-xs { font-size: calc(0.75rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-sm { font-size: calc(0.875rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-base { font-size: calc(1rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-lg { font-size: calc(1.125rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-xl { font-size: calc(1.25rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-2xl { font-size: calc(1.5rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-3xl { font-size: calc(1.875rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-4xl { font-size: calc(2.25rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-5xl { font-size: calc(3rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-6xl { font-size: calc(3.75rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
-.block-scale-active .text-7xl { font-size: calc(4.5rem * var(--block-text-scale, 1) * var(--el-scale, 1)); }
+.block-scale-active .text-xs { font-size: calc(0.75rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-sm { font-size: calc(0.875rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-base { font-size: calc(1rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-lg { font-size: calc(1.125rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-xl { font-size: calc(1.25rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-2xl { font-size: calc(1.5rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-3xl { font-size: calc(1.875rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-4xl { font-size: calc(2.25rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-5xl { font-size: calc(3rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-6xl { font-size: calc(3.75rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }
+.block-scale-active .text-7xl { font-size: calc(4.5rem * var(--block-text-scale, 1) * var(--el-scale, 1) * var(--inv-scale, 1)); }

@@ -5,6 +5,7 @@ import { FixedCanvasStage } from '../blocks/FixedCanvasStage'
 import { FreeElementContent } from '../blocks/FreeElementContent'
 import { defaultLayoutFor } from '../../utils/blockDefaults'
 import { usePageChrome } from '../../hooks/usePageChrome'
+import { buildThemeVars, collectThemeFonts, resolveColorRoles } from '../../utils/themeVars'
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -26,14 +27,10 @@ export function FreeCanvas() {
   const deleteBlock = useEditorStore((s) => s.deleteBlock)
   const aspect = useEditorStore((s) => s.invitation.canvasAspect ?? '4:5')
   const fontFamily = useEditorStore((s) => s.invitation.globalSettings.fontFamily)
-  const headingFont = useEditorStore((s) => s.invitation.globalSettings.headingFont)
-  const bodyFont = useEditorStore((s) => s.invitation.globalSettings.bodyFont)
   const favicon = useEditorStore((s) => s.invitation.globalSettings.favicon)
-  const colorAccent = useEditorStore((s) => s.invitation.globalSettings.colorAccent)
-  const colorPrimary = useEditorStore((s) => s.invitation.globalSettings.colorPrimary)
-  const colorSecondary = useEditorStore((s) => s.invitation.globalSettings.colorSecondary)
+  const globalSettings = useEditorStore((s) => s.invitation.globalSettings)
 
-  usePageChrome({ favicon, headingFont, bodyFont })
+  usePageChrome({ favicon, fonts: collectThemeFonts(globalSettings) })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -48,14 +45,11 @@ export function FreeCanvas() {
 
   const fontClass = fontFamily === 'serif' ? 'font-serif' : fontFamily === 'script' ? 'font-script' : 'font-sans'
   const cssVars = {
-    ['--color-accent' as never]: colorAccent,
-    ['--color-primary' as never]: colorPrimary,
-    ['--color-secondary' as never]: colorSecondary,
-    ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
-    ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
+    ...buildThemeVars(globalSettings),
     position: 'absolute',
     inset: 0,
   } as CSSProperties
+  const canvasBackground = resolveColorRoles(globalSettings).background || '#ffffff'
 
   return (
     <div
@@ -63,7 +57,7 @@ export function FreeCanvas() {
       onClick={() => selectBlock(null)}
     >
       <div className="h-full w-full" onClick={(e) => e.stopPropagation()}>
-        <FixedCanvasStage aspect={aspect} fit="contain" background={colorSecondary || '#ffffff'} maxScale={1}>
+        <FixedCanvasStage aspect={aspect} fit="contain" background={canvasBackground} maxScale={1}>
           <div
             className={`invitation-canvas ${fontClass}`}
             style={cssVars}

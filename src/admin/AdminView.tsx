@@ -170,7 +170,7 @@ export function AdminView({
 
   return (
     <div className="min-h-screen bg-ink-50">
-      <header className="border-b border-ink-200 bg-white px-4 py-3 md:px-8 md:py-5">
+      <header className="border-b border-ink-200 bg-surface px-4 py-3 md:px-8 md:py-5">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-ink-400">Panel privado</p>
@@ -209,7 +209,7 @@ export function AdminView({
 
       <main className="mx-auto max-w-5xl px-4 md:px-8 py-6 md:py-10">
         {!loading && !remoteUnavailable && items.length > 0 && (
-          <div className="mb-5 flex items-center gap-1 rounded border border-ink-200 bg-white p-0.5 w-fit">
+          <div className="mb-5 flex items-center gap-1 rounded border border-ink-200 bg-surface p-0.5 w-fit">
             {(
               [
                 { id: 'all' as AdminFilter, label: `Todos (${counts.all})` },
@@ -221,7 +221,7 @@ export function AdminView({
                 key={f.id}
                 onClick={() => setFilter(f.id)}
                 className={`rounded px-3 py-1.5 text-xs transition-colors ${
-                  filter === f.id ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
+                  filter === f.id ? 'bg-ink-900 text-on-accent' : 'text-ink-600 hover:bg-ink-50'
                 }`}
               >
                 {f.label}
@@ -231,7 +231,7 @@ export function AdminView({
         )}
 
         {loading ? (
-          <div className="rounded border border-ink-200 bg-white p-12 text-center">
+          <div className="rounded border border-ink-200 bg-surface p-12 text-center">
             <p className="text-ink-400 text-sm animate-pulse">Cargando…</p>
           </div>
         ) : remoteUnavailable ? (
@@ -243,7 +243,7 @@ export function AdminView({
             </p>
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded border border-dashed border-ink-300 bg-white p-12 text-center">
+          <div className="rounded border border-dashed border-ink-300 bg-surface p-12 text-center">
             <p className="font-serif text-2xl text-ink-900">Aún no hay nada</p>
             <p className="mt-3 text-sm text-ink-500">Crea tu primera invitación o menú.</p>
             <div className="mt-6 flex items-center justify-center gap-2">
@@ -254,7 +254,7 @@ export function AdminView({
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded border border-dashed border-ink-300 bg-white p-12 text-center">
+          <div className="rounded border border-dashed border-ink-300 bg-surface p-12 text-center">
             <p className="text-sm text-ink-500">No hay {filter === 'menu' ? 'menús' : 'invitaciones'} aún.</p>
           </div>
         ) : (
@@ -276,7 +276,7 @@ export function AdminView({
               return (
                 <li
                   key={inv.id}
-                  className="flex flex-col gap-3 rounded border border-ink-200 bg-white p-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-4"
+                  className="flex flex-col gap-3 rounded border border-ink-200 bg-surface p-3 md:flex-row md:items-center md:justify-between md:px-5 md:py-4"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -374,7 +374,7 @@ function NewInvitationButton({ onPick }: { onPick: (opts?: NewInvitationOptions)
     <div ref={rootRef} className="relative flex flex-1 md:flex-initial">
       <button
         onClick={() => onPick({ mode: 'stacked' })}
-        className="flex-1 justify-center rounded-l border border-r-0 border-ink-900 bg-ink-900 px-3 py-2 text-xs font-medium text-white hover:bg-ink-800 md:flex-initial md:py-1.5"
+        className="flex-1 justify-center rounded-l border border-r-0 border-ink-900 bg-ink-900 px-3 py-2 text-xs font-medium text-on-accent hover:bg-ink-800 md:flex-initial md:py-1.5"
       >
         + Invitación
       </button>
@@ -382,12 +382,12 @@ function NewInvitationButton({ onPick }: { onPick: (opts?: NewInvitationOptions)
         onClick={() => setOpen((v) => !v)}
         aria-label="Elegir tipo de invitación"
         aria-expanded={open}
-        className="rounded-r border border-ink-900 bg-ink-900 px-2 py-2 text-xs text-white hover:bg-ink-800 md:py-1.5"
+        className="rounded-r border border-ink-900 bg-ink-900 px-2 py-2 text-xs text-on-accent hover:bg-ink-800 md:py-1.5"
       >
         ▾
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded border border-ink-200 bg-white shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded border border-ink-200 bg-surface shadow-lg">
           <p className="border-b border-ink-100 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-ink-400">
             Crear invitación
           </p>
@@ -458,7 +458,7 @@ function NewMenuButton({ onPick }: { onPick: (template?: string) => void }) {
     <div ref={rootRef} className="relative flex flex-1 md:flex-initial">
       <button
         onClick={() => onPick(undefined)}
-        className="flex-1 justify-center rounded-l border border-r-0 border-ink-900 bg-white px-3 py-2 text-xs font-medium text-ink-900 hover:bg-ink-50 md:flex-initial md:py-1.5"
+        className="flex-1 justify-center rounded-l border border-r-0 border-ink-900 bg-surface px-3 py-2 text-xs font-medium text-ink-900 hover:bg-ink-50 md:flex-initial md:py-1.5"
       >
         + Menú
       </button>
@@ -466,12 +466,12 @@ function NewMenuButton({ onPick }: { onPick: (template?: string) => void }) {
         onClick={() => setOpen((v) => !v)}
         aria-label="Elegir plantilla de menú"
         aria-expanded={open}
-        className="rounded-r border border-ink-900 bg-white px-2 py-2 text-xs text-ink-900 hover:bg-ink-50 md:py-1.5"
+        className="rounded-r border border-ink-900 bg-surface px-2 py-2 text-xs text-ink-900 hover:bg-ink-50 md:py-1.5"
       >
         ▾
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded border border-ink-200 bg-white shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded border border-ink-200 bg-surface shadow-lg">
           <p className="border-b border-ink-100 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-ink-400">
             Crear menú desde…
           </p>

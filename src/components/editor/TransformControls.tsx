@@ -54,21 +54,21 @@ export function TransformControls({ block }: { block: InvitationBlock }) {
           <button
             type="button"
             onClick={() => bringToFront(block.id)}
-            className="rounded border border-ink-200 bg-white px-2 py-2 text-xs text-ink-600 hover:border-ink-400"
+            className="rounded border border-ink-200 bg-surface px-2 py-2 text-xs text-ink-600 hover:border-ink-400"
           >
             Traer al frente
           </button>
           <button
             type="button"
             onClick={() => sendToBack(block.id)}
-            className="rounded border border-ink-200 bg-white px-2 py-2 text-xs text-ink-600 hover:border-ink-400"
+            className="rounded border border-ink-200 bg-surface px-2 py-2 text-xs text-ink-600 hover:border-ink-400"
           >
             Enviar al fondo
           </button>
         </div>
       </div>
 
-      <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-sm">
+      <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-surface px-3 py-2 text-sm">
         <span className="text-ink-700">Bloquear posición</span>
         <button
           type="button"
@@ -77,7 +77,7 @@ export function TransformControls({ block }: { block: InvitationBlock }) {
           aria-pressed={!!l.locked}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${l.locked ? 'translate-x-4' : 'translate-x-0.5'}`}
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${l.locked ? 'translate-x-4' : 'translate-x-0.5'}`}
           />
         </button>
       </label>

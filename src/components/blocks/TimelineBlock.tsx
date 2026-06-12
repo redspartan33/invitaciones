@@ -20,12 +20,12 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
           {data.items.map((item) => (
             <li key={item.id} className="relative">
               {!hideIcons && (
-                <span className="absolute -left-[42px] flex h-7 w-7 items-center justify-center rounded-full accent-bg">
+                <span className="inv-icon-bg absolute -left-[42px] flex h-7 w-7 items-center justify-center rounded-full">
                   <TimelineActIcon kind={item.icon} className="h-4 w-4" />
                 </span>
               )}
               <div className="flex items-baseline gap-4">
-                <TextEl block={block} field="items.time" className="w-16 shrink-0 font-mono text-xs uppercase tracking-widest opacity-70">
+                <TextEl block={block} field="items.time" className="inv-date w-16 shrink-0 font-mono text-xs uppercase tracking-widest opacity-70">
                   {item.time}
                 </TextEl>
                 <div>
@@ -56,8 +56,8 @@ export function TimelineBlock({ block }: { block: InvitationBlock<'timeline'> })
       <ol className="flex flex-col" style={{ gap: 'var(--item-gap)' }}>
         {data.items.map((item) => (
           <li key={item.id} className={`flex flex-col gap-1 ${align === 'right' ? 'items-end' : 'items-center'}`}>
-            <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest opacity-70">
-              {!hideIcons && <TimelineActIcon kind={item.icon} className="h-4 w-4 accent" />}
+            <span className="inv-date flex items-center gap-2 font-mono text-xs uppercase tracking-widest opacity-70">
+              {!hideIcons && <TimelineActIcon kind={item.icon} className="inv-icon h-4 w-4" />}
               <TextEl block={block} field="items.time">{item.time}</TextEl>
             </span>
             <TextEl block={block} field="items.title" as="p" className="font-medium">

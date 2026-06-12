@@ -58,7 +58,7 @@ export function ImageSetImagesForm({ block }: { block: InvitationBlock<'image-se
           {images.map((img) => (
             <SortableItem key={img.id} id={img.id}>
               {({ handleProps }) => (
-                <div className="space-y-2 rounded border border-ink-200 bg-white p-3">
+                <div className="space-y-2 rounded border border-ink-200 bg-surface p-3">
                   <div className="flex items-center gap-2">
                     <DragHandle handleProps={handleProps} />
                     <input
@@ -73,7 +73,7 @@ export function ImageSetImagesForm({ block }: { block: InvitationBlock<'image-se
                     <button
                       type="button"
                       onClick={() => fileRefs.current[img.id]?.click()}
-                      className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                      className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
                     >
                       Subir
                     </button>

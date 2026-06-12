@@ -48,6 +48,14 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
+  // UI theme: the editor and admin run dark (default tokens); everything a
+  // guest can see (published invitation, guest list, metrics, landing) stays
+  // light via the .theme-light re-declaration in index.css.
+  useEffect(() => {
+    const isDarkRoute = route.kind === 'admin' || route.kind === 'editor'
+    document.documentElement.classList.toggle('theme-light', !isDarkRoute)
+  }, [route])
+
   useEffect(() => {
     if (route.kind !== 'public-id') return
     let cancelled = false

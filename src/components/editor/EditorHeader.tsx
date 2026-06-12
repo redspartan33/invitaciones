@@ -84,7 +84,7 @@ export function EditorHeader() {
   }
 
   return (
-    <header className="relative flex flex-wrap items-center justify-between gap-y-2 border-b border-ink-200 bg-white px-3 py-2 md:flex-nowrap md:gap-y-0 md:px-6 md:py-3">
+    <header className="relative flex flex-wrap items-center justify-between gap-y-2 border-b border-ink-200 bg-surface px-3 py-2 md:flex-nowrap md:gap-y-0 md:px-6 md:py-3">
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
         <button
           onClick={onBackToAdmin}
@@ -94,7 +94,7 @@ export function EditorHeader() {
           ← <span className="hidden sm:inline">Volver</span>
         </button>
         <span className="hidden h-5 w-px bg-ink-200 md:inline-block" />
-        <div className="hidden h-7 w-7 items-center justify-center rounded bg-ink-900 text-xs font-bold text-white md:flex">D</div>
+        <div className="hidden h-7 w-7 items-center justify-center rounded bg-ink-900 text-xs font-bold text-on-accent md:flex">D</div>
         <input
           type="text"
           value={title}
@@ -168,7 +168,7 @@ export function EditorHeader() {
               — otherwise the share UI ends up half-hidden behind the sidebar
               every time the user opens it from the device frame. */}
           <div className="fixed inset-0 z-50" onClick={() => setShareOpen(false)} />
-          <div className="fixed right-3 left-3 top-14 z-[60] max-h-[calc(100vh-5rem)] overflow-y-auto rounded border border-ink-200 bg-white p-4 anim-fade-in md:left-auto md:right-6 md:w-[420px]">
+          <div className="fixed right-3 left-3 top-14 z-[60] max-h-[calc(100vh-5rem)] overflow-y-auto rounded border border-ink-200 bg-surface p-4 anim-fade-in md:left-auto md:right-6 md:w-[420px]">
             <div className="mb-2 flex items-center justify-between">
               <h4 className="text-sm font-medium">
                 {publishMode === 'error'
@@ -224,7 +224,7 @@ export function EditorHeader() {
                     alt="Código QR de la invitación"
                     width={160}
                     height={160}
-                    className="rounded border border-ink-200 bg-white"
+                    className="rounded border border-ink-200 bg-surface"
                   />
                   <div className="flex-1 space-y-2">
                     <p className="text-[11px] text-ink-500">

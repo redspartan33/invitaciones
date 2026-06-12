@@ -12,6 +12,7 @@ import { MenuFeaturesProvider } from '../blocks/MenuFeaturesContext'
 import { MenuHeaderBlock } from '../blocks/MenuHeaderBlock'
 import { menuSectionAnchor } from '../../utils/menuNav'
 import { usePageChrome } from '../../hooks/usePageChrome'
+import { buildThemeVars, collectThemeFonts } from '../../utils/themeVars'
 import { applyBlockTranslation } from '../../utils/translation'
 import { EnvelopeIntro } from './EnvelopeIntro'
 import { FixedCanvasView } from './FixedCanvasView'
@@ -19,10 +20,11 @@ import { recordInteraction, recordView, type InteractionAction } from '../../uti
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
   const { globalSettings } = invitation
+  const themeFonts = useMemo(() => collectThemeFonts(globalSettings), [globalSettings])
+  const themeVars = useMemo(() => buildThemeVars(globalSettings), [globalSettings])
   usePageChrome({
     favicon: globalSettings.favicon,
-    headingFont: globalSettings.headingFont,
-    bodyFont: globalSettings.bodyFont,
+    fonts: themeFonts,
     title: globalSettings.pageTitle?.trim() || invitation.title,
   })
   const fontClass =
@@ -31,8 +33,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
       : globalSettings.fontFamily === 'script'
       ? 'font-script'
       : 'font-sans'
-  const headingFont = globalSettings.headingFont?.trim()
-  const bodyFont = globalSettings.bodyFont?.trim()
+  const bodyFontValue = themeVars['--inv-font-body']
 
   // Resolve which blocks to render. When this invitation is a menu with
   // seasonal variants, blocks come from the currently-selected variant.
@@ -188,12 +189,8 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
       className={`invitation-canvas relative min-h-screen w-full ${fontClass}`}
       style={
         {
-          ['--color-accent' as never]: globalSettings.colorAccent,
-          ['--color-primary' as never]: globalSettings.colorPrimary,
-          ['--color-secondary' as never]: globalSettings.colorSecondary,
-          ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
-          ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
-          fontFamily: bodyFont ? `"${bodyFont}", sans-serif` : undefined,
+          ...themeVars,
+          fontFamily: bodyFontValue ? `${bodyFontValue}, sans-serif` : undefined,
           // When a page background is active the outer wrapper must be fully
           // transparent so the background layer (rendered at root level, outside
           // every stacking context) is visible beneath the canvas card.

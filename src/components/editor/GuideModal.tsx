@@ -2,7 +2,7 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onClick={onClose}>
       <div
-        className="w-full max-w-xl rounded border border-ink-200 bg-white p-6 anim-fade-in"
+        className="w-full max-w-xl rounded border border-ink-200 bg-surface p-6 anim-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

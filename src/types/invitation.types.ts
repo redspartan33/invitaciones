@@ -470,10 +470,76 @@ export interface InvitationBlock<T extends BlockType = BlockType> {
   metadata?: BlockMetadata
 }
 
+/**
+ * Theme roles — global defaults applied through CSS variables scoped to
+ * `.invitation-canvas`. Per-block overrides (BlockStyle / textStyles) are
+ * inline styles, so they always win over these.
+ */
+export type ColorRole =
+  | 'background'
+  | 'heading'
+  | 'subheading'
+  | 'body'
+  | 'date'
+  | 'icon'
+  | 'button'
+  | 'link'
+  | 'divider'
+
+export interface PaletteSettings {
+  /** Id of a curated palette from src/data/palettes.ts, or 'custom'. */
+  presetId?: string
+  /** 3–6 hex colors. */
+  swatches: string[]
+  /** role → index into swatches. Editing a swatch repaints all its roles. */
+  roleAssignments: Partial<Record<ColorRole, number>>
+}
+
+export type FontProvider = 'google' | 'fontshare'
+export type FontCategory =
+  | 'serif'
+  | 'sans-serif'
+  | 'display'
+  | 'handwriting'
+  | 'monospace'
+
+export interface FontRef {
+  family: string
+  provider: FontProvider
+  category?: FontCategory
+  /** Defaults to ['400','500','600','700'] when omitted. */
+  weights?: string[]
+}
+
+export type TextRole =
+  | 'heading'
+  | 'subheading'
+  | 'body'
+  | 'date'
+  | 'button'
+  | 'accentText'
+
+export type FontSlotIndex = 0 | 1 | 2
+
+export interface TypographySettings {
+  /** Fuente 1 / 2 / 3 — null means the slot is undefined. */
+  slots: [FontRef | null, FontRef | null, FontRef | null]
+  /** text role → slot index. */
+  roleAssignments: Partial<Record<TextRole, FontSlotIndex>>
+  /** Per-role size multiplier (0.7–1.6, default 1). */
+  sizes?: Partial<Record<TextRole, number>>
+}
+
 export interface GlobalSettings {
   colorPrimary: string
   colorSecondary: string
   colorAccent: string
+  /** Full palette with role assignments. Absent on legacy invitations —
+   *  themeVars.ts falls back to colorPrimary/Secondary/Accent. */
+  palette?: PaletteSettings
+  /** Font slots + text-role assignments. Absent on legacy invitations —
+   *  themeVars.ts falls back to headingFont/bodyFont. */
+  typography?: TypographySettings
   fontFamily: FontFamily
   backgroundImage?: string
   logo?: string

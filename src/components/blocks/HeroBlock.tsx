@@ -36,7 +36,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
             block={block}
             field="subtitle"
             as="p"
-            className="accent text-sm uppercase tracking-[0.3em]"
+            className="inv-subtitle text-sm uppercase tracking-[0.3em]"
           >
             {data.subtitle}
           </TextEl>
@@ -60,7 +60,7 @@ export function HeroBlock({ block }: { block: InvitationBlock<'hero'> }) {
             block={block}
             field="eventDate"
             as="p"
-            className="text-sm uppercase tracking-[0.3em]"
+            className="inv-date text-sm uppercase tracking-[0.3em]"
           >
             {formatDate(data.eventDate, data.dateFormat)}
           </TextEl>

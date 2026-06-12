@@ -19,7 +19,7 @@ export function DressCodeBlock({ block }: { block: InvitationBlock<'dress-code'>
     switch (field) {
       case 'label':
         return data.code ? (
-          <TextEl key="label" block={block} field="label" as="p" className="accent text-xs uppercase tracking-[0.3em]">
+          <TextEl key="label" block={block} field="label" as="p" className="inv-subtitle text-xs uppercase tracking-[0.3em]">
             Código de vestimenta
           </TextEl>
         ) : null

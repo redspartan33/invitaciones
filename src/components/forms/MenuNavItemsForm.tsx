@@ -130,7 +130,7 @@ export function MenuNavItemsForm({ block }: { block: InvitationBlock<'menu-heade
               {sectionTargets.map((t) => (
                 <li
                   key={t.anchor}
-                  className="rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[11px] text-ink-600"
+                  className="rounded-full border border-ink-200 bg-surface px-2 py-0.5 text-[11px] text-ink-600"
                   title={`#${t.anchor}`}
                 >
                   {t.title}
@@ -154,7 +154,7 @@ export function MenuNavItemsForm({ block }: { block: InvitationBlock<'menu-heade
                   return (
                     <SortableItem key={item.id} id={item.id}>
                       {({ handleProps }) => (
-                        <div className="space-y-2 rounded border border-ink-200 bg-white p-3">
+                        <div className="space-y-2 rounded border border-ink-200 bg-surface p-3">
                           <div className="flex items-center gap-2">
                             <DragHandle handleProps={handleProps} />
                             <input

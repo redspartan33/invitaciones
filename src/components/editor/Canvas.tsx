@@ -20,6 +20,7 @@ import { BlockBackgroundProvider } from '../blocks/BlockBackgroundContext'
 import { MenuFeaturesProvider } from '../blocks/MenuFeaturesContext'
 import { DragIcon, EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
 import { usePageChrome } from '../../hooks/usePageChrome'
+import { buildThemeVars, collectThemeFonts } from '../../utils/themeVars'
 import { PageBackgroundLayer } from '../public/PageBackgroundLayer'
 import { FreeCanvas } from './FreeCanvas'
 
@@ -44,13 +45,9 @@ function StackedCanvas() {
   const selectBlock = useEditorStore((s) => s.selectBlock)
   const reorderBlocks = useEditorStore((s) => s.reorderBlocks)
   const viewport = useEditorStore((s) => s.viewport)
+  const globalSettings = useEditorStore((s) => s.invitation.globalSettings)
   const fontFamily = useEditorStore((s) => s.invitation.globalSettings.fontFamily)
-  const headingFont = useEditorStore((s) => s.invitation.globalSettings.headingFont)
-  const bodyFont = useEditorStore((s) => s.invitation.globalSettings.bodyFont)
   const favicon = useEditorStore((s) => s.invitation.globalSettings.favicon)
-  const colorAccent = useEditorStore((s) => s.invitation.globalSettings.colorAccent)
-  const colorPrimary = useEditorStore((s) => s.invitation.globalSettings.colorPrimary)
-  const colorSecondary = useEditorStore((s) => s.invitation.globalSettings.colorSecondary)
   const pageBackground = useEditorStore((s) => s.invitation.globalSettings.pageBackground)
   const transparentCanvas = useEditorStore((s) => s.invitation.globalSettings.transparentCanvas)
   const hideBlockBackgrounds = useEditorStore(
@@ -65,7 +62,7 @@ function StackedCanvas() {
       s.invitation.kind === 'menu' ||
       s.invitation.blocks.some((b) => b.type.startsWith('menu-')),
   )
-  usePageChrome({ favicon, headingFont, bodyFont })
+  usePageChrome({ favicon, fonts: collectThemeFonts(globalSettings) })
 
   const hasPageBackground = !!pageBackground?.url?.trim()
   // Same defaults as PublicInvitationView: when a page background is set,
@@ -92,11 +89,7 @@ function StackedCanvas() {
   const canvasBg = canvasTransparent ? 'transparent' : undefined
 
   const cssVars = {
-    ['--color-accent' as never]: colorAccent,
-    ['--color-primary' as never]: colorPrimary,
-    ['--color-secondary' as never]: colorSecondary,
-    ['--font-heading' as never]: headingFont ? `"${headingFont}"` : undefined,
-    ['--font-body' as never]: bodyFont ? `"${bodyFont}"` : undefined,
+    ...buildThemeVars(globalSettings),
     backgroundColor: hasPageBackground ? 'transparent' : undefined,
   } as React.CSSProperties
 
@@ -152,7 +145,7 @@ function StackedCanvas() {
     : {}
   const framed = isPhone ? (
     <div
-      className="relative rounded-[40px] border border-ink-300 bg-white p-3"
+      className="relative rounded-[40px] border border-ink-300 bg-surface p-3"
       style={{ width: dim.width + 24, height: dim.height + 24 }}
     >
       <div className="absolute left-1/2 top-3 z-10 h-1 w-12 -translate-x-1/2 rounded-full bg-ink-300" />
@@ -168,7 +161,7 @@ function StackedCanvas() {
     </div>
   ) : isTablet ? (
     <div
-      className="rounded-[24px] border border-ink-300 bg-white p-3"
+      className="rounded-[24px] border border-ink-300 bg-surface p-3"
       style={{ width: dim.width + 24, height: dim.height + 24 }}
     >
       <div
@@ -216,7 +209,7 @@ function VariantSwitcher() {
 
   return (
     <div
-      className="mb-4 flex w-full max-w-[1100px] flex-wrap items-center gap-1.5 rounded border border-ink-200 bg-white p-1.5 shadow-sm"
+      className="mb-4 flex w-full max-w-[1100px] flex-wrap items-center gap-1.5 rounded border border-ink-200 bg-surface p-1.5 shadow-sm"
       onClick={(e) => e.stopPropagation()}
     >
       <span className="px-2 text-[10px] font-semibold uppercase tracking-widest text-ink-400">
@@ -232,8 +225,8 @@ function VariantSwitcher() {
             onClick={() => switchEditing(v.id)}
             className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs transition-colors ${
               isEditing
-                ? 'bg-ink-900 text-white'
-                : 'bg-white text-ink-700 hover:bg-ink-50'
+                ? 'bg-ink-900 text-on-accent'
+                : 'bg-surface text-ink-700 hover:bg-ink-50'
             }`}
             title={isActive ? 'Visible por defecto al público' : 'Editar esta temporada'}
           >
@@ -302,7 +295,7 @@ function SortableCanvasBlock({
       </div>
 
       {/* Hover toolbar */}
-      <div className={`absolute right-2 top-2 z-10 flex items-center gap-1 rounded border border-ink-200 bg-white p-1 transition-opacity ${selected || isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+      <div className={`absolute right-2 top-2 z-10 flex items-center gap-1 rounded border border-ink-200 bg-surface p-1 transition-opacity ${selected || isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
         <button
           {...attributes}
           {...listeners}

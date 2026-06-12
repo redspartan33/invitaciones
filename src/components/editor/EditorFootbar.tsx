@@ -30,14 +30,14 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
         <FootbarBtn label="Guía" onClick={onShowGuide} />
       </div>
 
-      <div className="order-3 hidden items-center gap-1 rounded border border-ink-200 bg-white p-0.5 md:order-2 md:flex">
+      <div className="order-3 hidden items-center gap-1 rounded border border-ink-200 bg-surface p-0.5 md:order-2 md:flex">
         {VIEWPORT_TABS.map((v) => (
           <button
             key={v.value}
             onClick={() => setViewport(v.value)}
             title={`${v.label} · ${v.size}`}
             className={`flex items-center gap-1.5 rounded px-3 py-1 text-[11px] font-medium uppercase tracking-widest transition-colors ${
-              viewport === v.value ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50'
+              viewport === v.value ? 'bg-ink-900 text-on-accent' : 'text-ink-600 hover:bg-ink-50'
             }`}
           >
             <ViewportIcon kind={v.value} active={viewport === v.value} />
@@ -53,7 +53,7 @@ export function EditorFootbar({ onShowGuide }: { onShowGuide: () => void }) {
         {addOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setAddOpen(false)} />
-            <div className="absolute bottom-12 right-0 z-20 w-72 rounded border border-ink-200 bg-white p-2 anim-fade-in">
+            <div className="absolute bottom-12 right-0 z-20 w-72 rounded border border-ink-200 bg-surface p-2 anim-fade-in">
               <p className="px-2 py-1.5 text-[11px] uppercase tracking-widest text-ink-400">
                 {kind === 'menu' ? 'Bloques de menú' : 'Bloques de invitación'}
               </p>
@@ -85,7 +85,7 @@ function FootbarBtn({ label, active, onClick }: { label: string; active?: boolea
     <button
       onClick={onClick}
       className={`rounded px-3 py-1.5 text-xs font-medium uppercase tracking-widest transition-colors ${
-        active ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-white'
+        active ? 'bg-ink-900 text-on-accent' : 'text-ink-600 hover:bg-surface'
       }`}
     >
       {label}
@@ -100,7 +100,7 @@ const VIEWPORT_TABS: { value: ViewportMode; label: string; size: string }[] = [
 ]
 
 function ViewportIcon({ kind, active }: { kind: ViewportMode; active: boolean }) {
-  const cls = `h-3.5 w-3.5 ${active ? 'text-white' : 'text-ink-500'}`
+  const cls = `h-3.5 w-3.5 ${active ? 'text-on-accent' : 'text-ink-500'}`
   if (kind === 'mobile') {
     return (
       <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

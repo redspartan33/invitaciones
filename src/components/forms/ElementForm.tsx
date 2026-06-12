@@ -190,7 +190,7 @@ function ImageForm({ block }: { block: InvitationBlock<'image'> }) {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+            className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
           >
             Subir
           </button>
@@ -212,7 +212,7 @@ function ImageForm({ block }: { block: InvitationBlock<'image'> }) {
             <button
               type="button"
               onClick={() => set({ url: '' })}
-              className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-white"
+              className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-surface"
             >
               Quitar
             </button>
@@ -336,7 +336,7 @@ function Toggle({
       type="button"
       onClick={onClick}
       className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
-        active ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+        active ? 'border-ink-900 bg-ink-900 text-on-accent' : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
       }`}
     >
       {children}
@@ -365,7 +365,7 @@ function ColorRow({
           type="color"
           value={value || '#000000'}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
+          className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-surface"
         />
         <input
           type="text"

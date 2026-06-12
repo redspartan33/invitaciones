@@ -30,7 +30,7 @@ export function GiftRegistryItemsForm({ block }: { block: InvitationBlock<'gift-
           {data.items.map((item) => (
             <SortableItem key={item.id} id={item.id}>
               {({ handleProps }) => (
-                <div className="space-y-2 rounded border border-ink-200 bg-white p-3">
+                <div className="space-y-2 rounded border border-ink-200 bg-surface p-3">
                   <div className="flex items-center gap-2">
                     <DragHandle handleProps={handleProps} />
                     <input

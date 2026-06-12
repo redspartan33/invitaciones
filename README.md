@@ -166,6 +166,60 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 - **Favicon**: en el panel **Detalles** puedes pegar una URL o subir un PNG/SVG/ICO. Se aplica como `<link rel="icon">` en la vista pública y en el editor.
 - **Google Fonts**: en **Fuentes** puedes escribir el nombre exacto de cualquier fuente de Google (con autocompletado de 15 sugerencias). Se carga vía `<link>` a `fonts.googleapis.com/css2`. La fuente de "Títulos" se aplica a h1/h2/h3 y la de "Cuerpo" al resto. Cuando defines fuentes custom mandan sobre la elección Serif/Sans/Script.
 
+### Sistema de tema por roles: paletas completas + 3 slots de tipografía
+
+El panel **Colores** ya no edita 3 colores sueltos — ahora trabaja con **paletas
+completas con mapeo a elementos**, y el panel **Fuentes** con **slots de
+tipografía** asignables a tipos de texto:
+
+- **Paletas** (`src/components/editor/panels/PalettePanel.tsx`): 12 paletas
+  curadas (`src/data/palettes.ts`) + "Mi paleta" editable (3–6 swatches,
+  duplicar una curada, guardar hexes en "Mis colores"). Debajo, la lista de
+  **elementos de la invitación** (Fondo de sección, Títulos, Subtítulos, Texto,
+  Fechas, Iconos, Botones, Links, Divisores) deja asignar a cada rol un swatch
+  de la paleta activa. Editar un swatch repinta todos sus roles de golpe
+  (asignación por índice).
+- **Tipografías** (`panels/TypographyPanel.tsx` + `panels/FontPicker.tsx`):
+  hasta **3 fuentes** ("Fuente 1/2/3") elegidas de un picker con el **catálogo
+  completo de Google Fonts (~1900 familias**, JSON estático generado con
+  `node scripts/generate-google-fonts.mjs`, sin API key, cargado como chunk
+  lazy) **+ 18 familias curadas de Fontshare** (Satoshi, General Sans, Clash
+  Display… — licencia ITF FFL, gratis para uso comercial). El picker tiene
+  buscador, chips por categoría, **texto de muestra editable y slider de
+  tamaño de preview**, con lista **virtualizada** (~15 nodos vivos) y carga
+  lazy por familia (`css2?…&text=` → woff2 de pocos KB). Cada **tipo de texto**
+  (Títulos, Subtítulos, Cuerpo, Fechas, Botones, Texto decorativo) se asigna a
+  uno de los 3 slots y tiene **multiplicador de tamaño** (0.7×–1.6×).
+- **Cómo funciona por dentro** (`src/utils/themeVars.ts`): `buildThemeVars()`
+  resuelve roles → CSS variables (`--inv-bg`, `--inv-heading`, `--inv-date`,
+  `--inv-font-*`, `--inv-size-*`…) inyectadas igual en `Canvas`, `FreeCanvas`
+  y `PublicInvitationView`; `index.css` las consume scoped a
+  `.invitation-canvas` (clases `inv-subtitle`, `inv-date`, `inv-icon`,
+  `inv-icon-bg` en los bloques). **Retrocompatible**: sin `palette`/
+  `typography` los roles caen a `colorPrimary/Secondary/Accent` y
+  `headingFont/bodyFont` (render idéntico), y al guardar desde los paneles
+  nuevos se sincronizan los campos legacy. Los overrides por bloque
+  (`BlockStyle`/`textStyles`) siguen ganando porque son estilos inline.
+- El panel **Detalles** ahora muestra la sección **Links**: el link público
+  (`/share/<slug>`) y el **link de invitados** (`?guestlist=<slug>`, tomado del
+  bloque RSVP con formulario activo), ambos con botón Copiar.
+
+### Dark mode por default (UI del editor/admin)
+
+La UI del editor y el admin corren en **dark mode** sobre **tokens CSS**
+(`--ui-bg`, `--ui-surface`, `--ui-ink-50…900`, `--ui-accent`, `--ui-on-accent`
+en `src/index.css`); la escala `ink-*` de Tailwind lee esas variables, así que
+un refinement futuro del tema = tocar solo el bloque `:root`. La semántica de
+la escala pasó a ser **nivel de contraste** (ink-900 = texto de máximo
+contraste, ink-50 = tinte de superficie). `bg-white`/`text-white` de la UI se
+reemplazaron por `bg-surface`/`text-on-accent`.
+
+**Qué se queda light**: el canvas de la invitación (en editor y publicado) —
+`.invitation-canvas` re-declara los valores light, así los colores del usuario
+nunca se mezclan con el tema de la UI — y las páginas que ven los invitados
+(invitación publicada, guest list, métricas, landing) vía la clase
+`.theme-light` que `App.tsx` aplica al `<html>` según la ruta.
+
 ### Bloques de menú (kind = `menu`)
 
 - **Menu header** — Portada del restaurante + barra sticky de navegación que se enlaza con cada sección. Tamaño de barra (S/M/XL) y tamaño de logo (S/M/L/XL) configurables. El fondo (color, imagen o **video**) se controla desde la sección universal **"Fondo del bloque"** (`block.style`), igual que el resto de bloques — al usar imagen se aplica el texto en blanco. El campo **"Video de fondo"** (solo visible en menu-header, guardado en `block.style.backgroundVideo`) acepta una URL de MP4/WebM, YouTube o Vimeo, auto-detectada con la misma `resolveBackgroundSource` que el fondo global; se reproduce silenciado y en bucle detrás del contenido (`<video>` o `<iframe>` en una capa absoluta, con el texto en una capa `z-10` encima) y tiene prioridad sobre la imagen. Menús viejos que guardaban el fondo en `data` siguen funcionando vía fallback.

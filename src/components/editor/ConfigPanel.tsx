@@ -7,18 +7,21 @@ import { TransformControls } from './TransformControls'
 import { BLOCK_CATALOG } from '../../utils/blockDefaults'
 import type {
   EnvelopeIntroConfig,
-  FontFamily,
   Invitation,
   InvitationBlock,
   Language,
   PageBackground,
   PromoBannerConfig,
   PromoBannerSlide,
+  RsvpInfoData,
 } from '../../types/invitation.types'
 import { v4 as uuid } from 'uuid'
 import { LANGUAGE_LABELS } from '../../utils/translation'
+import { apiUrl } from '../../utils/apiBase'
 import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
 import { processShareImage, processShareImageUrl } from '../../utils/processShareImage'
+import { PalettePanel } from './panels/PalettePanel'
+import { TypographyPanel } from './panels/TypographyPanel'
 
 export function ConfigPanel() {
   const activePanel = useEditorStore((s) => s.activePanel)
@@ -46,24 +49,21 @@ export function ConfigPanel() {
 
   return (
     <aside
-      className={`flex flex-col bg-white ${
+      className={`flex flex-col bg-surface ${
         isMobileOpen ? 'fixed inset-0 z-40' : 'hidden'
       } md:static md:flex md:h-full md:w-[380px] md:shrink-0 md:border-l md:border-ink-200`}
     >
       <PanelHeader onClose={close} />
       <div className="flex-1 overflow-y-auto p-5 scroll-thin">
         {activePanel === 'colors' ? (
-          <ColorsPanel
+          <PalettePanel
             settings={settings}
             update={updateGlobalSettings}
           />
         ) : activePanel === 'fonts' ? (
-          <FontsPanel
-            font={settings.fontFamily}
-            headingFont={settings.headingFont ?? ''}
-            bodyFont={settings.bodyFont ?? ''}
-            update={(f) => updateGlobalSettings({ fontFamily: f })}
-            updateFont={(patch) => updateGlobalSettings(patch)}
+          <TypographyPanel
+            settings={settings}
+            update={updateGlobalSettings}
           />
         ) : activePanel === 'music' ? (
           <MusicPanel
@@ -170,311 +170,6 @@ function EmptyPanel() {
   )
 }
 
-const SAVED_COLORS_KEY = 'invitation-builder:saved-colors'
-
-const SUGGESTED_COLORS: { name: string; hex: string }[] = [
-  { name: 'Sage', hex: '#9caf88' },
-  { name: 'Terracotta', hex: '#c87f5a' },
-  { name: 'Dusty Rose', hex: '#dcae96' },
-  { name: 'Burgundy', hex: '#6e1f2c' },
-  { name: 'Gold', hex: '#c9a96e' },
-  { name: 'Champagne', hex: '#f1e3c8' },
-  { name: 'Olive', hex: '#6b7a3a' },
-  { name: 'Navy', hex: '#1f3a5f' },
-  { name: 'Slate', hex: '#475569' },
-  { name: 'Lavender', hex: '#b8a5cc' },
-  { name: 'Cream', hex: '#f5efe6' },
-  { name: 'Charcoal', hex: '#2a2a2a' },
-]
-
-function loadSavedColors(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = window.localStorage.getItem(SAVED_COLORS_KEY)
-    if (raw) {
-      const arr = JSON.parse(raw) as unknown
-      if (Array.isArray(arr)) return arr.filter((x): x is string => typeof x === 'string')
-    }
-  } catch { /* ignore */ }
-  return []
-}
-
-function persistSavedColors(colors: string[]) {
-  try { window.localStorage.setItem(SAVED_COLORS_KEY, JSON.stringify(colors)) } catch { /* ignore */ }
-}
-
-type ColorKey = 'colorPrimary' | 'colorSecondary' | 'colorAccent'
-
-function ColorsPanel({
-  settings,
-  update,
-}: {
-  settings: { colorPrimary: string; colorSecondary: string; colorAccent: string }
-  update: (p: Partial<{ colorPrimary: string; colorSecondary: string; colorAccent: string }>) => void
-}) {
-  const [activeKey, setActiveKey] = useState<ColorKey>('colorAccent')
-  const [savedColors, setSavedColors] = useState<string[]>(() => loadSavedColors())
-
-  const activeValue = settings[activeKey]
-  const setActiveValue = (hex: string) => update({ [activeKey]: hex })
-
-  const addSavedColor = () => {
-    const hex = activeValue.toLowerCase()
-    if (savedColors.includes(hex)) return
-    const next = [hex, ...savedColors].slice(0, 24)
-    setSavedColors(next)
-    persistSavedColors(next)
-  }
-
-  const removeSavedColor = (hex: string) => {
-    const next = savedColors.filter((c) => c !== hex)
-    setSavedColors(next)
-    persistSavedColors(next)
-  }
-
-  const targets: { key: ColorKey; label: string }[] = [
-    { key: 'colorPrimary', label: 'Primario' },
-    { key: 'colorSecondary', label: 'Secundario' },
-    { key: 'colorAccent', label: 'Acento' },
-  ]
-
-  return (
-    <div className="space-y-5">
-      <p className="text-xs text-ink-500">Elige qué color editar y aplica desde la paleta o tus guardados.</p>
-
-      <div>
-        <label className="label-flat">Color activo a editar</label>
-        <div className="grid grid-cols-3 gap-2">
-          {targets.map((t) => {
-            const isActive = activeKey === t.key
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveKey(t.key)}
-                className={`flex flex-col items-center gap-1.5 rounded border px-2 py-2 text-xs transition-colors ${
-                  isActive ? 'border-ink-900 bg-ink-50' : 'border-ink-200 bg-white hover:border-ink-400'
-                }`}
-              >
-                <span
-                  className="h-5 w-full rounded border border-ink-200"
-                  style={{ background: settings[t.key] }}
-                />
-                <span className={`uppercase tracking-widest ${isActive ? 'text-ink-900 font-medium' : 'text-ink-500'}`}>{t.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div>
-        <label className="label-flat">Valor actual</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={activeValue}
-            onChange={(e) => setActiveValue(e.target.value)}
-            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
-          />
-          <input
-            type="text"
-            value={activeValue}
-            onChange={(e) => setActiveValue(e.target.value)}
-            className="input-flat"
-          />
-          <button
-            type="button"
-            onClick={addSavedColor}
-            title="Guardar este color"
-            className="btn-flat h-9 w-9 p-0 text-base"
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label className="label-flat">Colores sugeridos</label>
-        <div className="grid grid-cols-6 gap-2">
-          {SUGGESTED_COLORS.map((c) => (
-            <button
-              key={c.hex}
-              type="button"
-              title={`${c.name} · ${c.hex}`}
-              onClick={() => setActiveValue(c.hex)}
-              className="h-9 w-full rounded border border-ink-200 transition-transform hover:scale-105 hover:border-ink-900"
-              style={{ background: c.hex }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <label className="label-flat">Mis colores guardados</label>
-        {savedColors.length === 0 ? (
-          <p className="text-[11px] text-ink-400">
-            Aún no tienes colores guardados. Usa el botón <span className="font-medium">+</span> para guardar el color activo.
-          </p>
-        ) : (
-          <div className="grid grid-cols-6 gap-2">
-            {savedColors.map((hex) => (
-              <div key={hex} className="group relative">
-                <button
-                  type="button"
-                  title={hex}
-                  onClick={() => setActiveValue(hex)}
-                  className="h-9 w-full rounded border border-ink-200 transition-transform hover:scale-105 hover:border-ink-900"
-                  style={{ background: hex }}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeSavedColor(hex)}
-                  aria-label="Eliminar color"
-                  className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-ink-200 bg-white text-[10px] leading-none text-ink-600 opacity-0 transition-opacity group-hover:opacity-100 hover:border-rose-400 hover:text-rose-600"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const GOOGLE_FONT_PRESETS = [
-  'Playfair Display',
-  'Cormorant Garamond',
-  'Libre Baskerville',
-  'EB Garamond',
-  'Lora',
-  'Inter',
-  'Poppins',
-  'Montserrat',
-  'Work Sans',
-  'Nunito',
-  'Great Vibes',
-  'Dancing Script',
-  'Allura',
-  'Parisienne',
-  'Cinzel',
-] as const
-
-function FontsPanel({
-  font,
-  headingFont,
-  bodyFont,
-  update,
-  updateFont,
-}: {
-  font: FontFamily
-  headingFont: string
-  bodyFont: string
-  update: (f: FontFamily) => void
-  updateFont: (patch: { headingFont?: string; bodyFont?: string }) => void
-}) {
-  const fonts: { value: FontFamily; label: string; sample: string; cls: string }[] = [
-    { value: 'serif', label: 'Serif', sample: 'Ana & Juan', cls: 'font-serif text-3xl' },
-    { value: 'sans-serif', label: 'Sans', sample: 'Ana & Juan', cls: 'font-sans text-3xl' },
-    { value: 'script', label: 'Script', sample: 'Ana & Juan', cls: 'font-script text-4xl' },
-  ]
-  const hasCustom = !!(headingFont || bodyFont)
-  return (
-    <div className="space-y-5">
-      <div className="space-y-3">
-        <p className="text-xs text-ink-500">
-          Familia tipográfica base. Si defines fuentes de Google Fonts más abajo, esas mandan.
-        </p>
-        {fonts.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => update(f.value)}
-            className={`flex w-full items-center justify-between rounded border px-4 py-3 text-left transition-colors ${
-              font === f.value && !hasCustom ? 'border-ink-900' : 'border-ink-200 hover:border-ink-400'
-            }`}
-          >
-            <span className="text-xs uppercase tracking-widest text-ink-500">{f.label}</span>
-            <span className={f.cls}>{f.sample}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-3 border-t border-ink-200 pt-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-[11px] font-semibold uppercase tracking-widest text-ink-500">Google Fonts</h4>
-          {hasCustom && (
-            <button
-              type="button"
-              onClick={() => updateFont({ headingFont: '', bodyFont: '' })}
-              className="text-[10px] uppercase tracking-widest text-ink-500 hover:text-rose-600"
-            >
-              Limpiar
-            </button>
-          )}
-        </div>
-        <p className="text-[11px] leading-snug text-ink-500">
-          Escribe el nombre exacto de una fuente (ej.{' '}
-          <span className="font-medium text-ink-700">Playfair Display</span>) o elige una sugerida.
-        </p>
-
-        <div>
-          <label className="label-flat">Títulos (h1/h2/h3)</label>
-          <input
-            type="text"
-            value={headingFont}
-            onChange={(e) => updateFont({ headingFont: e.target.value })}
-            placeholder="Playfair Display"
-            className="input-flat"
-            list="google-fonts-list"
-          />
-          {headingFont && (
-            <p className="mt-1 text-sm" style={{ fontFamily: `"${headingFont}", serif` }}>
-              Ana & Juan
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="label-flat">Cuerpo del texto</label>
-          <input
-            type="text"
-            value={bodyFont}
-            onChange={(e) => updateFont({ bodyFont: e.target.value })}
-            placeholder="Inter"
-            className="input-flat"
-            list="google-fonts-list"
-          />
-          {bodyFont && (
-            <p className="mt-1 text-sm" style={{ fontFamily: `"${bodyFont}", sans-serif` }}>
-              Por favor confirma tu asistencia antes del 30 de mayo.
-            </p>
-          )}
-        </div>
-
-        <datalist id="google-fonts-list">
-          {GOOGLE_FONT_PRESETS.map((f) => (
-            <option key={f} value={f} />
-          ))}
-        </datalist>
-
-        <div className="flex flex-wrap gap-1.5">
-          {GOOGLE_FONT_PRESETS.slice(0, 8).map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => updateFont({ headingFont: preset })}
-              className="rounded border border-ink-200 bg-white px-2 py-1 text-[11px] text-ink-600 transition-colors hover:border-ink-900"
-            >
-              {preset}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function MusicPanel({
   value,
   autoplay,
@@ -527,7 +222,7 @@ function MusicPanel({
           <div
             key={t.url || 'none'}
             className={`flex w-full items-center justify-between rounded border px-3 py-2 text-sm transition-colors ${
-              selected ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white'
+              selected ? 'border-ink-900 bg-ink-900 text-on-accent' : 'border-ink-200 bg-surface'
             }`}
           >
             <button onClick={() => update(t.url)} className="flex-1 text-left">
@@ -561,7 +256,7 @@ function MusicPanel({
           className="input-flat"
         />
       </div>
-      <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-sm">
+      <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-surface px-3 py-2 text-sm">
         <span className="text-ink-700">Reproducir al abrir</span>
         <button
           type="button"
@@ -570,7 +265,7 @@ function MusicPanel({
           aria-pressed={autoplay}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${autoplay ? 'translate-x-4' : 'translate-x-0.5'}`}
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${autoplay ? 'translate-x-4' : 'translate-x-0.5'}`}
           />
         </button>
       </label>
@@ -641,6 +336,7 @@ function DetailsPanel() {
       {isMenu && <MenuSearchRow />}
       {isMenu && <ItemImagesRow />}
       {isMenu && <PromoBannerRow />}
+      <LinksRow />
       <div className="rounded border border-ink-200 p-3">
         <p className="text-[11px] uppercase tracking-widest text-ink-400">ID</p>
         <p className="font-mono text-xs text-ink-700">{inv.id}</p>
@@ -663,6 +359,66 @@ function DetailsPanel() {
         <p className="text-[11px] uppercase tracking-widest text-ink-400">Última edición</p>
         <p className="text-xs text-ink-700">{new Date(inv.updatedAt).toLocaleString()}</p>
       </div>
+    </div>
+  )
+}
+
+function CopyRow({ label, value, empty }: { label: string; value: string; empty?: string }) {
+  const [copied, setCopied] = useState(false)
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch { /* clipboard unavailable */ }
+  }
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-widest text-ink-400">{label}</p>
+      {value ? (
+        <div className="mt-1 flex items-center gap-2">
+          <p className="flex-1 truncate font-mono text-[11px] text-ink-700" title={value}>
+            {value}
+          </p>
+          <button type="button" onClick={onCopy} className="btn-flat shrink-0 px-2 py-1 text-[11px]">
+            {copied ? '¡Copiado!' : 'Copiar'}
+          </button>
+        </div>
+      ) : (
+        <p className="mt-1 text-[11px] text-ink-400">{empty}</p>
+      )}
+    </div>
+  )
+}
+
+function LinksRow() {
+  const inv = useEditorStore((s) => s.invitation)
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const shareSlug = inv.publicSlug
+  const publicLink = shareSlug ? apiUrl(`/share/${shareSlug}`) || `${origin}/share/${shareSlug}` : ''
+
+  // Guest list link lives on the rsvp-info block once the inline RSVP form
+  // is enabled (same construction as DynamicBlockForm).
+  const rsvpData = inv.blocks
+    .map((b) => (b.type === 'rsvp-info' ? (b.data as RsvpInfoData) : null))
+    .find((d) => !!d?.useRsvpForm && !!d?.guestListSlug)
+  const guestLink = rsvpData
+    ? rsvpData.guestListLink || `${origin}/?guestlist=${rsvpData.guestListSlug}`
+    : ''
+
+  return (
+    <div className="space-y-3 rounded border border-ink-200 p-3">
+      <p className="text-[11px] uppercase tracking-widest text-ink-400">Links</p>
+      <CopyRow
+        label="Link público"
+        value={publicLink}
+        empty="Publica la invitación para generar el link."
+      />
+      <CopyRow
+        label="Link de invitados"
+        value={guestLink}
+        empty="Activa el formulario RSVP en el bloque Confirmación para generar el link de invitados."
+      />
     </div>
   )
 }
@@ -703,7 +459,7 @@ function LanguagesRow({
           return (
             <label
               key={lang}
-              className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400"
+              className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-surface px-3 py-2 text-xs text-ink-700 hover:border-ink-400"
             >
               <span className="font-medium">{LANGUAGE_LABELS[lang]}</span>
               <button
@@ -713,7 +469,7 @@ function LanguagesRow({
                 aria-pressed={on}
               >
                 <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
                     on ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
@@ -750,7 +506,7 @@ function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) 
       <p className="mt-0.5 text-[11px] text-ink-500">Icono de la pestaña en el navegador. Recomendado: PNG/SVG cuadrado, 32×32 o más.</p>
       <div className="mt-2 flex items-center gap-2">
         {value ? (
-          <img src={value} alt="Favicon" className="h-8 w-8 rounded border border-ink-200 bg-white object-contain" />
+          <img src={value} alt="Favicon" className="h-8 w-8 rounded border border-ink-200 bg-surface object-contain" />
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded border border-dashed border-ink-300 text-[10px] text-ink-400">
             —
@@ -871,7 +627,7 @@ function ShareImageRow({ value, onChange }: { value: string; onChange: (v: strin
           <img
             src={value}
             alt="Preview"
-            className="h-12 w-[92px] rounded border border-ink-200 bg-white object-cover"
+            className="h-12 w-[92px] rounded border border-ink-200 bg-surface object-cover"
           />
         ) : (
           <div className="flex h-12 w-[92px] items-center justify-center rounded border border-dashed border-ink-300 text-[10px] text-ink-400">
@@ -1035,8 +791,8 @@ function PageBackgroundRow({
                   onClick={() => onChange({ fit: f })}
                   className={`rounded border px-2 py-1.5 text-[11px] capitalize transition-colors ${
                     fit === f
-                      ? 'border-ink-900 bg-ink-900 text-white'
-                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                      ? 'border-ink-900 bg-ink-900 text-on-accent'
+                      : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
                   }`}
                 >
                   {f}
@@ -1057,8 +813,8 @@ function PageBackgroundRow({
                     onClick={() => onChange({ position: p.value })}
                     className={`h-7 w-7 rounded border text-xs ${
                       position === p.value
-                        ? 'border-ink-900 bg-ink-900 text-white'
-                        : 'border-ink-200 bg-white text-ink-500 hover:border-ink-400'
+                        ? 'border-ink-900 bg-ink-900 text-on-accent'
+                        : 'border-ink-200 bg-surface text-ink-500 hover:border-ink-400'
                     }`}
                   >
                     {p.label}
@@ -1079,8 +835,8 @@ function PageBackgroundRow({
                   onClick={() => onChange({ attachment: a })}
                   className={`rounded border px-2 py-1.5 text-[11px] transition-colors ${
                     attachment === a
-                      ? 'border-ink-900 bg-ink-900 text-white'
-                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                      ? 'border-ink-900 bg-ink-900 text-on-accent'
+                      : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
                   }`}
                 >
                   {a === 'fixed' ? 'Fijo (parallax)' : 'Scrollea'}
@@ -1132,7 +888,7 @@ function PageBackgroundRow({
                 type="color"
                 value={overlayColor}
                 onChange={(e) => onChange({ overlayColor: e.target.value })}
-                className="h-8 w-10 cursor-pointer rounded border border-ink-200 bg-white"
+                className="h-8 w-10 cursor-pointer rounded border border-ink-200 bg-surface"
               />
               <input
                 type="range"
@@ -1146,7 +902,7 @@ function PageBackgroundRow({
           </div>
 
           {/* Canvas transparency */}
-          <label className="mt-3 flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-xs">
+          <label className="mt-3 flex items-center justify-between gap-3 rounded border border-ink-200 bg-surface px-3 py-2 text-xs">
             <span className="text-ink-700">Tarjeta central transparente</span>
             <button
               type="button"
@@ -1157,7 +913,7 @@ function PageBackgroundRow({
               aria-pressed={transparentCanvas}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
                   transparentCanvas ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
@@ -1168,7 +924,7 @@ function PageBackgroundRow({
           </p>
 
           {/* Hide block backgrounds */}
-          <label className="mt-3 flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-xs">
+          <label className="mt-3 flex items-center justify-between gap-3 rounded border border-ink-200 bg-surface px-3 py-2 text-xs">
             <span className="text-ink-700">Ocultar fondos de bloques</span>
             <button
               type="button"
@@ -1179,7 +935,7 @@ function PageBackgroundRow({
               aria-pressed={hideBlockBackgrounds}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
                   hideBlockBackgrounds ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
@@ -1248,7 +1004,7 @@ function EnvelopeIntroRow({
           aria-label="Activar intro de sobre"
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
               enabled ? 'translate-x-4' : 'translate-x-0.5'
             }`}
           />
@@ -1317,7 +1073,7 @@ function EnvelopeIntroRow({
           </div>
 
           {/* Wax seal toggle */}
-          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
+          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-surface px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
             <span className="font-medium">Sello de cera</span>
             <span className="flex items-center gap-2">
               {showWax && (
@@ -1325,7 +1081,7 @@ function EnvelopeIntroRow({
                   type="color"
                   value={waxColor}
                   onChange={(e) => onChange({ waxColor: e.target.value })}
-                  className="h-5 w-7 cursor-pointer rounded border border-ink-200 bg-white"
+                  className="h-5 w-7 cursor-pointer rounded border border-ink-200 bg-surface"
                   aria-label="Color del sello"
                 />
               )}
@@ -1336,7 +1092,7 @@ function EnvelopeIntroRow({
                 aria-pressed={showWax}
               >
                 <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
                     showWax ? 'translate-x-4' : 'translate-x-0.5'
                   }`}
                 />
@@ -1345,7 +1101,7 @@ function EnvelopeIntroRow({
           </label>
 
           {/* Auto-open toggle */}
-          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
+          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-surface px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
             <span>
               <span className="font-medium">Abrir automáticamente</span>
               <span className="block text-[10px] text-ink-400">
@@ -1359,7 +1115,7 @@ function EnvelopeIntroRow({
               aria-pressed={autoOpen}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
                   autoOpen ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
@@ -1367,7 +1123,7 @@ function EnvelopeIntroRow({
           </label>
 
           {/* Always show on reload toggle */}
-          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-white px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
+          <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-surface px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
             <span>
               <span className="font-medium">Mostrar siempre al recargar</span>
               <span className="block text-[10px] text-ink-400">
@@ -1381,7 +1137,7 @@ function EnvelopeIntroRow({
               aria-pressed={alwaysShowOnReload}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
                   alwaysShowOnReload ? 'translate-x-4' : 'translate-x-0.5'
                 }`}
               />
@@ -1475,12 +1231,12 @@ function ColorField({
   return (
     <label className="flex flex-col gap-1">
       <span className="label-flat">{label}</span>
-      <span className="flex items-center gap-1.5 rounded border border-ink-200 bg-white px-2 py-1">
+      <span className="flex items-center gap-1.5 rounded border border-ink-200 bg-surface px-2 py-1">
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-5 w-6 shrink-0 cursor-pointer rounded border border-ink-200 bg-white"
+          className="h-5 w-6 shrink-0 cursor-pointer rounded border border-ink-200 bg-surface"
           aria-label={label}
         />
         <input
@@ -1553,7 +1309,7 @@ function MetricsRow() {
           aria-pressed={enabled}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
               enabled ? 'translate-x-4' : 'translate-x-0.5'
             }`}
           />
@@ -1655,7 +1411,7 @@ function SimpleToggleRow({
           aria-pressed={enabled}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
               enabled ? 'translate-x-4' : 'translate-x-0.5'
             }`}
           />
@@ -1769,7 +1525,7 @@ function PromoBannerRow() {
           aria-pressed={enabled}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
               enabled ? 'translate-x-4' : 'translate-x-0.5'
             }`}
           />
@@ -1824,7 +1580,7 @@ function PromoBannerRow() {
 
           <div className="space-y-2">
             {slides.map((s, i) => (
-              <div key={s.id} className="space-y-2 rounded border border-ink-200 bg-white p-3">
+              <div key={s.id} className="space-y-2 rounded border border-ink-200 bg-surface p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] uppercase tracking-widest text-ink-400">Slide {i + 1}</span>
                   <div className="flex items-center gap-1">
@@ -1894,7 +1650,7 @@ function PromoBannerRow() {
                   <button
                     type="button"
                     onClick={() => fileRefs.current[s.id]?.click()}
-                    className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                    className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
                   >
                     Subir
                   </button>
@@ -1984,7 +1740,7 @@ function SeasonsRow() {
           aria-pressed={on}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${
               on ? 'translate-x-4' : 'translate-x-0.5'
             }`}
           />
@@ -2000,7 +1756,7 @@ function SeasonsRow() {
               <div
                 key={v.id}
                 className={`flex flex-col gap-2 rounded border px-2.5 py-2 text-xs ${
-                  isEditing ? 'border-ink-900 bg-ink-50' : 'border-ink-200 bg-white'
+                  isEditing ? 'border-ink-900 bg-ink-50' : 'border-ink-200 bg-surface'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -2008,7 +1764,7 @@ function SeasonsRow() {
                     type="text"
                     value={v.label}
                     onChange={(e) => rename(v.id, e.target.value)}
-                    className="flex-1 rounded border border-ink-200 bg-white px-2 py-1 text-xs focus:border-ink-400 focus:outline-none"
+                    className="flex-1 rounded border border-ink-200 bg-surface px-2 py-1 text-xs focus:border-ink-400 focus:outline-none"
                   />
                   {!isEditing && (
                     <button

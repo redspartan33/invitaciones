@@ -69,7 +69,7 @@ export function MenuItemsForm({ block }: { block: InvitationBlock<'menu-section'
             <span className="font-medium"> (Nombre — Descripción — Precio)</span> o
             bloques separados por una línea vacía:
           </p>
-          <pre className="overflow-x-auto rounded bg-white p-2 text-[10px] leading-snug text-ink-500">{`Lorraine
+          <pre className="overflow-x-auto rounded bg-surface p-2 text-[10px] leading-snug text-ink-500">{`Lorraine
 Con tocino / with bacon.
 $133
 
@@ -116,7 +116,7 @@ $133`}</pre>
           {data.items.map((item) => (
             <SortableItem key={item.id} id={item.id}>
               {({ handleProps }) => (
-                <div className="space-y-2 rounded border border-ink-200 bg-white p-3">
+                <div className="space-y-2 rounded border border-ink-200 bg-surface p-3">
                   <div className="flex items-center gap-2">
                     <DragHandle handleProps={handleProps} />
                     <input
@@ -169,7 +169,7 @@ $133`}</pre>
                     <button
                       type="button"
                       onClick={() => fileRefs.current[item.id]?.click()}
-                      className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                      className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
                     >
                       Subir
                     </button>

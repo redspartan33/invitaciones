@@ -34,7 +34,7 @@ export function TimelineItemsForm({ block }: { block: InvitationBlock<'timeline'
           {data.items.map((item) => (
             <SortableItem key={item.id} id={item.id}>
               {({ handleProps }) => (
-                <div className="space-y-2 rounded border border-ink-200 bg-white p-3">
+                <div className="space-y-2 rounded border border-ink-200 bg-surface p-3">
                   <div className="flex items-center gap-2">
                     <DragHandle handleProps={handleProps} />
                     <input
@@ -74,8 +74,8 @@ export function TimelineItemsForm({ block }: { block: InvitationBlock<'timeline'
                         onClick={() => update(item.id, { icon: ic })}
                         className={`rounded border px-2 py-1 text-[10px] uppercase tracking-widest ${
                           item.icon === ic
-                            ? 'border-ink-900 bg-ink-900 text-white'
-                            : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                            ? 'border-ink-900 bg-ink-900 text-on-accent'
+                            : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
                         }`}
                       >
                         {ic}

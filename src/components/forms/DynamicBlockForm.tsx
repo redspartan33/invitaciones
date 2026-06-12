@@ -186,7 +186,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                     {sortedTextual.map((field) => (
                       <SortableItem key={field.name} id={field.name}>
                         {({ handleProps }) => (
-                          <div className="flex items-start gap-2 rounded border border-transparent bg-white p-1">
+                          <div className="flex items-start gap-2 rounded border border-transparent bg-surface p-1">
                             <DragHandle handleProps={handleProps} />
                             <div className="min-w-0 flex-1 space-y-1.5">
                               {renderFieldBody(field)}
@@ -215,7 +215,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {Boolean((block.data as Record<string, unknown>)['useRsvpForm']) && (
         <section className="space-y-3">
           <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Guestlist público</h3>
-          <div className="rounded-3xl border border-ink-200 bg-white px-4 py-4 shadow-sm shadow-ink-200/10">
+          <div className="rounded-3xl border border-ink-200 bg-surface px-4 py-4">
             <p className="text-sm text-ink-600">Copiar este link para compartir con tu cliente y ver quién ha confirmado.</p>
             {Boolean((block.data as Record<string, unknown>)['guestListLink']) ? (
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -273,8 +273,8 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                 onClick={() => updateBlockStyle(block.id, { itemSpacing: s })}
                 className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
                   current === s
-                    ? 'border-ink-900 bg-ink-900 text-white'
-                    : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                    ? 'border-ink-900 bg-ink-900 text-on-accent'
+                    : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
                 }`}
               >
                 {s}
@@ -332,7 +332,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {(block.type === 'event-details' || block.type === 'timeline') && (
         <section className="space-y-2">
           <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Iconos</h3>
-          <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-sm">
+          <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-surface px-3 py-2 text-sm">
             <span className="text-ink-700">Ocultar iconos del bloque</span>
             <button
               type="button"
@@ -341,7 +341,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
               aria-pressed={!!block.style?.hideIcons}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${block.style?.hideIcons ? 'translate-x-4' : 'translate-x-0.5'}`}
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${block.style?.hideIcons ? 'translate-x-4' : 'translate-x-0.5'}`}
               />
             </button>
           </label>
@@ -358,8 +358,8 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
               onClick={() => updateBlockStyle(block.id, { textSize: s })}
               className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
                 (block.style?.textSize ?? 'md') === s
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                  ? 'border-ink-900 bg-ink-900 text-on-accent'
+                  : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
               }`}
             >
               {s}
@@ -384,8 +384,8 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
                   onClick={() => updateBlockStyle(block.id, { paddingY: p, paddingTop: undefined, paddingBottom: undefined })}
                   className={`rounded border px-2 py-2 text-xs uppercase tracking-widest transition-colors ${
                     active
-                      ? 'border-ink-900 bg-ink-900 text-white'
-                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                      ? 'border-ink-900 bg-ink-900 text-on-accent'
+                      : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
                   }`}
                 >
                   {p}
@@ -396,7 +396,7 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
         </div>
 
         {/* Custom pixel sliders and inputs */}
-        <div className="space-y-3 rounded border border-ink-200 bg-white p-3">
+        <div className="space-y-3 rounded border border-ink-200 bg-surface p-3">
           <div>
             <div className="flex items-center justify-between label-flat">
               <span>Espaciado superior</span>
@@ -520,8 +520,8 @@ function BorderRadiusSection({
               onClick={() => onChange(opt.value)}
               className={`rounded border px-1.5 py-2 text-[10px] uppercase tracking-widest transition-colors ${
                 active
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                  ? 'border-ink-900 bg-ink-900 text-on-accent'
+                  : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
               }`}
               title={opt.value}
             >
@@ -597,7 +597,7 @@ function BlockBackgroundSection({
             type="color"
             value={backgroundColor || '#ffffff'}
             onChange={(e) => onChange({ backgroundColor: e.target.value })}
-            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
+            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-surface"
           />
           <input
             type="text"
@@ -632,7 +632,7 @@ function BlockBackgroundSection({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+            className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
           >
             Subir
           </button>
@@ -654,7 +654,7 @@ function BlockBackgroundSection({
             <button
               type="button"
               onClick={() => onChange({ backgroundImage: '' })}
-              className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-white"
+              className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-surface"
             >
               Quitar
             </button>
@@ -680,7 +680,7 @@ function BlockBackgroundSection({
               <button
                 type="button"
                 onClick={() => onChange({ backgroundVideo: '' })}
-                className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
               >
                 Quitar
               </button>
@@ -706,8 +706,8 @@ function BlockBackgroundSection({
                     onClick={() => onChange({ backgroundSize: s })}
                     className={`rounded border px-2 py-2 text-[11px] uppercase tracking-widest transition-colors ${
                       active
-                        ? 'border-ink-900 bg-ink-900 text-white'
-                        : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                        ? 'border-ink-900 bg-ink-900 text-on-accent'
+                        : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
                     }`}
                     title={
                       s === 'cover'
@@ -737,8 +737,8 @@ function BlockBackgroundSection({
                     title={p.value}
                     className={`flex h-9 items-center justify-center rounded border text-base transition-colors ${
                       active
-                        ? 'border-ink-900 bg-ink-900 text-white'
-                        : 'border-ink-200 bg-white text-ink-500 hover:border-ink-400'
+                        ? 'border-ink-900 bg-ink-900 text-on-accent'
+                        : 'border-ink-200 bg-surface text-ink-500 hover:border-ink-400'
                     }`}
                   >
                     {p.label}
@@ -785,8 +785,8 @@ function ElementStyleControls({
             title={`Tamaño ${s.toUpperCase()}`}
             className={`h-6 w-6 rounded border text-[10px] uppercase transition-colors ${
               activeSize === s
-                ? 'border-ink-900 bg-ink-900 text-white'
-                : 'border-ink-200 bg-white text-ink-500 hover:border-ink-400'
+                ? 'border-ink-900 bg-ink-900 text-on-accent'
+                : 'border-ink-200 bg-surface text-ink-500 hover:border-ink-400'
             }`}
           >
             {s}
@@ -800,8 +800,8 @@ function ElementStyleControls({
           title="Negrita"
           className={`h-6 w-6 rounded border text-[11px] font-bold transition-colors ${
             activeBold
-              ? 'border-ink-900 bg-ink-900 text-white'
-              : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+              ? 'border-ink-900 bg-ink-900 text-on-accent'
+              : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
           }`}
           aria-pressed={activeBold}
         >
@@ -815,8 +815,8 @@ function ElementStyleControls({
           title="Cursiva"
           className={`h-6 w-6 rounded border text-[11px] italic transition-colors ${
             activeItalic
-              ? 'border-ink-900 bg-ink-900 text-white'
-              : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+              ? 'border-ink-900 bg-ink-900 text-on-accent'
+              : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
           }`}
           aria-pressed={activeItalic}
         >

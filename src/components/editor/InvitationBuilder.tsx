@@ -145,14 +145,14 @@ export function InvitationBuilder() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-sm text-ink-500 font-medium">
+      <div className="flex h-screen items-center justify-center bg-surface text-sm text-ink-500 font-medium">
         <span className="animate-pulse">Cargando editor de invitaciones…</span>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen flex-col bg-white">
+    <div className="flex h-screen flex-col bg-surface">
       <EditorHeader />
       <div className="flex flex-1 overflow-hidden">
         <Canvas />

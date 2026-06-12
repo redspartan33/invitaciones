@@ -55,7 +55,7 @@ function renderInput(
       )
     case 'toggle':
       return (
-        <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-white px-3 py-2 text-sm">
+        <label className="flex items-center justify-between gap-3 rounded border border-ink-200 bg-surface px-3 py-2 text-sm">
           <span className="text-ink-700">{field.label}</span>
           <button
             type="button"
@@ -64,7 +64,7 @@ function renderInput(
             aria-pressed={!!value}
           >
             <span
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${value ? 'translate-x-4' : 'translate-x-0.5'}`}
+              className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-transform ${value ? 'translate-x-4' : 'translate-x-0.5'}`}
             />
           </button>
         </label>
@@ -77,7 +77,7 @@ function renderInput(
             id={id}
             value={(value as string) || '#ffffff'}
             onChange={(e) => onChange(e.target.value)}
-            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-white"
+            className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-surface"
           />
           <input
             type="text"
@@ -147,7 +147,7 @@ function ImageField({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="rounded border border-ink-200 bg-white px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+          className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
         >
           Subir
         </button>
@@ -169,7 +169,7 @@ function ImageField({
           <button
             type="button"
             onClick={() => onChange('')}
-            className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-white"
+            className="absolute right-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-700 hover:bg-surface"
           >
             Quitar
           </button>
