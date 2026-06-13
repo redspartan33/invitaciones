@@ -17,7 +17,7 @@ import { applyBlockTranslation } from '../../utils/translation'
 import { EnvelopeIntro } from './EnvelopeIntro'
 import { FixedCanvasView } from './FixedCanvasView'
 import { FloatingBlock } from '../blocks/FloatingBlock'
-import { canvasFloatStyle, isScreenAnchored, screenFloatStyle } from '../../utils/floatingLayout'
+import { canvasFloatStyle, isScreenAnchored, screenFloatStyle, useFloatView } from '../../utils/floatingLayout'
 import { recordInteraction, recordView, type InteractionAction } from '../../utils/viewTracking'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
@@ -79,6 +79,8 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
   )
   const canvasFloats = floatingBlocks.filter((b) => !isScreenAnchored(b))
   const screenFloats = floatingBlocks.filter((b) => isScreenAnchored(b))
+  // Canvas floats are laid out independently per breakpoint; pick the live one.
+  const floatView = useFloatView()
 
   // Pre-compute the section list so the public sticky nav reflects exactly
   // what's about to render (without needing the editor store). Uses the
@@ -199,7 +201,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
 
   return (
     <div
-      className={`invitation-canvas relative min-h-screen w-full ${fontClass}`}
+      className={`invitation-canvas relative min-h-screen w-full overflow-x-clip ${fontClass}`}
       style={
         {
           ...themeVars,
@@ -259,7 +261,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
             </div>
           ))}
           {canvasFloats.map((block) => (
-            <div key={block.id} style={canvasFloatStyle(block)}>
+            <div key={block.id} style={canvasFloatStyle(block, floatView)}>
               <FloatingBlock block={block} />
             </div>
           ))}

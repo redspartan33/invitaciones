@@ -1,8 +1,13 @@
 import { useRef } from 'react'
 import { useEditorStore } from '../../store/editorStore'
-import type { InvitationBlock } from '../../types/invitation.types'
+import type { FloatView, InvitationBlock } from '../../types/invitation.types'
 import { FloatingBlock } from '../blocks/FloatingBlock'
-import { canvasFloatStyle, isScreenAnchored, screenFloatStyle } from '../../utils/floatingLayout'
+import {
+  canvasFloatStyle,
+  isScreenAnchored,
+  resolveFloatLayout,
+  screenFloatStyle,
+} from '../../utils/floatingLayout'
 import { EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
 
 /**
@@ -14,6 +19,10 @@ import { EyeIcon, TrashIcon, CopyIcon } from '../blocks/icons'
  */
 export function FloatingLayer({ blocks }: { blocks: InvitationBlock<'floating'>[] }) {
   const layerRef = useRef<HTMLDivElement>(null)
+  // Mobile and desktop floats are edited independently. The editor's viewport
+  // selector decides which breakpoint we're authoring; tablet shares desktop.
+  const viewport = useEditorStore((s) => s.viewport)
+  const view: FloatView = viewport === 'mobile' ? 'mobile' : 'desktop'
   if (blocks.length === 0) return null
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0 z-20">
@@ -21,6 +30,7 @@ export function FloatingLayer({ blocks }: { blocks: InvitationBlock<'floating'>[
         <FloatingItem
           key={block.id}
           block={block}
+          view={view}
           layerRef={layerRef}
           interactive={!isScreenAnchored(block)}
         />
@@ -31,24 +41,40 @@ export function FloatingLayer({ blocks }: { blocks: InvitationBlock<'floating'>[
 
 const clamp = (min: number, max: number, v: number) => Math.max(min, Math.min(max, v))
 
+// Floating blocks may be dragged well past the canvas edges so a sticker can
+// bleed off the "body" freely. The published view clips this overflow
+// (overflow-x-clip on the public root), so it never produces a horizontal
+// scrollbar — it just reads as the element running off the edge. The clamp is
+// generous (not tight) only so an element can't be flung completely out of reach.
+const OVERFLOW_X = 80 // % a float may extend past the left/right edges
+const OVERFLOW_Y = 50 // % a float may extend past the top/bottom edges
+
 type Corner = 'nw' | 'ne' | 'sw' | 'se'
 
 function FloatingItem({
   block,
+  view,
   layerRef,
   interactive,
 }: {
   block: InvitationBlock<'floating'>
+  view: FloatView
   layerRef: React.RefObject<HTMLDivElement | null>
   interactive: boolean
 }) {
   const selectedId = useEditorStore((s) => s.selectedBlockId)
   const selectBlock = useEditorStore((s) => s.selectBlock)
-  const updateBlockLayout = useEditorStore((s) => s.updateBlockLayout)
+  const updateFloatView = useEditorStore((s) => s.updateFloatView)
   const deleteBlock = useEditorStore((s) => s.deleteBlock)
   const duplicateBlock = useEditorStore((s) => s.duplicateBlock)
   const toggleVisibility = useEditorStore((s) => s.toggleBlockVisibility)
   const selected = selectedId === block.id
+
+  // Current resolved placement for the breakpoint being edited. Handlers read
+  // from here so dragging/resizing/rotating start from what's on screen.
+  const layout = resolveFloatLayout(block, view)
+  const setLayout = (patch: Partial<{ xPct: number; yPct: number; wPct: number; rotation: number }>) =>
+    updateFloatView(block.id, view, patch)
 
   const itemRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null)
@@ -60,7 +86,7 @@ function FloatingItem({
 
   const style = isScreenAnchored(block)
     ? screenFloatStyle(block, 'absolute')
-    : canvasFloatStyle(block)
+    : canvasFloatStyle(block, view)
 
   // ── Move ────────────────────────────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent) => {
@@ -70,8 +96,8 @@ function FloatingItem({
     drag.current = {
       startX: e.clientX,
       startY: e.clientY,
-      baseX: block.layout?.xPct ?? 36,
-      baseY: block.layout?.yPct ?? 8,
+      baseX: layout.xPct,
+      baseY: layout.yPct,
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
@@ -82,9 +108,9 @@ function FloatingItem({
     if (!rect || rect.width === 0 || rect.height === 0) return
     const dxPct = ((e.clientX - drag.current.startX) / rect.width) * 100
     const dyPct = ((e.clientY - drag.current.startY) / rect.height) * 100
-    updateBlockLayout(block.id, {
-      xPct: clamp(0, 98, drag.current.baseX + dxPct),
-      yPct: clamp(0, 99, drag.current.baseY + dyPct),
+    setLayout({
+      xPct: clamp(-OVERFLOW_X, 100 + OVERFLOW_X, drag.current.baseX + dxPct),
+      yPct: clamp(-OVERFLOW_Y, 100 + OVERFLOW_Y, drag.current.baseY + dyPct),
     })
   }
 
@@ -103,9 +129,9 @@ function FloatingItem({
       handle,
       startX: e.clientX,
       startY: e.clientY,
-      baseW: block.layout?.wPct ?? 28,
-      baseX: block.layout?.xPct ?? 36,
-      rad: ((block.layout?.rotation ?? 0) * Math.PI) / 180,
+      baseW: layout.wPct,
+      baseX: layout.xPct,
+      rad: (layout.rotation * Math.PI) / 180,
       layerW: rect.width,
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
@@ -124,8 +150,8 @@ function FloatingItem({
     // Left handles grow toward the left (width up, x shifts so the right edge
     // stays put); right handles grow toward the right with x fixed.
     const w = clamp(5, 100, onLeft ? r.baseW - dPct : r.baseW + dPct)
-    const x = onLeft ? clamp(0, 99, r.baseX + (r.baseW - w)) : r.baseX
-    updateBlockLayout(block.id, { wPct: w, xPct: x })
+    const x = onLeft ? clamp(-OVERFLOW_X, 100 + OVERFLOW_X, r.baseX + (r.baseW - w)) : r.baseX
+    setLayout({ wPct: w, xPct: x })
   }
 
   const endResize = (e: React.PointerEvent) => {
@@ -156,7 +182,7 @@ function FloatingItem({
         break
       }
     }
-    updateBlockLayout(block.id, { rotation: Math.round(deg) })
+    setLayout({ rotation: Math.round(deg) })
   }
 
   const endRotate = (e: React.PointerEvent) => {
@@ -165,7 +191,7 @@ function FloatingItem({
   }
 
   const showHandles = selected && interactive
-  const rotation = block.layout?.rotation ?? 0
+  const rotation = layout.rotation
 
   return (
     <div
@@ -193,6 +219,21 @@ function FloatingItem({
       {/* Resize + rotate handles (canvas-anchored, selected only) */}
       {showHandles && (
         <>
+          {/* Corner rotation zones — a wide grab area centered on each corner so
+              that approaching a corner (just outside the small resize dot) lets
+              you rotate. The resize dot sits on top (higher z) for the exact
+              corner, the surrounding ring rotates. */}
+          {(['nw', 'ne', 'sw', 'se'] as Corner[]).map((c) => (
+            <div
+              key={`rot-${c}`}
+              onPointerDown={startRotate}
+              onPointerMove={moveRotate}
+              onPointerUp={endRotate}
+              title={`Girar (${rotation}°) — arrastra desde la esquina`}
+              className={`absolute z-10 h-8 w-8 cursor-grab rounded-full active:cursor-grabbing ${rotateCornerPos(c)}`}
+            />
+          ))}
+
           {(['nw', 'ne', 'sw', 'se'] as Corner[]).map((c) => (
             <div
               key={c}
@@ -200,7 +241,7 @@ function FloatingItem({
               onPointerMove={moveResize}
               onPointerUp={endResize}
               title="Estirar"
-              className={`absolute z-10 h-3 w-3 rounded-full border-2 border-sky-500 bg-white shadow-sm ${cornerPos(c)} ${
+              className={`absolute z-30 h-3 w-3 rounded-full border-2 border-sky-500 bg-white shadow-sm ${cornerPos(c)} ${
                 c === 'nw' || c === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize'
               }`}
             />
@@ -216,7 +257,7 @@ function FloatingItem({
             onPointerMove={moveRotate}
             onPointerUp={endRotate}
             title={`Girar (${rotation}°)`}
-            className="absolute left-1/2 -top-9 z-10 flex h-5 w-5 -translate-x-1/2 cursor-grab items-center justify-center rounded-full border-2 border-sky-500 bg-white shadow-sm active:cursor-grabbing"
+            className="absolute left-1/2 -top-9 z-30 flex h-5 w-5 -translate-x-1/2 cursor-grab items-center justify-center rounded-full border-2 border-sky-500 bg-white shadow-sm active:cursor-grabbing"
           >
             <RotateIcon className="h-3 w-3 text-sky-500" />
           </div>
@@ -275,6 +316,21 @@ function cornerPos(c: Corner): string {
       return '-left-1.5 -bottom-1.5'
     case 'se':
       return '-right-1.5 -bottom-1.5'
+  }
+}
+
+// Center a wide (h-8 w-8 = 32px) rotation grab zone on each corner: half its
+// size (16px) of negative offset on each relevant edge.
+function rotateCornerPos(c: Corner): string {
+  switch (c) {
+    case 'nw':
+      return '-left-4 -top-4'
+    case 'ne':
+      return '-right-4 -top-4'
+    case 'sw':
+      return '-left-4 -bottom-4'
+    case 'se':
+      return '-right-4 -bottom-4'
   }
 }
 

@@ -157,7 +157,7 @@ function StackedCanvas() {
     >
       <div className="absolute left-1/2 top-3 z-10 h-1 w-12 -translate-x-1/2 rounded-full bg-ink-300" />
       <div
-        className="relative h-full w-full overflow-y-auto rounded-[28px] border border-ink-200 scroll-thin"
+        className="relative h-full w-full overflow-y-auto overflow-x-clip rounded-[28px] border border-ink-200 scroll-thin"
         style={{ width: dim.width, height: dim.height, background: hasPageBackground ? 'transparent' : 'white', ...frameIsolation }}
       >
         {hasPageBackground && (
@@ -172,7 +172,7 @@ function StackedCanvas() {
       style={{ width: dim.width + 24, height: dim.height + 24 }}
     >
       <div
-        className="relative h-full w-full overflow-y-auto rounded-[14px] border border-ink-200 scroll-thin"
+        className="relative h-full w-full overflow-y-auto overflow-x-clip rounded-[14px] border border-ink-200 scroll-thin"
         style={{ width: dim.width, height: dim.height, background: hasPageBackground ? 'transparent' : 'white', ...frameIsolation }}
       >
         {hasPageBackground && (
@@ -183,7 +183,7 @@ function StackedCanvas() {
     </div>
   ) : (
     <div
-      className="relative w-full max-w-full border border-ink-200"
+      className="relative w-full max-w-full overflow-x-clip border border-ink-200"
       style={{ maxWidth: dim.width, background: hasPageBackground ? 'transparent' : 'white', ...frameIsolation }}
     >
       {hasPageBackground && (

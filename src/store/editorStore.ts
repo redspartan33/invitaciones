@@ -4,6 +4,9 @@ import type {
   BlockType,
   CanvasAspect,
   ElementLayout,
+  FloatingData,
+  FloatView,
+  FloatViewLayout,
   GlobalSettings,
   Invitation,
   InvitationBlock,
@@ -12,6 +15,7 @@ import type {
   MenuVariant,
   ViewportMode,
 } from '../types/invitation.types'
+import { floatViewLayout } from '../utils/floatingLayout'
 import { createBlock, createExampleInvitation, createExampleMenu, defaultLayoutFor } from '../utils/blockDefaults'
 import { saveToRegistry, deleteFromRegistry, loadFromRegistry } from '../utils/inviteRegistry'
 import { extractAndUploadAssets } from '../utils/publishAssets'
@@ -52,6 +56,7 @@ interface EditorState {
   updateBlockData: (id: string, data: Record<string, unknown>) => void
   updateBlockStyle: (id: string, style: Record<string, unknown>) => void
   updateBlockLayout: (id: string, layout: Partial<ElementLayout>) => void
+  updateFloatView: (id: string, view: FloatView, patch: Partial<FloatViewLayout>) => void
   bringToFront: (id: string) => void
   sendToBack: (id: string) => void
   toggleBlockVisibility: (id: string) => void
@@ -160,6 +165,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
               }
             : b,
         ),
+      ),
+    })),
+
+  // Per-view placement for a canvas-anchored float. Writes only into the given
+  // breakpoint (data.views[view]) so mobile and desktop stay independent. Seeds
+  // the view from its currently-resolved layout so the first drag doesn't jump.
+  updateFloatView: (id, view, patch) =>
+    set((s) => ({
+      invitation: mergeBlocks(
+        s.invitation,
+        s.invitation.blocks.map((b) => {
+          if (b.id !== id || b.type !== 'floating') return b
+          const block = b as InvitationBlock<'floating'>
+          const data = block.data as FloatingData
+          const current = floatViewLayout(block, view)
+          const next: FloatViewLayout = { ...current, ...patch }
+          return { ...b, data: { ...data, views: { ...data.views, [view]: next } } }
+        }),
       ),
     })),
 

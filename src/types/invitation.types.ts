@@ -378,6 +378,26 @@ export interface ShapeElementData {
  *  - anchorMode 'screen': pinned to a viewport corner, stays visible while the
  *    guest scrolls (like a sticker / badge).
  */
+/** Breakpoints a canvas-anchored float can be laid out for, independently. */
+export type FloatView = 'mobile' | 'desktop'
+
+/**
+ * Position, size and rotation of a canvas-anchored floating block within the
+ * invitation column, stored per breakpoint. All values are relative to the
+ * column box for that view, so the float keeps its proportion as the column
+ * scales. zIndex/lock live on `block.layout` (shared across views).
+ */
+export interface FloatViewLayout {
+  /** Left edge, as % of column width. */
+  xPct: number
+  /** Top edge, as % of column height. */
+  yPct: number
+  /** Width, as % of column width. */
+  wPct: number
+  /** Rotation in degrees. Defaults to 0. */
+  rotation?: number
+}
+
 export interface FloatingData {
   imageUrl?: string
   imageAlt?: string
@@ -406,6 +426,16 @@ export interface FloatingData {
     | 'bottom-center'
   /** Width (px) of the floating box when anchorMode === 'screen'. Defaults to 160. */
   screenWidth?: number
+  /**
+   * Per-breakpoint placement for a canvas-anchored float. Each view is edited
+   * and rendered independently so a sticker keeps the exact size, position and
+   * rotation defined for that view. When a view is unset it falls back to a
+   * size-matched version of the other view (so a mobile design doesn't balloon
+   * on the wider desktop column). Percentages are relative to the invitation
+   * column for that view. The legacy `block.layout` is treated as the mobile
+   * design for floats authored before per-view layouts existed.
+   */
+  views?: Partial<Record<FloatView, FloatViewLayout>>
   /**
    * Drop-shadow under the floating element. Rendered as a `drop-shadow()`
    * filter so it follows the alpha contour of PNG/SVG stickers. 'none' by
