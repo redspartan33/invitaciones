@@ -17,68 +17,137 @@ type OpenAnimation = NonNullable<EnvelopeIntroConfig['openAnimation']>
 // handoff to the real invitation. The flap-open + card choreography is shared;
 // only this exit transition (plus optional particle layers) changes.
 const OVERLAY_EXIT: Record<OpenAnimation, { exit: TargetAndTransition; transition: Transition }> = {
-  classic: { exit: { opacity: 0 }, transition: { duration: 0.45 } },
-  'zoom-burst': { exit: { opacity: 0, scale: 1.6 }, transition: { duration: 0.6, ease: EASE_SMOOTH } },
-  curtain: { exit: { opacity: 0, clipPath: 'inset(0 50% 0 50%)' }, transition: { duration: 0.6, ease: EASE_FLAP } },
-  dissolve: { exit: { opacity: 0, filter: 'blur(22px)' }, transition: { duration: 0.7, ease: EASE_SMOOTH } },
-  sparkle: { exit: { opacity: 0 }, transition: { duration: 0.5 } },
-  petals: { exit: { opacity: 0 }, transition: { duration: 0.6 } },
+  classic: { exit: { opacity: 0, scale: 1.04, filter: 'blur(4px)' }, transition: { duration: 0.55, ease: EASE_SMOOTH } },
+  'zoom-burst': { exit: { opacity: 0, scale: 1.8, rotate: 1.5 }, transition: { duration: 0.7, ease: EASE_SMOOTH } },
+  curtain: { exit: { opacity: 0, clipPath: 'inset(0 50% 0 50%)' }, transition: { duration: 0.65, ease: EASE_FLAP } },
+  dissolve: { exit: { opacity: 0, filter: 'blur(26px) brightness(1.4)', scale: 1.08 }, transition: { duration: 0.8, ease: EASE_SMOOTH } },
+  sparkle: { exit: { opacity: 0, scale: 1.06 }, transition: { duration: 0.6, ease: EASE_SMOOTH } },
+  petals: { exit: { opacity: 0 }, transition: { duration: 0.7 } },
+  confetti: { exit: { opacity: 0, scale: 1.05 }, transition: { duration: 0.6, ease: EASE_SMOOTH } },
 }
 
 // Deterministic particle seeds so the layers don't reshuffle each render.
-const SPARKLES = Array.from({ length: 16 }, (_, i) => ({
+const SPARKLES = Array.from({ length: 26 }, (_, i) => ({
   left: (i * 61) % 100,
   top: (i * 37 + 8) % 100,
-  delay: (i % 8) * 0.22,
-  size: 6 + (i % 4) * 4,
+  delay: (i % 9) * 0.18,
+  size: 5 + (i % 5) * 5,
+  spin: i % 2 === 0 ? 180 : -180,
 }))
-const PETALS = Array.from({ length: 14 }, (_, i) => ({
+const PETALS = Array.from({ length: 20 }, (_, i) => ({
   left: (i * 53 + 5) % 100,
-  delay: (i % 7) * 0.5,
-  duration: 4 + (i % 5),
-  drift: ((i % 5) - 2) * 30,
-  size: 12 + (i % 4) * 6,
-  hue: [340, 350, 20, 45][i % 4],
+  delay: (i % 8) * 0.45,
+  duration: 4 + (i % 6),
+  drift: ((i % 7) - 3) * 26,
+  size: 12 + (i % 5) * 6,
+  sway: ((i % 3) + 1) * 18,
+  hue: [340, 350, 20, 45, 300][i % 5],
+}))
+const CONFETTI = Array.from({ length: 40 }, (_, i) => ({
+  left: (i * 37 + 3) % 100,
+  delay: (i % 10) * 0.18,
+  duration: 3 + (i % 5) * 0.6,
+  drift: ((i % 9) - 4) * 24,
+  w: 6 + (i % 3) * 3,
+  h: 9 + (i % 4) * 4,
+  spin: (i % 2 === 0 ? 1 : -1) * (360 + (i % 3) * 180),
+  hue: [350, 45, 140, 200, 280, 20][i % 6],
 }))
 
-function SparkleLayer() {
+/** A single particle body — a user image/SVG when provided, else the built-in
+ *  `fallback` shape. */
+function Particle({ image, fallback }: { image?: string; fallback: React.ReactNode }) {
+  if (image) return <img src={image} alt="" className="h-full w-full object-contain" draggable={false} />
+  return <>{fallback}</>
+}
+
+function SparkleLayer({ image, color }: { image?: string; color?: string }) {
+  const tint = color || '#ffe5a3'
   return (
     <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
       {SPARKLES.map((s, i) => (
         <motion.span
           key={i}
           className="absolute"
-          style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size }}
+          style={{
+            left: `${s.left}%`,
+            top: `${s.top}%`,
+            width: s.size,
+            height: s.size,
+            filter: image ? undefined : `drop-shadow(0 0 ${s.size / 2}px ${tint})`,
+          }}
           initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], rotate: [0, 90, 180] }}
-          transition={{ duration: 1.6, delay: s.delay, repeat: Infinity, repeatDelay: 0.6, ease: 'easeInOut' }}
+          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], rotate: [0, s.spin] }}
+          transition={{ duration: 1.5, delay: s.delay, repeat: Infinity, repeatDelay: 0.5, ease: 'easeInOut' }}
         >
-          <svg viewBox="0 0 24 24" width="100%" height="100%" fill="#fff" aria-hidden>
-            <path d="M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z" />
-          </svg>
+          <Particle
+            image={image}
+            fallback={
+              <svg viewBox="0 0 24 24" width="100%" height="100%" fill={tint} aria-hidden>
+                <path d="M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z" />
+              </svg>
+            }
+          />
         </motion.span>
       ))}
     </div>
   )
 }
 
-function PetalsLayer() {
+function PetalsLayer({ image, color }: { image?: string; color?: string }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
       {PETALS.map((p, i) => (
         <motion.span
           key={i}
-          className="absolute -top-10 block rounded-[100%_0_100%_0]"
-          style={{
-            left: `${p.left}%`,
-            width: p.size,
-            height: p.size,
-            background: `hsl(${p.hue} 70% 78%)`,
-          }}
+          className="absolute -top-12 block"
+          style={{ left: `${p.left}%`, width: p.size, height: p.size }}
           initial={{ y: -40, x: 0, opacity: 0, rotate: 0 }}
-          animate={{ y: '110vh', x: p.drift, opacity: [0, 1, 1, 0.7], rotate: 360 }}
+          animate={{
+            y: '112vh',
+            x: [0, p.sway, -p.sway, p.drift],
+            opacity: [0, 1, 1, 0.7],
+            rotate: [0, 220, 360],
+          }}
           transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeIn' }}
-        />
+        >
+          <Particle
+            image={image}
+            fallback={
+              <span
+                className="block h-full w-full rounded-[100%_0_100%_0]"
+                style={{ background: color || `hsl(${p.hue} 72% 78%)` }}
+              />
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+function ConfettiLayer({ image, color }: { image?: string; color?: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+      {CONFETTI.map((c, i) => (
+        <motion.span
+          key={i}
+          className="absolute -top-10 block"
+          style={{ left: `${c.left}%`, width: image ? c.h : c.w, height: c.h }}
+          initial={{ y: -30, x: 0, opacity: 0, rotate: 0 }}
+          animate={{ y: '114vh', x: [0, c.drift, -c.drift / 2], opacity: [0, 1, 1, 0.85], rotate: c.spin }}
+          transition={{ duration: c.duration, delay: c.delay, repeat: Infinity, ease: 'easeIn' }}
+        >
+          <Particle
+            image={image}
+            fallback={
+              <span
+                className="block h-full w-full rounded-[2px]"
+                style={{ background: color || `hsl(${c.hue} 85% 60%)` }}
+              />
+            }
+          />
+        </motion.span>
       ))}
     </div>
   )
@@ -129,9 +198,12 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
   const showWax = !!config.wax
   const openAnimation: OpenAnimation = config.openAnimation || 'classic'
   const bgImage = (config.backgroundImage || '').trim()
+  const particleImage = (config.particleImage || '').trim() || undefined
+  const particleColor = (config.particleColor || '').trim() || undefined
   const exitSpec = OVERLAY_EXIT[openAnimation]
   const showSparkles = openAnimation === 'sparkle' && (stage === 'opening' || stage === 'leaving')
   const showPetals = openAnimation === 'petals' && stage !== 'gone'
+  const showConfetti = openAnimation === 'confetti' && stage !== 'gone'
 
   // Tone variants used for shading the front/flap so the envelope feels 3D.
   const shaded = useMemo(() => shadeColor(envelopeColor, -8), [envelopeColor])
@@ -206,8 +278,9 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
               }}
             />
           )}
-          {showPetals && <PetalsLayer />}
-          {showSparkles && <SparkleLayer />}
+          {showPetals && <PetalsLayer image={particleImage} color={particleColor} />}
+          {showSparkles && <SparkleLayer image={particleImage} color={particleColor} />}
+          {showConfetti && <ConfettiLayer image={particleImage} color={particleColor} />}
           <EnvelopeStage
             stage={stage}
             envelopeColor={envelopeColor}

@@ -247,6 +247,10 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
       {block.type === 'menu-header' && <MenuNavItemsForm block={block as InvitationBlock<'menu-header'>} />}
 
+      {block.type === 'floating' && (
+        <FloatingShadowSection block={block as InvitationBlock<'floating'>} />
+      )}
+
       <EntryAnimationSection
         value={block.style?.entryAnimation ?? 'none'}
         onChange={(v) => updateBlockStyle(block.id, { entryAnimation: v })}
@@ -857,6 +861,111 @@ function ElementStyleControls({
         </button>
       )}
     </div>
+  )
+}
+
+const SHADOW_PRESETS: { value: NonNullable<import('../../types/invitation.types').FloatingData['shadow']>; label: string }[] = [
+  { value: 'none', label: 'Sin' },
+  { value: 'soft', label: 'Suave' },
+  { value: 'medium', label: 'Media' },
+  { value: 'strong', label: 'Fuerte' },
+  { value: 'custom', label: 'Avanzada' },
+]
+
+function FloatingShadowSection({ block }: { block: InvitationBlock<'floating'> }) {
+  const update = useEditorStore((s) => s.updateBlockData)
+  const d = block.data
+  const shadow = d.shadow ?? 'none'
+  const set = (patch: Record<string, unknown>) => update(block.id, patch)
+
+  const Slider = ({
+    label,
+    field,
+    min,
+    max,
+    fallback,
+    unit = 'px',
+  }: {
+    label: string
+    field: 'shadowBlur' | 'shadowX' | 'shadowY' | 'shadowOpacity'
+    min: number
+    max: number
+    fallback: number
+    unit?: string
+  }) => {
+    const value = (d[field] as number | undefined) ?? fallback
+    return (
+      <div>
+        <div className="flex items-center justify-between label-flat">
+          <span>{label}</span>
+          <span className="text-[10px] font-mono text-ink-400">
+            {value}
+            {unit}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => set({ [field]: Number(e.target.value) })}
+          className="w-full accent-ink-900"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <section className="space-y-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Sombra</h3>
+      <div className="grid grid-cols-5 gap-1.5">
+        {SHADOW_PRESETS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => set({ shadow: o.value })}
+            className={`rounded border px-1 py-2 text-[10px] uppercase tracking-widest transition-colors ${
+              shadow === o.value
+                ? 'border-ink-900 bg-ink-900 text-on-accent'
+                : 'border-ink-200 bg-surface text-ink-600 hover:border-ink-400'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      {shadow === 'custom' && (
+        <div className="space-y-3 rounded border border-ink-200 bg-surface p-3">
+          <div>
+            <label className="label-flat">Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={d.shadowColor || '#000000'}
+                onChange={(e) => set({ shadowColor: e.target.value })}
+                className="h-9 w-12 cursor-pointer rounded border border-ink-200 bg-surface"
+              />
+              <input
+                type="text"
+                value={d.shadowColor ?? ''}
+                onChange={(e) => set({ shadowColor: e.target.value })}
+                placeholder="#000000"
+                className="input-flat flex-1"
+              />
+            </div>
+          </div>
+          <Slider label="Desenfoque" field="shadowBlur" min={0} max={80} fallback={18} />
+          <Slider label="Desplazamiento X" field="shadowX" min={-60} max={60} fallback={0} />
+          <Slider label="Desplazamiento Y" field="shadowY" min={-60} max={60} fallback={8} />
+          <Slider label="Opacidad" field="shadowOpacity" min={0} max={100} fallback={30} unit="%" />
+        </div>
+      )}
+
+      <p className="text-[11px] text-ink-400">
+        La sombra sigue el contorno de la imagen — ideal para stickers PNG/SVG.
+      </p>
+    </section>
   )
 }
 

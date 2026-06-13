@@ -975,6 +975,8 @@ function EnvelopeIntroRow({
   const alwaysShowOnReload = !!config?.alwaysShowOnReload
   const backgroundImage = config?.backgroundImage ?? ''
   const openAnimation = config?.openAnimation ?? 'classic'
+  const particleImage = config?.particleImage ?? ''
+  const particleColor = config?.particleColor ?? ''
 
   // Force the EnvelopeIntro overlay to re-mount each time the user presses
   // "Vista previa", since the component caches its own stage state.
@@ -1105,8 +1107,47 @@ function EnvelopeIntroRow({
               <option value="dissolve">Disolución (blur)</option>
               <option value="sparkle">Destellos ✨</option>
               <option value="petals">Pétalos cayendo 🌸</option>
+              <option value="confetti">Confeti 🎉</option>
             </select>
           </div>
+
+          {/* Particle customization — only for particle-based animations */}
+          {(openAnimation === 'sparkle' || openAnimation === 'petals' || openAnimation === 'confetti') && (
+            <div className="space-y-3 rounded border border-ink-200 bg-surface p-3">
+              <p className="text-[11px] uppercase tracking-widest text-ink-400">Partículas</p>
+              <div>
+                <label className="label-flat">Imagen / SVG (opcional)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={particleImage}
+                    onChange={(e) => onChange({ particleImage: e.target.value })}
+                    placeholder="https://… (PNG o SVG)"
+                    className="input-flat flex-1"
+                  />
+                  {particleImage && (
+                    <button
+                      type="button"
+                      onClick={() => onChange({ particleImage: '' })}
+                      className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 text-[10px] text-ink-400">
+                  Si la dejas vacía se usan las partículas predeterminadas (estrellas, pétalos o confeti).
+                </p>
+              </div>
+              {!particleImage && (
+                <ColorField
+                  label="Color de partículas"
+                  value={particleColor || (openAnimation === 'sparkle' ? '#ffe5a3' : '#f5a3c7')}
+                  onChange={(v) => onChange({ particleColor: v })}
+                />
+              )}
+            </div>
+          )}
 
           {/* Wax seal toggle */}
           <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-surface px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
@@ -1215,6 +1256,8 @@ function EnvelopeIntroRow({
                 cardPreviewImage,
                 backgroundImage,
                 openAnimation,
+                particleImage,
+                particleColor,
                 wax: showWax,
                 waxColor,
                 hintLabel,

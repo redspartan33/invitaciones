@@ -406,6 +406,22 @@ export interface FloatingData {
     | 'bottom-center'
   /** Width (px) of the floating box when anchorMode === 'screen'. Defaults to 160. */
   screenWidth?: number
+  /**
+   * Drop-shadow under the floating element. Rendered as a `drop-shadow()`
+   * filter so it follows the alpha contour of PNG/SVG stickers. 'none' by
+   * default. 'custom' uses the shadow* fields below for full control.
+   */
+  shadow?: 'none' | 'soft' | 'medium' | 'strong' | 'custom'
+  /** Custom shadow color (hex). Used when shadow === 'custom'. */
+  shadowColor?: string
+  /** Custom shadow blur radius in px. Used when shadow === 'custom'. */
+  shadowBlur?: number
+  /** Custom shadow horizontal offset in px. Used when shadow === 'custom'. */
+  shadowX?: number
+  /** Custom shadow vertical offset in px. Used when shadow === 'custom'. */
+  shadowY?: number
+  /** Custom shadow opacity, 0–100. Used when shadow === 'custom'. */
+  shadowOpacity?: number
 }
 
 export interface CountdownData {
@@ -739,7 +755,15 @@ export interface EnvelopeIntroConfig {
    * invitation. 'classic' = the original flap-open + card-fly. Defaults to
    * 'classic'.
    */
-  openAnimation?: 'classic' | 'zoom-burst' | 'curtain' | 'dissolve' | 'sparkle' | 'petals'
+  openAnimation?: 'classic' | 'zoom-burst' | 'curtain' | 'dissolve' | 'sparkle' | 'petals' | 'confetti'
+  /**
+   * Custom image/SVG URL used for the particles of particle-based open
+   * animations (sparkle / petals / confetti). When set, it replaces the
+   * built-in particle shape. Leave empty to use the default shapes.
+   */
+  particleImage?: string
+  /** Tint color for the built-in particles (ignored when particleImage is set). */
+  particleColor?: string
   /** Optional recipient name printed on the envelope front (e.g. "Arlenne González"). */
   recipientName?: string
   /** Optional short monogram/initials shown small above the recipient name. */

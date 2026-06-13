@@ -10,6 +10,43 @@ export function isScreenAnchored(block: InvitationBlock<'floating'>): boolean {
 /** Margin (px) between a screen-anchored floating block and the viewport edge. */
 const SCREEN_MARGIN = 16
 
+const SHADOW_PRESETS: Record<'soft' | 'medium' | 'strong', string> = {
+  soft: 'drop-shadow(0 4px 8px rgba(0,0,0,0.18))',
+  medium: 'drop-shadow(0 10px 22px rgba(0,0,0,0.28))',
+  strong: 'drop-shadow(0 20px 38px rgba(0,0,0,0.42))',
+}
+
+/** Convert a hex color + 0–1 alpha to an `rgba()` string. */
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '').trim()
+  const expanded =
+    clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean.padEnd(6, '0').slice(0, 6)
+  const num = parseInt(expanded, 16)
+  if (Number.isNaN(num)) return `rgba(0,0,0,${alpha})`
+  const r = (num >> 16) & 0xff
+  const g = (num >> 8) & 0xff
+  const b = num & 0xff
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/**
+ * CSS `filter` value for a floating block's optional drop-shadow, or undefined
+ * when no shadow is set. Uses `drop-shadow()` so the shadow traces the alpha
+ * contour of transparent stickers instead of a bounding box.
+ */
+export function floatingShadowFilter(d: FloatingData): string | undefined {
+  const s = d.shadow ?? 'none'
+  if (s === 'none') return undefined
+  if (s === 'custom') {
+    const x = d.shadowX ?? 0
+    const y = d.shadowY ?? 8
+    const blur = d.shadowBlur ?? 18
+    const color = hexToRgba(d.shadowColor ?? '#000000', (d.shadowOpacity ?? 30) / 100)
+    return `drop-shadow(${x}px ${y}px ${blur}px ${color})`
+  }
+  return SHADOW_PRESETS[s]
+}
+
 /**
  * Positioning CSS for a floating block that floats over the invitation column
  * (anchorMode 'canvas'). Percentages resolve against the column box, so the

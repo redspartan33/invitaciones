@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { FontFamily, InvitationBlock } from '../../types/invitation.types'
 import { MotionLoop } from './MotionLoop'
+import { floatingShadowFilter } from '../../utils/floatingLayout'
 
 const FAMILY_CLASS: Record<FontFamily, string> = {
   serif: 'font-serif',
@@ -63,9 +64,13 @@ export function FloatingBlock({ block }: { block: InvitationBlock<'floating'> })
       </div>
     )
 
+  const shadow = floatingShadowFilter(d)
+
   return (
     <MotionLoop style={block.style}>
-      <div className="h-full w-full">{content}</div>
+      <div className="h-full w-full" style={shadow ? { filter: shadow } : undefined}>
+        {content}
+      </div>
     </MotionLoop>
   )
 }
