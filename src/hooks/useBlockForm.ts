@@ -11,7 +11,7 @@ export interface BlockFormFieldBase {
 }
 
 export type BlockFormField =
-  | (BlockFormFieldBase & { kind: 'text' | 'textarea' | 'date' | 'time' | 'email' | 'url' | 'image' | 'color' })
+  | (BlockFormFieldBase & { kind: 'text' | 'textarea' | 'date' | 'time' | 'datetime' | 'email' | 'url' | 'image' | 'color' })
   | (BlockFormFieldBase & { kind: 'select'; options: { value: string; label: string }[] })
   | (BlockFormFieldBase & { kind: 'toggle' })
 
@@ -272,12 +272,110 @@ export const blockFormSchemas: Record<FormBlockType, BlockFormSchema> = {
         fields: [
           { name: 'title', label: 'Título (opcional)', kind: 'text' },
           { name: 'address', label: 'Dirección o lugar', kind: 'text', helper: 'Ej. “Jardín Botánico, Ciudad de México”.' },
+          {
+            name: 'displayMode',
+            label: 'Cómo mostrar',
+            kind: 'select',
+            helper: '“Solo botón” abre la ubicación en la app de mapas del celular sin cargar el mapa.',
+            options: [
+              { value: 'map', label: 'Mostrar mapa interactivo' },
+              { value: 'button', label: 'Solo botón a la app de mapas' },
+            ],
+          },
           { name: 'openLinkLabel', label: 'Texto del link a Google Maps', kind: 'text' },
           {
             name: 'embedUrl',
             label: 'URL embed personalizado (opcional)',
             kind: 'url',
             helper: 'Si pegas un iframe src de Google Maps lo usaremos en vez de generar uno.',
+          },
+        ],
+      },
+    ],
+  },
+  countdown: {
+    sections: [
+      {
+        title: 'Cuenta regresiva',
+        fields: [
+          { name: 'title', label: 'Título (opcional)', kind: 'text' },
+          {
+            name: 'targetDate',
+            label: 'Fecha y hora objetivo',
+            kind: 'datetime',
+            helper: 'El conteo se calcula en la zona horaria del invitado.',
+          },
+          {
+            name: 'completedMessage',
+            label: 'Mensaje al llegar la fecha',
+            kind: 'text',
+            helper: 'Se muestra cuando el conteo llega a cero.',
+          },
+        ],
+      },
+      {
+        title: 'Opciones',
+        fields: [
+          { name: 'showLabels', label: 'Mostrar etiquetas (Días/Horas…)', kind: 'toggle' },
+          { name: 'hideSeconds', label: 'Ocultar segundos', kind: 'toggle' },
+        ],
+      },
+    ],
+  },
+  floating: {
+    sections: [
+      {
+        title: 'Contenido',
+        fields: [
+          { name: 'imageUrl', label: 'Imagen (opcional)', kind: 'image' },
+          { name: 'text', label: 'Texto (opcional)', kind: 'textarea' },
+          {
+            name: 'align',
+            label: 'Alineación',
+            kind: 'select',
+            options: [
+              { value: 'left', label: 'Izquierda' },
+              { value: 'center', label: 'Centro' },
+              { value: 'right', label: 'Derecha' },
+            ],
+          },
+          { name: 'color', label: 'Color del texto', kind: 'color' },
+          {
+            name: 'imageFit',
+            label: 'Ajuste de la imagen',
+            kind: 'select',
+            options: [
+              { value: 'contain', label: 'Contener (completa)' },
+              { value: 'cover', label: 'Cubrir (recorta)' },
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Posición',
+        fields: [
+          {
+            name: 'anchorMode',
+            label: 'Tipo de posición',
+            kind: 'select',
+            helper: '“Libre” se arrastra sobre el lienzo y baja con el scroll. “Fijo en pantalla” queda pegado mientras el invitado hace scroll.',
+            options: [
+              { value: 'canvas', label: 'Libre en el lienzo' },
+              { value: 'screen', label: 'Fijo en pantalla' },
+            ],
+          },
+          {
+            name: 'screenCorner',
+            label: 'Esquina (si es fijo en pantalla)',
+            kind: 'select',
+            options: [
+              { value: 'top-left', label: 'Arriba izquierda' },
+              { value: 'top-center', label: 'Arriba centro' },
+              { value: 'top-right', label: 'Arriba derecha' },
+              { value: 'bottom-left', label: 'Abajo izquierda' },
+              { value: 'bottom-center', label: 'Abajo centro' },
+              { value: 'bottom-right', label: 'Abajo derecha' },
+            ],
           },
         ],
       },

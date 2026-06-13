@@ -91,6 +91,17 @@ function renderInput(
     case 'image':
       return <ImageField id={id} value={value as string} onChange={onChange} cls={cls} />
 
+    case 'datetime':
+      return (
+        <input
+          type="datetime-local"
+          id={id}
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          className={cls}
+        />
+      )
+
     case 'date':
     case 'time':
     case 'email':

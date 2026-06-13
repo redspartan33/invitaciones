@@ -973,6 +973,8 @@ function EnvelopeIntroRow({
   const hintLabel = config?.hintLabel ?? ''
   const autoOpen = !!config?.autoOpen
   const alwaysShowOnReload = !!config?.alwaysShowOnReload
+  const backgroundImage = config?.backgroundImage ?? ''
+  const openAnimation = config?.openAnimation ?? 'classic'
 
   // Force the EnvelopeIntro overlay to re-mount each time the user presses
   // "Vista previa", since the component caches its own stage state.
@@ -1070,6 +1072,40 @@ function EnvelopeIntroRow({
               Imagen que se ve impresa en la tarjeta cuando sale del sobre. Si la dejas vacía
               usa el nombre y el monograma.
             </p>
+          </div>
+
+          {/* Backdrop image behind the envelope */}
+          <div>
+            <label className="label-flat">Imagen de fondo (opcional)</label>
+            <input
+              type="url"
+              value={backgroundImage}
+              onChange={(e) => onChange({ backgroundImage: e.target.value })}
+              placeholder="https://…"
+              className="input-flat"
+            />
+            <p className="mt-1 text-[10px] text-ink-400">
+              Se muestra detrás del sobre. Si la dejas vacía se usa el color de fondo.
+            </p>
+          </div>
+
+          {/* Open animation */}
+          <div>
+            <label className="label-flat">Animación de apertura</label>
+            <select
+              value={openAnimation}
+              onChange={(e) =>
+                onChange({ openAnimation: e.target.value as EnvelopeIntroConfig['openAnimation'] })
+              }
+              className="input-flat"
+            >
+              <option value="classic">Clásica (solapa)</option>
+              <option value="zoom-burst">Zoom / estallido</option>
+              <option value="curtain">Cortina</option>
+              <option value="dissolve">Disolución (blur)</option>
+              <option value="sparkle">Destellos ✨</option>
+              <option value="petals">Pétalos cayendo 🌸</option>
+            </select>
           </div>
 
           {/* Wax seal toggle */}
@@ -1177,6 +1213,8 @@ function EnvelopeIntroRow({
                 recipientName,
                 monogram,
                 cardPreviewImage,
+                backgroundImage,
+                openAnimation,
                 wax: showWax,
                 waxColor,
                 hintLabel,

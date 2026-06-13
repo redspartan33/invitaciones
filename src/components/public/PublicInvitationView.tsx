@@ -16,6 +16,8 @@ import { buildThemeVars, collectThemeFonts } from '../../utils/themeVars'
 import { applyBlockTranslation } from '../../utils/translation'
 import { EnvelopeIntro } from './EnvelopeIntro'
 import { FixedCanvasView } from './FixedCanvasView'
+import { FloatingBlock } from '../blocks/FloatingBlock'
+import { canvasFloatStyle, isScreenAnchored, screenFloatStyle } from '../../utils/floatingLayout'
 import { recordInteraction, recordView, type InteractionAction } from '../../utils/viewTracking'
 
 export function PublicInvitationView({ invitation }: { invitation: Invitation }) {
@@ -66,6 +68,17 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
     if (currentLanguage === 'es' || !invitation.translations) return rawVisible
     return rawVisible.map((b) => applyBlockTranslation(b, currentLanguage, invitation.translations))
   }, [rawVisible, currentLanguage, invitation.translations])
+
+  // Floating blocks are positioned overlays, not part of the stacked flow.
+  // Canvas-anchored ones float inside the invitation column; screen-anchored
+  // ones pin to the viewport.
+  const flowVisible = useMemo(() => visible.filter((b) => b.type !== 'floating'), [visible])
+  const floatingBlocks = useMemo(
+    () => visible.filter((b) => b.type === 'floating') as InvitationBlock<'floating'>[],
+    [visible],
+  )
+  const canvasFloats = floatingBlocks.filter((b) => !isScreenAnchored(b))
+  const screenFloats = floatingBlocks.filter((b) => isScreenAnchored(b))
 
   // Pre-compute the section list so the public sticky nav reflects exactly
   // what's about to render (without needing the editor store). Uses the
@@ -156,7 +169,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
     hasPageBackground && globalSettings.hideBlockBackgrounds !== false
 
   const showSeasonTabs = hasVariants && variants.length > 1
-  const firstNonHeaderIdx = visible.findIndex((b) => b.type !== 'menu-header')
+  const firstNonHeaderIdx = flowVisible.findIndex((b) => b.type !== 'menu-header')
   const isFixedCanvas = invitation.layoutMode === 'fixed-canvas' && !isMenu
 
   // Envelope intro overlay — only on invitations (not menus), only when
@@ -220,7 +233,7 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
                 setSelectedVariantId(id)
               }} />
           )}
-          {visible.map((block, idx) => (
+          {flowVisible.map((block, idx) => (
             <div key={block.id}>
               {showSeasonTabs && idx === firstNonHeaderIdx && (
                 <SeasonTabs variants={variants} selectedId={selectedVariantId} onSelect={(id) => {
@@ -245,10 +258,20 @@ export function PublicInvitationView({ invitation }: { invitation: Invitation })
               )}
             </div>
           ))}
+          {canvasFloats.map((block) => (
+            <div key={block.id} style={canvasFloatStyle(block)}>
+              <FloatingBlock block={block} />
+            </div>
+          ))}
         </div>
         )}
         </MenuFeaturesProvider>
       </BlockBackgroundProvider>
+      {screenFloats.map((block) => (
+        <div key={block.id} style={screenFloatStyle(block, 'fixed')}>
+          <FloatingBlock block={block} />
+        </div>
+      ))}
       {musicUrl && !isMenu && <MusicPlayer src={musicUrl} autoplay={autoplay} />}
       {introEnabled && showIntro && introCfg && (
         <EnvelopeIntro config={introCfg} onDone={dismissIntro} invitation={invitation} />

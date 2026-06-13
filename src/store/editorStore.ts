@@ -208,7 +208,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // is reachable and selectable. On stacked layouts blocks just flow.
       const isCanvas = s.invitation.layoutMode === 'fixed-canvas'
       const maxZ = s.invitation.blocks.reduce((m, b) => Math.max(m, b.layout?.zIndex ?? 0), 0)
-      const block = createBlock(type, order, isCanvas ? { layout: defaultLayoutFor(type, maxZ + 1) } : undefined)
+      // Floating blocks are positioned overlays even on a stacked layout, so
+      // they always need a starting box.
+      const needsLayout = isCanvas || type === 'floating'
+      const block = createBlock(type, order, needsLayout ? { layout: defaultLayoutFor(type, maxZ + 1) } : undefined)
       return {
         invitation: mergeBlocks(s.invitation, [...s.invitation.blocks, block]),
         selectedBlockId: block.id,

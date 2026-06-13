@@ -23,6 +23,7 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
 
   const src = explicitEmbed || (address ? buildGoogleEmbed(address) : '')
   const linkLabel = data.openLinkLabel || 'Abrir en Google Maps'
+  const buttonOnly = data.displayMode === 'button'
 
   return (
     <BlockWrapper style={block.style}>
@@ -37,6 +38,23 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
             {address}
           </TextEl>
         )}
+        {buttonOnly ? (
+          address ? (
+            <a
+              href={buildGoogleLink(address)}
+              target="_blank"
+              rel="noreferrer"
+              className="invitation-btn inline-flex"
+            >
+              {linkLabel} ↗
+            </a>
+          ) : (
+            <div className="border border-dashed border-current/30 px-6 py-12 text-sm opacity-60">
+              Añade una dirección para habilitar el botón.
+            </div>
+          )
+        ) : (
+          <>
         {src ? (
           <div
             className="overflow-hidden border accent-border"
@@ -65,6 +83,8 @@ export function MapBlock({ block }: { block: InvitationBlock<'map'> }) {
           >
             {linkLabel} ↗
           </a>
+        )}
+          </>
         )}
       </div>
     </BlockWrapper>

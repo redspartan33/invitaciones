@@ -23,6 +23,7 @@ import { usePageChrome } from '../../hooks/usePageChrome'
 import { buildThemeVars, collectThemeFonts } from '../../utils/themeVars'
 import { PageBackgroundLayer } from '../public/PageBackgroundLayer'
 import { FreeCanvas } from './FreeCanvas'
+import { FloatingLayer } from './FloatingLayer'
 
 // Width of the simulated device frame for each viewport mode.
 // Heights mimic common physical dimensions but cap to the available canvas
@@ -40,7 +41,11 @@ export function Canvas() {
 }
 
 function StackedCanvas() {
-  const blocks = useEditorStore((s) => [...s.invitation.blocks].sort((a, b) => a.order - b.order))
+  const allBlocks = useEditorStore((s) => [...s.invitation.blocks].sort((a, b) => a.order - b.order))
+  // Floating blocks are positioned overlays rendered by FloatingLayer, not part
+  // of the sortable flow.
+  const blocks = allBlocks.filter((b) => b.type !== 'floating')
+  const floatingBlocks = allBlocks.filter((b) => b.type === 'floating') as InvitationBlock<'floating'>[]
   const selectedId = useEditorStore((s) => s.selectedBlockId)
   const selectBlock = useEditorStore((s) => s.selectBlock)
   const reorderBlocks = useEditorStore((s) => s.reorderBlocks)
@@ -101,7 +106,7 @@ function StackedCanvas() {
         promoBanner={isMenu ? promoBanner : undefined}
       >
       <div
-        className={`invitation-canvas h-full ${fontClass}`}
+        className={`invitation-canvas relative h-full ${fontClass}`}
         style={cssVars}
         onClick={(e) => e.stopPropagation()}
       >
@@ -119,7 +124,9 @@ function StackedCanvas() {
           </SortableContext>
         </DndContext>
 
-        {blocks.length === 0 && (
+        <FloatingLayer blocks={floatingBlocks} />
+
+        {allBlocks.length === 0 && (
           <div className="flex flex-col items-center justify-center px-8 py-32 text-center">
             <p className="font-serif text-2xl text-ink-400">Tu invitación está vacía</p>
             <p className="mt-2 text-sm text-ink-500">Añade tu primer bloque desde la barra inferior</p>

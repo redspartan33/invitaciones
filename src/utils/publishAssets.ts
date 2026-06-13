@@ -90,6 +90,8 @@ const IMAGE_KEYS = new Set([
   'favicon',
   'shareImage',
   'url',
+  'imageUrl',
+  'cardPreviewImage',
 ])
 
 /**

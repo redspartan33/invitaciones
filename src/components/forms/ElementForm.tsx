@@ -10,6 +10,7 @@ import type {
 } from '../../types/invitation.types'
 import { ENTRY_ANIMATION_GROUPS } from '../blocks/AnimatedBlock'
 import type { EntryAnimation } from '../../types/invitation.types'
+import { LoopAnimationSection } from './DynamicBlockForm'
 
 /** Property panel for the free-form elements: text, image, shape. */
 export function ElementForm({ block }: { block: InvitationBlock }) {
@@ -49,6 +50,18 @@ function EntryAnimationSelect({ block }: { block: InvitationBlock }) {
         ))}
       </select>
     </Section>
+  )
+}
+
+/** Continuous-loop motion control for free elements — shares the section UI
+ *  with DynamicBlockForm. */
+function LoopAnimationSelect({ block }: { block: InvitationBlock }) {
+  const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle)
+  return (
+    <LoopAnimationSection
+      style={block.style}
+      onChange={(patch) => updateBlockStyle(block.id, patch)}
+    />
   )
 }
 
@@ -155,6 +168,7 @@ function TextForm({ block }: { block: InvitationBlock<'text'> }) {
       </Section>
 
       <EntryAnimationSelect block={block} />
+      <LoopAnimationSelect block={block} />
     </div>
   )
 }
@@ -250,6 +264,7 @@ function ImageForm({ block }: { block: InvitationBlock<'image'> }) {
       </Section>
 
       <EntryAnimationSelect block={block} />
+      <LoopAnimationSelect block={block} />
     </div>
   )
 }
@@ -318,6 +333,7 @@ function ShapeForm({ block }: { block: InvitationBlock<'shape'> }) {
       </Section>
 
       <EntryAnimationSelect block={block} />
+      <LoopAnimationSelect block={block} />
     </div>
   )
 }

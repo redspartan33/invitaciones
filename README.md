@@ -47,7 +47,11 @@ src/
 
 13. **Forma / línea** — Rectángulo, círculo o línea vectorial (relleno, borde, grosor, esquinas, opacidad). Solo invitaciones.
 
-Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo.
+14. **Cuenta regresiva** — Defines una fecha y hora objetivo (`datetime-local`) y el bloque muestra el conteo en vivo (días/horas/min/seg, actualizado cada segundo). Al llegar a cero muestra un mensaje configurable. Toggles para ocultar segundos y ocultar etiquetas. Solo invitaciones. Ver [CountdownBlock](src/components/blocks/CountdownBlock.tsx).
+
+15. **Flotante** — Elemento con **imagen y/o texto** (ambos opcionales) que se posiciona **encima** de la invitación, no en el flujo apilado. Dos modos por bloque (`anchorMode`): **"Libre en el lienzo"** (se arrastra a cualquier parte sobre el canvas, baja con el scroll; usa `block.layout` en %) o **"Fijo en pantalla"** (queda pegado a una esquina, visible mientras el invitado hace scroll). Solo invitaciones. Ver [FloatingBlock](src/components/blocks/FloatingBlock.tsx), la capa editable [FloatingLayer](src/components/editor/FloatingLayer.tsx) y los helpers de posición [floatingLayout.ts](src/utils/floatingLayout.ts). En el editor se arrastra directamente sobre el canvas; en la vista pública los flotantes se separan del flujo (`flowVisible` vs `floatingBlocks` en [PublicInvitationView](src/components/public/PublicInvitationView.tsx)).
+
+Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo. El selector **"Cómo mostrar"** del bloque mapa permite elegir entre **mostrar el mapa interactivo** o **solo un botón** que abre la ubicación en la app de mapas del celular (sin cargar el iframe).
 
 ### Modos de invitación: secciones apiladas vs. lienzo libre
 
@@ -103,6 +107,10 @@ El catálogo tiene **42 efectos** agrupados con `<optgroup>`:
 - **Cinemático / Especial** (6): cortina con clip-path en 4 direcciones, skew, profundidad 3D
 
 Cada animación define su propia transición (curva o spring). El selector también muestra un botón **"↻ Volver a reproducir"** que retriggerea la animación al instante para previsualizar. Se guarda en `block.style.entryAnimation`. El wrapper `AnimatedBlock` envuelve cada bloque desde `BlockRenderer`, así que aplica uniformemente a todos los tipos (invitación y menú).
+
+### Movimiento en bucle por bloque (idle loop)
+
+Además de la animación de entrada (que ocurre una vez), cada bloque expone un selector **"Movimiento (en bucle)"** con movimiento continuo que nunca se detiene: **Suave** (flotar ↕/↔, balanceo, respirar, latido suave) y **Llamativo** (corazón, rebote, meneo, tada, girar, brillo). Se acompaña de controles de **Intensidad** (sutil/normal/fuerte, escala la amplitud) y **Velocidad** (lento/normal/rápido, escala la duración del ciclo). Se guarda en `block.style.loopAnimation` / `loopIntensity` / `loopSpeed`. El wrapper [MotionLoop](src/components/blocks/MotionLoop.tsx) se aplica dentro de `BlockRenderer` (y en `FreeElementContent` para elementos libres), así que funciona en **todos los bloques**. Es la base del bloque **Flotante**, pero está disponible en cualquiera.
 
 Los bloques de invitación con iconos (Event details, Timeline) tienen un toggle "Ocultar iconos del bloque" en su panel de estilos.
 
@@ -387,6 +395,8 @@ Las invitaciones pueden activar una intro previa en la que aparece un sobre cerr
 - **Sello de cera** — toggle con color custom. Aparece centrado en la solapa.
 - **Abrir automáticamente** — si está apagado, el invitado toca el sobre. Si está encendido, se abre solo después de ~1.2 s.
 - **Texto pista** — frase que aparece en una pastilla pulsante debajo del sobre cerrado (default "Toca para abrir").
+- **Imagen de fondo (opcional)** — URL de una imagen que se renderiza detrás del sobre (cover/center). Si se deja vacía se usa el color de fondo. Guardada en `envelopeIntro.backgroundImage` (se sube en publish vía `IMAGE_KEYS`).
+- **Animación de apertura** — estilo de la transición cuando el sobre termina de abrir y entrega la invitación, elegible entre: **Clásica (solapa)** (comportamiento original), **Zoom / estallido**, **Cortina** (clip-path que cierra al centro), **Disolución (blur)**, **Destellos ✨** (capa de partículas brillantes) y **Pétalos cayendo 🌸** (capa de pétalos animados). Guardada en `envelopeIntro.openAnimation` (default `'classic'`). La coreografía de solapa + tarjeta se comparte; sólo cambian la transición de salida del overlay (`OVERLAY_EXIT`) y las capas decorativas (`SparkleLayer` / `PetalsLayer`).
 - **Botón "Ver vista previa"** — monta el mismo componente en modo `demo` para validar el render sin tener que publicar.
 
 Capas del sobre (de fondo a frente, z-index):

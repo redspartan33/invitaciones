@@ -16,6 +16,11 @@ export type InvitationBlockType =
   | 'text'
   | 'image'
   | 'shape'
+  // Floating element (image and/or text) that can be freely positioned on the
+  // stacked invitation or pinned to a screen corner, with looping motion.
+  | 'floating'
+  // Live countdown to a target date/time.
+  | 'countdown'
 
 export type MenuBlockType =
   | 'menu-header'
@@ -101,7 +106,31 @@ export interface BlockStyle {
    * framer-motion's `whileInView`. Defaults to 'none' (no animation).
    */
   entryAnimation?: EntryAnimation
+  /**
+   * Continuous looping motion ("idle" animation) applied on top of the entry
+   * animation — float, pulse, sway, spin, etc. Distinct from entryAnimation:
+   * it never stops. Defaults to 'none'.
+   */
+  loopAnimation?: LoopAnimation
+  /** Amplitude of the loop motion. Defaults to 'normal'. */
+  loopIntensity?: 'subtle' | 'normal' | 'strong'
+  /** Speed of one loop cycle. Defaults to 'normal'. */
+  loopSpeed?: 'slow' | 'normal' | 'fast'
 }
+
+export type LoopAnimation =
+  | 'none'
+  | 'float'
+  | 'float-x'
+  | 'sway'
+  | 'pulse'
+  | 'heartbeat'
+  | 'spin'
+  | 'wiggle'
+  | 'bounce'
+  | 'tada'
+  | 'breathe'
+  | 'shimmer'
 
 export type EntryAnimation =
   | 'none'
@@ -255,6 +284,11 @@ export interface MapData {
   height?: number
   /** Optional link text shown under the map. */
   openLinkLabel?: string
+  /**
+   * Whether to render the embedded interactive map, or only a button that
+   * opens the location in the device's maps app. Defaults to 'map'.
+   */
+  displayMode?: 'map' | 'button'
 }
 
 export interface FooterData {
@@ -333,6 +367,57 @@ export interface ShapeElementData {
   radius?: number
   /** 0-100. Defaults to 100. */
   opacity?: number
+}
+
+/**
+ * A floating element holding an optional image and/or optional text. Unlike a
+ * stacked block it is positioned over the invitation rather than in the flow:
+ *  - anchorMode 'canvas': absolutely positioned inside the invitation column,
+ *    using `block.layout` (xPct/yPct/wPct + zIndex/rotation). Scrolls with the
+ *    content and can be dragged anywhere.
+ *  - anchorMode 'screen': pinned to a viewport corner, stays visible while the
+ *    guest scrolls (like a sticker / badge).
+ */
+export interface FloatingData {
+  imageUrl?: string
+  imageAlt?: string
+  /** How the image fills its box. Defaults to 'contain'. */
+  imageFit?: 'cover' | 'contain'
+  /** Image corner radius in px. */
+  imageRadius?: number
+  text?: string
+  align?: Alignment
+  color?: string
+  /** Font size in px. */
+  fontSize?: number
+  bold?: boolean
+  italic?: boolean
+  /** 'inherit' uses the invitation's global font; otherwise force a family. */
+  fontFamily?: FontFamily | 'inherit'
+  /** Placement model. Defaults to 'canvas'. */
+  anchorMode?: 'canvas' | 'screen'
+  /** Corner used when anchorMode === 'screen'. Defaults to 'bottom-right'. */
+  screenCorner?:
+    | 'top-left'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-right'
+    | 'top-center'
+    | 'bottom-center'
+  /** Width (px) of the floating box when anchorMode === 'screen'. Defaults to 160. */
+  screenWidth?: number
+}
+
+export interface CountdownData {
+  title?: string
+  /** Target moment as a local datetime string, e.g. '2026-06-15T18:00'. */
+  targetDate: string
+  /** Message shown once the target is reached. */
+  completedMessage?: string
+  /** Show the "Días / Horas / Min / Seg" labels under each number. Defaults to true. */
+  showLabels?: boolean
+  /** Hide the seconds segment (calmer, less motion). Defaults to false. */
+  hideSeconds?: boolean
 }
 
 // ── Menu block data ─────────────────────────────────────────────────────────
@@ -429,6 +514,8 @@ export type BlockDataMap = {
   text: TextElementData
   image: ImageElementData
   shape: ShapeElementData
+  floating: FloatingData
+  countdown: CountdownData
   'menu-header': MenuHeaderData
   'menu-section': MenuSectionData
   'menu-note': MenuNoteData
@@ -644,6 +731,15 @@ export interface EnvelopeIntroConfig {
   liningColor?: string
   /** Backdrop color behind the envelope. Defaults to a soft neutral. */
   backgroundColor?: string
+  /** Optional backdrop image rendered behind the envelope (cover/center).
+   *  Sits over backgroundColor. */
+  backgroundImage?: string
+  /**
+   * Transition style played when the envelope opens / hands off to the
+   * invitation. 'classic' = the original flap-open + card-fly. Defaults to
+   * 'classic'.
+   */
+  openAnimation?: 'classic' | 'zoom-burst' | 'curtain' | 'dissolve' | 'sparkle' | 'petals'
   /** Optional recipient name printed on the envelope front (e.g. "Arlenne González"). */
   recipientName?: string
   /** Optional short monogram/initials shown small above the recipient name. */

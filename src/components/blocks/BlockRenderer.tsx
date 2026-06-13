@@ -1,5 +1,7 @@
 import type { InvitationBlock } from '../../types/invitation.types'
 import { AnimatedBlock } from './AnimatedBlock'
+import { MotionLoop } from './MotionLoop'
+import { CountdownBlock } from './CountdownBlock'
 import { DressCodeBlock } from './DressCodeBlock'
 import { EventDetailsBlock } from './EventDetailsBlock'
 import { FooterBlock } from './FooterBlock'
@@ -20,7 +22,11 @@ import { MenuFooterBlock } from './MenuFooterBlock'
 
 export function BlockRenderer({ block }: { block: InvitationBlock }) {
   const inner = renderInner(block)
-  return <AnimatedBlock animation={block.style?.entryAnimation}>{inner}</AnimatedBlock>
+  return (
+    <AnimatedBlock animation={block.style?.entryAnimation}>
+      <MotionLoop style={block.style}>{inner}</MotionLoop>
+    </AnimatedBlock>
+  )
 }
 
 function renderInner(block: InvitationBlock) {
@@ -45,6 +51,8 @@ function renderInner(block: InvitationBlock) {
       return <ImageSetBlock block={block as InvitationBlock<'image-set'>} />
     case 'map':
       return <MapBlock block={block as InvitationBlock<'map'>} />
+    case 'countdown':
+      return <CountdownBlock block={block as InvitationBlock<'countdown'>} />
     case 'text':
       return <TextBlock block={block as InvitationBlock<'text'>} />
     case 'image':

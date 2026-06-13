@@ -30,6 +30,8 @@ export const INVITATION_BLOCK_CATALOG: BlockTypeInfo[] = [
   { type: 'gallery', label: 'Galería', description: 'Galería de fotos', icon: '▦' },
   { type: 'image-set', label: 'Set de imágenes', description: '1, 2 o 3 imágenes en columnas', icon: '◫' },
   { type: 'map', label: 'Mapa', description: 'Ubicación con mapa interactivo', icon: '◉' },
+  { type: 'countdown', label: 'Cuenta regresiva', description: 'Conteo en vivo a tu fecha', icon: '◷' },
+  { type: 'floating', label: 'Flotante', description: 'Imagen y/o texto flotante con movimiento', icon: '✦' },
   { type: 'footer', label: 'Pie / Contacto', description: 'Mensaje final y contacto', icon: '⌂' },
 ]
 
@@ -145,6 +147,29 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       radius: 0,
       opacity: 100,
     },
+    floating: {
+      imageUrl: '',
+      imageAlt: '',
+      imageFit: 'contain',
+      imageRadius: 0,
+      text: '',
+      align: 'center',
+      color: '#18181b',
+      fontSize: 24,
+      bold: false,
+      italic: false,
+      fontFamily: 'inherit',
+      anchorMode: 'canvas',
+      screenCorner: 'bottom-right',
+      screenWidth: 160,
+    },
+    countdown: {
+      title: 'Faltan',
+      targetDate: '2026-06-15T18:00',
+      completedMessage: '¡Llegó el gran día!',
+      showLabels: true,
+      hideSeconds: false,
+    },
     footer: {
       message: 'Gracias por ser parte de este momento especial.',
       phone: '',
@@ -190,7 +215,7 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
 
 /** Element types that have no in-flow padding/background — they are bare
  *  free-form elements. */
-const ELEMENT_TYPES: BlockType[] = ['text', 'image', 'shape']
+const ELEMENT_TYPES: BlockType[] = ['text', 'image', 'shape', 'floating']
 
 export function isElementType(type: BlockType): boolean {
   return ELEMENT_TYPES.includes(type)
@@ -202,6 +227,7 @@ export function defaultLayoutFor(type: BlockType, zIndex = 1): ElementLayout {
   if (type === 'text') return { xPct: 15, yPct: 44, wPct: 70, hPct: 12, rotation: 0, zIndex }
   if (type === 'image') return { xPct: 25, yPct: 25, wPct: 50, hPct: 35, rotation: 0, zIndex }
   if (type === 'shape') return { xPct: 30, yPct: 40, wPct: 40, hPct: 20, rotation: 0, zIndex }
+  if (type === 'floating') return { xPct: 36, yPct: 8, wPct: 28, hPct: 18, rotation: 0, zIndex }
   // Rich blocks placed on a canvas get a wide, tall-ish default box.
   return { xPct: 8, yPct: 20, wPct: 84, hPct: 40, rotation: 0, zIndex }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion, type Easing } from 'framer-motion'
+import { AnimatePresence, motion, type Easing, type TargetAndTransition, type Transition } from 'framer-motion'
 import type {
   EnvelopeIntroConfig,
   HeroData,
@@ -10,6 +10,79 @@ import { formatDate } from '../../utils/blockValidation'
 
 const EASE_SMOOTH: Easing = [0.22, 1, 0.36, 1]
 const EASE_FLAP: Easing = [0.7, 0, 0.84, 0]
+
+type OpenAnimation = NonNullable<EnvelopeIntroConfig['openAnimation']>
+
+// How the whole overlay clears once the envelope has opened — the "fancy"
+// handoff to the real invitation. The flap-open + card choreography is shared;
+// only this exit transition (plus optional particle layers) changes.
+const OVERLAY_EXIT: Record<OpenAnimation, { exit: TargetAndTransition; transition: Transition }> = {
+  classic: { exit: { opacity: 0 }, transition: { duration: 0.45 } },
+  'zoom-burst': { exit: { opacity: 0, scale: 1.6 }, transition: { duration: 0.6, ease: EASE_SMOOTH } },
+  curtain: { exit: { opacity: 0, clipPath: 'inset(0 50% 0 50%)' }, transition: { duration: 0.6, ease: EASE_FLAP } },
+  dissolve: { exit: { opacity: 0, filter: 'blur(22px)' }, transition: { duration: 0.7, ease: EASE_SMOOTH } },
+  sparkle: { exit: { opacity: 0 }, transition: { duration: 0.5 } },
+  petals: { exit: { opacity: 0 }, transition: { duration: 0.6 } },
+}
+
+// Deterministic particle seeds so the layers don't reshuffle each render.
+const SPARKLES = Array.from({ length: 16 }, (_, i) => ({
+  left: (i * 61) % 100,
+  top: (i * 37 + 8) % 100,
+  delay: (i % 8) * 0.22,
+  size: 6 + (i % 4) * 4,
+}))
+const PETALS = Array.from({ length: 14 }, (_, i) => ({
+  left: (i * 53 + 5) % 100,
+  delay: (i % 7) * 0.5,
+  duration: 4 + (i % 5),
+  drift: ((i % 5) - 2) * 30,
+  size: 12 + (i % 4) * 6,
+  hue: [340, 350, 20, 45][i % 4],
+}))
+
+function SparkleLayer() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+      {SPARKLES.map((s, i) => (
+        <motion.span
+          key={i}
+          className="absolute"
+          style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size }}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], rotate: [0, 90, 180] }}
+          transition={{ duration: 1.6, delay: s.delay, repeat: Infinity, repeatDelay: 0.6, ease: 'easeInOut' }}
+        >
+          <svg viewBox="0 0 24 24" width="100%" height="100%" fill="#fff" aria-hidden>
+            <path d="M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z" />
+          </svg>
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+function PetalsLayer() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+      {PETALS.map((p, i) => (
+        <motion.span
+          key={i}
+          className="absolute -top-10 block rounded-[100%_0_100%_0]"
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size,
+            background: `hsl(${p.hue} 70% 78%)`,
+          }}
+          initial={{ y: -40, x: 0, opacity: 0, rotate: 0 }}
+          animate={{ y: '110vh', x: p.drift, opacity: [0, 1, 1, 0.7], rotate: 360 }}
+          transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeIn' }}
+        />
+      ))}
+    </div>
+  )
+}
 
 interface EnvelopeIntroProps {
   config: EnvelopeIntroConfig
@@ -54,6 +127,11 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
   const hintLabel = (config.hintLabel || '').trim() || 'Toca para abrir'
   const waxColor = config.waxColor || '#9c3a3a'
   const showWax = !!config.wax
+  const openAnimation: OpenAnimation = config.openAnimation || 'classic'
+  const bgImage = (config.backgroundImage || '').trim()
+  const exitSpec = OVERLAY_EXIT[openAnimation]
+  const showSparkles = openAnimation === 'sparkle' && (stage === 'opening' || stage === 'leaving')
+  const showPetals = openAnimation === 'petals' && stage !== 'gone'
 
   // Tone variants used for shading the front/flap so the envelope feels 3D.
   const shaded = useMemo(() => shadeColor(envelopeColor, -8), [envelopeColor])
@@ -111,12 +189,25 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
           className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden select-none"
           style={{ background: backgroundColor }}
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.45 }}
+          exit={exitSpec.exit}
+          transition={exitSpec.transition}
           onClick={open}
           role="dialog"
           aria-label="Sobre de invitación"
         >
+          {bgImage && (
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: `url(${bgImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                zIndex: -1,
+              }}
+            />
+          )}
+          {showPetals && <PetalsLayer />}
+          {showSparkles && <SparkleLayer />}
           <EnvelopeStage
             stage={stage}
             envelopeColor={envelopeColor}

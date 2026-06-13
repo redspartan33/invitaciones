@@ -14,7 +14,8 @@ import { MenuItemsForm } from './MenuItemsForm'
 import { MenuNavItemsForm } from './MenuNavItemsForm'
 import { DragHandle, SortableItem, SortableList } from './SortableItem'
 import { ENTRY_ANIMATION_GROUPS } from '../blocks/AnimatedBlock'
-import type { EntryAnimation } from '../../types/invitation.types'
+import { LOOP_ANIMATION_GROUPS } from '../blocks/MotionLoop'
+import type { BlockStyle, EntryAnimation, LoopAnimation } from '../../types/invitation.types'
 
 // Field-kinds that render as visible text and therefore expose per-element
 // size/color overrides under the input.
@@ -249,6 +250,11 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       <EntryAnimationSection
         value={block.style?.entryAnimation ?? 'none'}
         onChange={(v) => updateBlockStyle(block.id, { entryAnimation: v })}
+      />
+
+      <LoopAnimationSection
+        style={block.style}
+        onChange={(patch) => updateBlockStyle(block.id, patch)}
       />
 
       <section className="space-y-3">
@@ -905,6 +911,84 @@ function EntryAnimationSection({
       )}
       <p className="text-[11px] text-ink-400">
         Se reproduce cuando el bloque entra a la pantalla del invitado.
+      </p>
+    </section>
+  )
+}
+
+const LOOP_INTENSITIES: { value: NonNullable<BlockStyle['loopIntensity']>; label: string }[] = [
+  { value: 'subtle', label: 'Sutil' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'strong', label: 'Fuerte' },
+]
+const LOOP_SPEEDS: { value: NonNullable<BlockStyle['loopSpeed']>; label: string }[] = [
+  { value: 'slow', label: 'Lento' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'fast', label: 'Rápido' },
+]
+
+export function LoopAnimationSection({
+  style,
+  onChange,
+}: {
+  style?: BlockStyle
+  onChange: (patch: Partial<BlockStyle>) => void
+}) {
+  const loop = style?.loopAnimation ?? 'none'
+  return (
+    <section className="space-y-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+        Movimiento (en bucle)
+      </h3>
+      <select
+        value={loop}
+        onChange={(e) => onChange({ loopAnimation: e.target.value as LoopAnimation })}
+        className="input-flat"
+      >
+        {LOOP_ANIMATION_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      {loop !== 'none' && (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="label-flat">Intensidad</label>
+            <select
+              value={style?.loopIntensity ?? 'normal'}
+              onChange={(e) => onChange({ loopIntensity: e.target.value as BlockStyle['loopIntensity'] })}
+              className="input-flat"
+            >
+              {LOOP_INTENSITIES.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label-flat">Velocidad</label>
+            <select
+              value={style?.loopSpeed ?? 'normal'}
+              onChange={(e) => onChange({ loopSpeed: e.target.value as BlockStyle['loopSpeed'] })}
+              className="input-flat"
+            >
+              {LOOP_SPEEDS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      <p className="text-[11px] text-ink-400">
+        Movimiento continuo que da vida al bloque (no se detiene).
       </p>
     </section>
   )
