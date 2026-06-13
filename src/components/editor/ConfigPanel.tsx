@@ -552,6 +552,88 @@ function FaviconRow({ value, onChange }: { value: string; onChange: (v: string) 
   )
 }
 
+/** A small list of particle images (URL or uploaded file). Each particle in
+ *  the open animation picks one at random, so several images vary the effect. */
+function ParticleImagesField({
+  images,
+  onChange,
+}: {
+  images: string[]
+  onChange: (images: string[]) => void
+}) {
+  const fileRefs = useRef<Record<number, HTMLInputElement | null>>({})
+  const onPickFile = (idx: number, file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB (máx 2 MB). Usa una más ligera o pega una URL pública.`)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(images.map((x, i) => (i === idx ? String(reader.result) : x)))
+    reader.readAsDataURL(file)
+  }
+  return (
+    <div>
+      <label className="label-flat">Imágenes / SVG (se usan al azar)</label>
+      <div className="space-y-2">
+        {images.map((img, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            {img && (
+              <img
+                src={img}
+                alt=""
+                className="h-9 w-9 shrink-0 rounded border border-ink-200 bg-ink-50 object-contain"
+              />
+            )}
+            <input
+              type="url"
+              value={img.startsWith('data:') ? '' : img}
+              onChange={(e) => onChange(images.map((x, i) => (i === idx ? e.target.value : x)))}
+              placeholder={img.startsWith('data:') ? '(archivo subido)' : 'URL o sube archivo →'}
+              className="input-flat flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => fileRefs.current[idx]?.click()}
+              className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
+            >
+              Subir
+            </button>
+            <input
+              ref={(el) => (fileRefs.current[idx] = el)}
+              type="file"
+              accept="image/png,image/svg+xml,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onPickFile(idx, f)
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => onChange(images.filter((_, i) => i !== idx))}
+              className="btn-ghost shrink-0 text-rose-600"
+              title="Quitar imagen"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange([...images, ''])}
+        className="btn-flat mt-2 w-full"
+      >
+        + Añadir imagen
+      </button>
+      <p className="mt-1 text-[10px] text-ink-400">
+        Si la dejas vacía se usan las partículas predeterminadas. Con varias imágenes, cada partícula elige una al azar.
+      </p>
+    </div>
+  )
+}
+
 function ShareImageRow({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [processing, setProcessing] = useState(false)
@@ -974,8 +1056,28 @@ function EnvelopeIntroRow({
   const autoOpen = !!config?.autoOpen
   const alwaysShowOnReload = !!config?.alwaysShowOnReload
   const backgroundImage = config?.backgroundImage ?? ''
-  const openAnimation = config?.openAnimation ?? 'classic'
-  const particleImage = config?.particleImage ?? ''
+  // Decoupled effect + transition, falling back to the legacy combined selector.
+  const legacyAnim = config?.openAnimation
+  const particleEffect =
+    config?.particleEffect ??
+    (legacyAnim === 'sparkle' || legacyAnim === 'petals' || legacyAnim === 'confetti' ? legacyAnim : 'none')
+  const transition =
+    config?.transition ??
+    (legacyAnim === 'zoom-burst'
+      ? 'zoom'
+      : legacyAnim === 'curtain'
+      ? 'curtain'
+      : legacyAnim === 'dissolve'
+      ? 'dissolve'
+      : 'fade')
+  const transitionDuration = config?.transitionDuration ?? 0.7
+  const holdDuration = config?.holdDuration ?? 3.2
+  const particleImages =
+    config?.particleImages && config.particleImages.length > 0
+      ? config.particleImages
+      : config?.particleImage
+      ? [config.particleImage]
+      : []
   const particleColor = config?.particleColor ?? ''
 
   // Force the EnvelopeIntro overlay to re-mount each time the user presses
@@ -1091,63 +1193,98 @@ function EnvelopeIntroRow({
             </p>
           </div>
 
-          {/* Open animation */}
+          {/* Particle effect (decoupled from the entry transition) */}
           <div>
-            <label className="label-flat">Animación de apertura</label>
+            <label className="label-flat">Efecto de partículas</label>
             <select
-              value={openAnimation}
+              value={particleEffect}
               onChange={(e) =>
-                onChange({ openAnimation: e.target.value as EnvelopeIntroConfig['openAnimation'] })
+                onChange({ particleEffect: e.target.value as EnvelopeIntroConfig['particleEffect'] })
               }
               className="input-flat"
             >
-              <option value="classic">Clásica (solapa)</option>
-              <option value="zoom-burst">Zoom / estallido</option>
-              <option value="curtain">Cortina</option>
-              <option value="dissolve">Disolución (blur)</option>
+              <option value="none">Ninguno</option>
               <option value="sparkle">Destellos ✨</option>
               <option value="petals">Pétalos cayendo 🌸</option>
               <option value="confetti">Confeti 🎉</option>
+              <option value="rain">Lluvia 🌧️</option>
+              <option value="leaves">Hojas al viento 🍃</option>
+              <option value="bokeh">Bokeh 🔮</option>
+              <option value="fireflies">Luciérnagas 🐝</option>
+              <option value="bubbles">Burbujas 🫧</option>
+              <option value="hearts">Corazones 💗</option>
+              <option value="snow">Nieve ❄️</option>
+              <option value="shooting-stars">Estrellas fugaces 🌠</option>
+              <option value="embers">Brasas 🔥</option>
             </select>
           </div>
 
-          {/* Particle customization — only for particle-based animations */}
-          {(openAnimation === 'sparkle' || openAnimation === 'petals' || openAnimation === 'confetti') && (
+          {/* Particle customization — images (random) + tint */}
+          {particleEffect !== 'none' && (
             <div className="space-y-3 rounded border border-ink-200 bg-surface p-3">
               <p className="text-[11px] uppercase tracking-widest text-ink-400">Partículas</p>
-              <div>
-                <label className="label-flat">Imagen / SVG (opcional)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={particleImage}
-                    onChange={(e) => onChange({ particleImage: e.target.value })}
-                    placeholder="https://… (PNG o SVG)"
-                    className="input-flat flex-1"
-                  />
-                  {particleImage && (
-                    <button
-                      type="button"
-                      onClick={() => onChange({ particleImage: '' })}
-                      className="rounded border border-ink-200 bg-surface px-3 py-2 text-xs uppercase tracking-widest text-ink-600 hover:border-ink-400"
-                    >
-                      Quitar
-                    </button>
-                  )}
-                </div>
-                <p className="mt-1 text-[10px] text-ink-400">
-                  Si la dejas vacía se usan las partículas predeterminadas (estrellas, pétalos o confeti).
-                </p>
-              </div>
-              {!particleImage && (
+              <ParticleImagesField
+                images={particleImages}
+                onChange={(imgs) => onChange({ particleImages: imgs, particleImage: '' })}
+              />
+              {particleImages.length === 0 && (
                 <ColorField
                   label="Color de partículas"
-                  value={particleColor || (openAnimation === 'sparkle' ? '#ffe5a3' : '#f5a3c7')}
+                  value={particleColor || (particleEffect === 'sparkle' ? '#ffe5a3' : '#f5a3c7')}
                   onChange={(v) => onChange({ particleColor: v })}
                 />
               )}
             </div>
           )}
+
+          {/* Entry transition (envelope → invitation) + controls */}
+          <div className="space-y-3 rounded border border-ink-200 bg-surface p-3">
+            <p className="text-[11px] uppercase tracking-widest text-ink-400">Transición de entrada</p>
+            <div>
+              <label className="label-flat">Estilo</label>
+              <select
+                value={transition}
+                onChange={(e) =>
+                  onChange({ transition: e.target.value as EnvelopeIntroConfig['transition'] })
+                }
+                className="input-flat"
+              >
+                <option value="fade">Fundido</option>
+                <option value="zoom">Zoom / estallido</option>
+                <option value="iris">Iris (círculo)</option>
+                <option value="curtain">Cortina</option>
+                <option value="slide-up">Deslizar hacia arriba</option>
+                <option value="dissolve">Disolución (blur)</option>
+              </select>
+            </div>
+            <div>
+              <label className="label-flat">Duración · {transitionDuration.toFixed(1)}s</label>
+              <input
+                type="range"
+                min={0.3}
+                max={1.5}
+                step={0.1}
+                value={transitionDuration}
+                onChange={(e) => onChange({ transitionDuration: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="label-flat">Tiempo en pantalla · {holdDuration.toFixed(1)}s</label>
+              <input
+                type="range"
+                min={1}
+                max={6}
+                step={0.5}
+                value={holdDuration}
+                onChange={(e) => onChange({ holdDuration: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+              <p className="mt-1 text-[10px] text-ink-400">
+                Cuánto se mantiene la tarjeta visible antes de pasar a la invitación.
+              </p>
+            </div>
+          </div>
 
           {/* Wax seal toggle */}
           <label className="flex cursor-pointer items-center justify-between rounded border border-ink-200 bg-surface px-3 py-2 text-xs text-ink-700 hover:border-ink-400">
@@ -1255,8 +1392,11 @@ function EnvelopeIntroRow({
                 monogram,
                 cardPreviewImage,
                 backgroundImage,
-                openAnimation,
-                particleImage,
+                particleEffect,
+                transition,
+                transitionDuration,
+                holdDuration,
+                particleImages,
                 particleColor,
                 wax: showWax,
                 waxColor,

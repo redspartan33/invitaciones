@@ -12,18 +12,55 @@ const EASE_SMOOTH: Easing = [0.22, 1, 0.36, 1]
 const EASE_FLAP: Easing = [0.7, 0, 0.84, 0]
 
 type OpenAnimation = NonNullable<EnvelopeIntroConfig['openAnimation']>
+type ParticleEffect = NonNullable<EnvelopeIntroConfig['particleEffect']>
+type TransitionStyle = NonNullable<EnvelopeIntroConfig['transition']>
 
 // How the whole overlay clears once the envelope has opened — the "fancy"
 // handoff to the real invitation. The flap-open + card choreography is shared;
-// only this exit transition (plus optional particle layers) changes.
-const OVERLAY_EXIT: Record<OpenAnimation, { exit: TargetAndTransition; transition: Transition }> = {
-  classic: { exit: { opacity: 0, scale: 1.04, filter: 'blur(4px)' }, transition: { duration: 0.55, ease: EASE_SMOOTH } },
-  'zoom-burst': { exit: { opacity: 0, scale: 1.8, rotate: 1.5 }, transition: { duration: 0.7, ease: EASE_SMOOTH } },
-  curtain: { exit: { opacity: 0, clipPath: 'inset(0 50% 0 50%)' }, transition: { duration: 0.65, ease: EASE_FLAP } },
-  dissolve: { exit: { opacity: 0, filter: 'blur(26px) brightness(1.4)', scale: 1.08 }, transition: { duration: 0.8, ease: EASE_SMOOTH } },
-  sparkle: { exit: { opacity: 0, scale: 1.06 }, transition: { duration: 0.6, ease: EASE_SMOOTH } },
-  petals: { exit: { opacity: 0 }, transition: { duration: 0.7 } },
-  confetti: { exit: { opacity: 0, scale: 1.05 }, transition: { duration: 0.6, ease: EASE_SMOOTH } },
+// the chosen `transition` decides how the overlay clears to reveal the page
+// underneath. `dur()` lets the user override the per-style default duration.
+const overlayExit = (style: TransitionStyle, dur?: number): { exit: TargetAndTransition; transition: Transition } => {
+  const d = dur && dur > 0 ? dur : undefined
+  switch (style) {
+    case 'zoom':
+      return { exit: { opacity: 0, scale: 1.8, rotate: 1.5 }, transition: { duration: d ?? 0.7, ease: EASE_SMOOTH } }
+    case 'iris':
+      // Circular reveal: the overlay clips down to a shrinking circle so the
+      // invitation appears through an expanding "iris" hole.
+      return { exit: { opacity: 0, clipPath: 'circle(0% at 50% 50%)' }, transition: { duration: d ?? 0.75, ease: EASE_SMOOTH } }
+    case 'curtain':
+      return { exit: { opacity: 0, clipPath: 'inset(0 50% 0 50%)' }, transition: { duration: d ?? 0.65, ease: EASE_FLAP } }
+    case 'slide-up':
+      return { exit: { opacity: 0, y: '-100%' }, transition: { duration: d ?? 0.7, ease: EASE_SMOOTH } }
+    case 'dissolve':
+      return { exit: { opacity: 0, filter: 'blur(26px) brightness(1.4)', scale: 1.08 }, transition: { duration: d ?? 0.8, ease: EASE_SMOOTH } }
+    case 'fade':
+    default:
+      return { exit: { opacity: 0, scale: 1.03 }, transition: { duration: d ?? 0.6, ease: EASE_SMOOTH } }
+  }
+}
+
+// Legacy `openAnimation` mixed the particle effect and the exit transition into
+// one selector. Derive the new decoupled pair from it when the new fields are
+// absent, so existing invitations keep working unchanged.
+function resolveLegacy(openAnimation?: OpenAnimation): { effect: ParticleEffect; transition: TransitionStyle } {
+  switch (openAnimation) {
+    case 'zoom-burst':
+      return { effect: 'none', transition: 'zoom' }
+    case 'curtain':
+      return { effect: 'none', transition: 'curtain' }
+    case 'dissolve':
+      return { effect: 'none', transition: 'dissolve' }
+    case 'sparkle':
+      return { effect: 'sparkle', transition: 'fade' }
+    case 'petals':
+      return { effect: 'petals', transition: 'fade' }
+    case 'confetti':
+      return { effect: 'confetti', transition: 'fade' }
+    case 'classic':
+    default:
+      return { effect: 'none', transition: 'fade' }
+  }
 }
 
 // Deterministic particle seeds so the layers don't reshuffle each render.
@@ -53,18 +90,113 @@ const CONFETTI = Array.from({ length: 40 }, (_, i) => ({
   spin: (i % 2 === 0 ? 1 : -1) * (360 + (i % 3) * 180),
   hue: [350, 45, 140, 200, 280, 20][i % 6],
 }))
+const RAIN = Array.from({ length: 60 }, (_, i) => ({
+  left: (i * 17 + 2) % 100,
+  delay: (i % 12) * 0.12,
+  duration: 0.7 + (i % 5) * 0.18,
+  len: 16 + (i % 4) * 8,
+  drift: 6 + (i % 3) * 4,
+}))
+const LEAVES = Array.from({ length: 22 }, (_, i) => ({
+  top: (i * 41) % 100,
+  delay: (i % 9) * 0.5,
+  duration: 5 + (i % 6),
+  size: 16 + (i % 5) * 7,
+  sway: ((i % 3) + 1) * 30,
+  spin: (i % 2 === 0 ? 1 : -1) * (180 + (i % 4) * 120),
+  hue: [28, 38, 14, 95, 48][i % 5],
+}))
+const BOKEH = Array.from({ length: 18 }, (_, i) => ({
+  left: (i * 53 + 7) % 100,
+  delay: (i % 7) * 0.8,
+  duration: 7 + (i % 6) * 1.2,
+  size: 36 + (i % 6) * 26,
+  drift: ((i % 5) - 2) * 30,
+  maxOpacity: 0.18 + (i % 4) * 0.12,
+  hue: [45, 35, 320, 200, 280][i % 5],
+}))
+const FIREFLIES = Array.from({ length: 24 }, (_, i) => ({
+  left: (i * 43 + 5) % 100,
+  top: (i * 29 + 11) % 100,
+  delay: (i % 10) * 0.4,
+  duration: 3 + (i % 5) * 0.9,
+  size: 5 + (i % 4) * 3,
+  wanderX: ((i % 5) - 2) * 26,
+  wanderY: ((i % 4) - 2) * 24,
+}))
+const BUBBLES = Array.from({ length: 26 }, (_, i) => ({
+  left: (i * 31 + 4) % 100,
+  delay: (i % 9) * 0.45,
+  duration: 5 + (i % 6) * 0.9,
+  size: 12 + (i % 6) * 9,
+  sway: ((i % 3) + 1) * 16,
+}))
+const HEARTS = Array.from({ length: 22 }, (_, i) => ({
+  left: (i * 47 + 6) % 100,
+  delay: (i % 9) * 0.5,
+  duration: 5 + (i % 5),
+  size: 16 + (i % 5) * 8,
+  sway: ((i % 3) + 1) * 22,
+  hue: [340, 350, 0, 320, 12][i % 5],
+}))
+const SNOW = Array.from({ length: 50 }, (_, i) => ({
+  left: (i * 23 + 3) % 100,
+  delay: (i % 12) * 0.5,
+  duration: 6 + (i % 7),
+  size: 4 + (i % 5) * 4,
+  sway: ((i % 4) + 1) * 14,
+  blur: i % 3 === 0 ? 1.5 : 0,
+}))
+const SHOOTERS = Array.from({ length: 14 }, (_, i) => ({
+  left: (i * 67 + 5) % 90,
+  top: (i * 19) % 60,
+  delay: (i % 7) * 0.9 + (i % 3) * 0.3,
+  duration: 0.9 + (i % 4) * 0.25,
+  len: 90 + (i % 5) * 40,
+  travel: 120 + (i % 4) * 60,
+}))
+const EMBERS = Array.from({ length: 36 }, (_, i) => ({
+  left: (i * 37 + 4) % 100,
+  delay: (i % 10) * 0.3,
+  duration: 3 + (i % 6) * 0.7,
+  size: 4 + (i % 5) * 4,
+  drift: ((i % 7) - 3) * 22,
+  hue: [18, 28, 38, 8][i % 4],
+}))
 
 /** A single particle body — a user image/SVG when provided, else the built-in
- *  `fallback` shape. */
-function Particle({ image, fallback }: { image?: string; fallback: React.ReactNode }) {
-  if (image) return <img src={image} alt="" className="h-full w-full object-contain" draggable={false} />
+ *  `fallback` shape. When several images are supplied, `seed` picks one
+ *  deterministically so the layer doesn't reshuffle on every render. */
+function Particle({
+  images,
+  seed = 0,
+  fallback,
+}: {
+  images?: string[]
+  seed?: number
+  fallback: React.ReactNode
+}) {
+  if (images && images.length > 0) {
+    const src = images[(seed * 7 + 3) % images.length]
+    return <img src={src} alt="" className="h-full w-full object-contain" draggable={false} />
+  }
   return <>{fallback}</>
 }
 
-function SparkleLayer({ image, color }: { image?: string; color?: string }) {
+/** Shared props for every particle layer. `images` (when non-empty) overrides
+ *  the built-in shapes; each particle picks one at random via its index seed. */
+interface LayerProps {
+  images?: string[]
+  color?: string
+}
+
+const layerWrap = 'pointer-events-none absolute inset-0 z-[5] overflow-hidden'
+
+function SparkleLayer({ images, color }: LayerProps) {
   const tint = color || '#ffe5a3'
+  const hasImg = !!images?.length
   return (
-    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+    <div className={layerWrap}>
       {SPARKLES.map((s, i) => (
         <motion.span
           key={i}
@@ -74,14 +206,15 @@ function SparkleLayer({ image, color }: { image?: string; color?: string }) {
             top: `${s.top}%`,
             width: s.size,
             height: s.size,
-            filter: image ? undefined : `drop-shadow(0 0 ${s.size / 2}px ${tint})`,
+            filter: hasImg ? undefined : `drop-shadow(0 0 ${s.size / 2}px ${tint})`,
           }}
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: [0, 1, 0], scale: [0, 1, 0], rotate: [0, s.spin] }}
           transition={{ duration: 1.5, delay: s.delay, repeat: Infinity, repeatDelay: 0.5, ease: 'easeInOut' }}
         >
           <Particle
-            image={image}
+            images={images}
+            seed={i}
             fallback={
               <svg viewBox="0 0 24 24" width="100%" height="100%" fill={tint} aria-hidden>
                 <path d="M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z" />
@@ -94,9 +227,9 @@ function SparkleLayer({ image, color }: { image?: string; color?: string }) {
   )
 }
 
-function PetalsLayer({ image, color }: { image?: string; color?: string }) {
+function PetalsLayer({ images, color }: LayerProps) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+    <div className={layerWrap}>
       {PETALS.map((p, i) => (
         <motion.span
           key={i}
@@ -112,7 +245,8 @@ function PetalsLayer({ image, color }: { image?: string; color?: string }) {
           transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeIn' }}
         >
           <Particle
-            image={image}
+            images={images}
+            seed={i}
             fallback={
               <span
                 className="block h-full w-full rounded-[100%_0_100%_0]"
@@ -126,20 +260,22 @@ function PetalsLayer({ image, color }: { image?: string; color?: string }) {
   )
 }
 
-function ConfettiLayer({ image, color }: { image?: string; color?: string }) {
+function ConfettiLayer({ images, color }: LayerProps) {
+  const hasImg = !!images?.length
   return (
-    <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+    <div className={layerWrap}>
       {CONFETTI.map((c, i) => (
         <motion.span
           key={i}
           className="absolute -top-10 block"
-          style={{ left: `${c.left}%`, width: image ? c.h : c.w, height: c.h }}
+          style={{ left: `${c.left}%`, width: hasImg ? c.h : c.w, height: c.h }}
           initial={{ y: -30, x: 0, opacity: 0, rotate: 0 }}
           animate={{ y: '114vh', x: [0, c.drift, -c.drift / 2], opacity: [0, 1, 1, 0.85], rotate: c.spin }}
           transition={{ duration: c.duration, delay: c.delay, repeat: Infinity, ease: 'easeIn' }}
         >
           <Particle
-            image={image}
+            images={images}
+            seed={i}
             fallback={
               <span
                 className="block h-full w-full rounded-[2px]"
@@ -151,6 +287,318 @@ function ConfettiLayer({ image, color }: { image?: string; color?: string }) {
       ))}
     </div>
   )
+}
+
+/** Rain — thin near-vertical streaks falling fast with a slight slant. */
+function RainLayer({ images, color }: LayerProps) {
+  const tint = color || 'rgba(174,198,230,0.7)'
+  return (
+    <div className={layerWrap}>
+      {RAIN.map((r, i) => (
+        <motion.span
+          key={i}
+          className="absolute -top-10 block"
+          style={{ left: `${r.left}%`, width: 2, height: r.len }}
+          initial={{ y: -40, x: 0, opacity: 0 }}
+          animate={{ y: '114vh', x: r.drift, opacity: [0, 0.8, 0.8, 0] }}
+          transition={{ duration: r.duration, delay: r.delay, repeat: Infinity, ease: 'easeIn' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={
+              <span
+                className="block h-full w-full rounded-full"
+                style={{ background: `linear-gradient(${tint}, transparent)` }}
+              />
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Leaves drifting on the wind — diagonal crossing with sway + 3D tumble. */
+function LeavesLayer({ images, color }: LayerProps) {
+  return (
+    <div className={layerWrap}>
+      {LEAVES.map((l, i) => (
+        <motion.span
+          key={i}
+          className="absolute -left-12 block"
+          style={{ top: `${l.top}%`, width: l.size, height: l.size }}
+          initial={{ x: -60, y: 0, opacity: 0, rotate: 0 }}
+          animate={{
+            x: '108vw',
+            y: [0, l.sway, -l.sway, l.sway / 2],
+            opacity: [0, 1, 1, 0.7],
+            rotate: [0, l.spin],
+            rotateX: [0, 180, 360],
+          }}
+          transition={{ duration: l.duration, delay: l.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={
+              <svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden fill={color || `hsl(${l.hue} 65% 45%)`}>
+                <path d="M21 3C10 3 3 10 3 21c11 0 18-7 18-18zM7 17C9 11 13 7 19 5 13 7 9 11 7 17z" />
+              </svg>
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Bokeh — soft, blurred glowing orbs rising slowly. */
+function BokehLayer({ images, color }: LayerProps) {
+  const hasImg = !!images?.length
+  return (
+    <div className={layerWrap}>
+      {BOKEH.map((b, i) => (
+        <motion.span
+          key={i}
+          className="absolute -bottom-24 block"
+          style={{
+            left: `${b.left}%`,
+            width: b.size,
+            height: b.size,
+            filter: hasImg ? undefined : 'blur(6px)',
+          }}
+          initial={{ y: 0, x: 0, opacity: 0, scale: 0.8 }}
+          animate={{ y: '-118vh', x: [0, b.drift, -b.drift], opacity: [0, b.maxOpacity, b.maxOpacity, 0], scale: [0.8, 1.1, 0.9] }}
+          transition={{ duration: b.duration, delay: b.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={
+              <span
+                className="block h-full w-full rounded-full"
+                style={{ background: color || `radial-gradient(circle at 35% 35%, hsl(${b.hue} 90% 80%), transparent 70%)` }}
+              />
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Fireflies — small glowing dots wandering organically and blinking. */
+function FirefliesLayer({ images, color }: LayerProps) {
+  const tint = color || '#c6ff7a'
+  const hasImg = !!images?.length
+  return (
+    <div className={layerWrap}>
+      {FIREFLIES.map((f, i) => (
+        <motion.span
+          key={i}
+          className="absolute block"
+          style={{
+            left: `${f.left}%`,
+            top: `${f.top}%`,
+            width: f.size,
+            height: f.size,
+            filter: hasImg ? undefined : `drop-shadow(0 0 ${f.size}px ${tint})`,
+          }}
+          initial={{ opacity: 0, x: 0, y: 0 }}
+          animate={{
+            opacity: [0, 1, 0.3, 1, 0],
+            x: [0, f.wanderX, -f.wanderX, f.wanderX / 2, 0],
+            y: [0, f.wanderY, -f.wanderY / 2, f.wanderY, 0],
+          }}
+          transition={{ duration: f.duration, delay: f.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={<span className="block h-full w-full rounded-full" style={{ background: tint }} />}
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Bubbles — translucent bubbles rising with a wobble and a glossy highlight. */
+function BubblesLayer({ images, color }: LayerProps) {
+  return (
+    <div className={layerWrap}>
+      {BUBBLES.map((b, i) => (
+        <motion.span
+          key={i}
+          className="absolute -bottom-16 block"
+          style={{ left: `${b.left}%`, width: b.size, height: b.size }}
+          initial={{ y: 0, x: 0, opacity: 0 }}
+          animate={{ y: '-116vh', x: [0, b.sway, -b.sway, b.sway / 2], opacity: [0, 0.9, 0.9, 0] }}
+          transition={{ duration: b.duration, delay: b.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={
+              <span
+                className="relative block h-full w-full rounded-full"
+                style={{
+                  border: `1px solid ${color || 'rgba(255,255,255,0.8)'}`,
+                  background: 'radial-gradient(circle at 30% 28%, rgba(255,255,255,0.9), rgba(255,255,255,0.08) 45%, transparent 70%)',
+                }}
+              />
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Hearts — floating hearts rising with a gentle sway. */
+function HeartsLayer({ images, color }: LayerProps) {
+  return (
+    <div className={layerWrap}>
+      {HEARTS.map((h, i) => (
+        <motion.span
+          key={i}
+          className="absolute -bottom-16 block"
+          style={{ left: `${h.left}%`, width: h.size, height: h.size }}
+          initial={{ y: 0, x: 0, opacity: 0, rotate: -8 }}
+          animate={{ y: '-116vh', x: [0, h.sway, -h.sway, 0], opacity: [0, 1, 1, 0], rotate: [-8, 8, -8] }}
+          transition={{ duration: h.duration, delay: h.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={
+              <svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden fill={color || `hsl(${h.hue} 80% 65%)`}>
+                <path d="M12 21s-7.5-4.6-10-9.3C.6 8.3 2 5 5.3 5c2 0 3.5 1.2 4.7 3 1.2-1.8 2.7-3 4.7-3C18 5 19.4 8.3 18 11.7 15.5 16.4 12 21 12 21z" />
+              </svg>
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Snow — slow falling flakes with a soft drift. */
+function SnowLayer({ images, color }: LayerProps) {
+  return (
+    <div className={layerWrap}>
+      {SNOW.map((s, i) => (
+        <motion.span
+          key={i}
+          className="absolute -top-8 block"
+          style={{ left: `${s.left}%`, width: s.size, height: s.size, filter: s.blur ? `blur(${s.blur}px)` : undefined }}
+          initial={{ y: -20, x: 0, opacity: 0 }}
+          animate={{ y: '112vh', x: [0, s.sway, -s.sway, s.sway / 2], opacity: [0, 1, 1, 0.8] }}
+          transition={{ duration: s.duration, delay: s.delay, repeat: Infinity, ease: 'linear' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={<span className="block h-full w-full rounded-full" style={{ background: color || '#ffffff' }} />}
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Shooting stars — diagonal streaks with a tail that flash across the sky. */
+function ShootingStarsLayer({ images, color }: LayerProps) {
+  const tint = color || '#ffffff'
+  return (
+    <div className={layerWrap}>
+      {SHOOTERS.map((s, i) => (
+        <motion.span
+          key={i}
+          className="absolute block"
+          style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.len, height: 2, transformOrigin: 'left center', rotate: '35deg' }}
+          initial={{ x: 0, y: 0, opacity: 0 }}
+          animate={{ x: [0, s.travel], y: [0, s.travel * 0.7], opacity: [0, 1, 0] }}
+          transition={{ duration: s.duration, delay: s.delay, repeat: Infinity, repeatDelay: 2.4, ease: 'easeIn' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={
+              <span
+                className="block h-full w-full rounded-full"
+                style={{ background: `linear-gradient(90deg, transparent, ${tint})`, boxShadow: `0 0 6px ${tint}` }}
+              />
+            }
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Embers — warm glowing sparks rising and fading out. */
+function EmbersLayer({ images, color }: LayerProps) {
+  const hasImg = !!images?.length
+  return (
+    <div className={layerWrap}>
+      {EMBERS.map((e, i) => (
+        <motion.span
+          key={i}
+          className="absolute -bottom-8 block"
+          style={{
+            left: `${e.left}%`,
+            width: e.size,
+            height: e.size,
+            filter: hasImg ? undefined : `drop-shadow(0 0 ${e.size}px hsl(${e.hue} 100% 60%))`,
+          }}
+          initial={{ y: 0, x: 0, opacity: 0, scale: 1 }}
+          animate={{ y: '-110vh', x: [0, e.drift, -e.drift / 2], opacity: [0, 1, 1, 0], scale: [1, 0.4] }}
+          transition={{ duration: e.duration, delay: e.delay, repeat: Infinity, ease: 'easeOut' }}
+        >
+          <Particle
+            images={images}
+            seed={i}
+            fallback={<span className="block h-full w-full rounded-full" style={{ background: color || `hsl(${e.hue} 100% 62%)` }} />}
+          />
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
+/** Maps a particle effect to its layer. `none` renders nothing. */
+function ParticleLayer({ effect, images, color }: { effect: ParticleEffect } & LayerProps) {
+  switch (effect) {
+    case 'sparkle':
+      return <SparkleLayer images={images} color={color} />
+    case 'petals':
+      return <PetalsLayer images={images} color={color} />
+    case 'confetti':
+      return <ConfettiLayer images={images} color={color} />
+    case 'rain':
+      return <RainLayer images={images} color={color} />
+    case 'leaves':
+      return <LeavesLayer images={images} color={color} />
+    case 'bokeh':
+      return <BokehLayer images={images} color={color} />
+    case 'fireflies':
+      return <FirefliesLayer images={images} color={color} />
+    case 'bubbles':
+      return <BubblesLayer images={images} color={color} />
+    case 'hearts':
+      return <HeartsLayer images={images} color={color} />
+    case 'snow':
+      return <SnowLayer images={images} color={color} />
+    case 'shooting-stars':
+      return <ShootingStarsLayer images={images} color={color} />
+    case 'embers':
+      return <EmbersLayer images={images} color={color} />
+    case 'none':
+    default:
+      return null
+  }
 }
 
 interface EnvelopeIntroProps {
@@ -196,14 +644,26 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
   const hintLabel = (config.hintLabel || '').trim() || 'Toca para abrir'
   const waxColor = config.waxColor || '#9c3a3a'
   const showWax = !!config.wax
-  const openAnimation: OpenAnimation = config.openAnimation || 'classic'
   const bgImage = (config.backgroundImage || '').trim()
-  const particleImage = (config.particleImage || '').trim() || undefined
   const particleColor = (config.particleColor || '').trim() || undefined
-  const exitSpec = OVERLAY_EXIT[openAnimation]
-  const showSparkles = openAnimation === 'sparkle' && (stage === 'opening' || stage === 'leaving')
-  const showPetals = openAnimation === 'petals' && stage !== 'gone'
-  const showConfetti = openAnimation === 'confetti' && stage !== 'gone'
+
+  // Resolve the decoupled (effect, transition) pair, falling back to the legacy
+  // `openAnimation` selector for invitations created before the split.
+  const legacy = resolveLegacy(config.openAnimation)
+  const particleEffect: ParticleEffect = config.particleEffect ?? legacy.effect
+  const transitionStyle: TransitionStyle = config.transition ?? legacy.transition
+
+  // Resolve particle images: the new list wins, else the legacy single image.
+  const particleImages = useMemo(() => {
+    const list = (config.particleImages ?? []).map((s) => s.trim()).filter(Boolean)
+    if (list.length > 0) return list
+    const single = (config.particleImage || '').trim()
+    return single ? [single] : []
+  }, [config.particleImages, config.particleImage])
+
+  const exitSpec = overlayExit(transitionStyle, config.transitionDuration)
+  const exitDurationMs = ((exitSpec.transition as { duration?: number }).duration ?? 0.7) * 1000
+  const showParticles = particleEffect !== 'none' && stage !== 'gone'
 
   // Tone variants used for shading the front/flap so the envelope feels 3D.
   const shaded = useMemo(() => shadeColor(envelopeColor, -8), [envelopeColor])
@@ -227,19 +687,23 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
   // overlay out and let the real invitation underneath take over.
   useEffect(() => {
     if (stage !== 'opening') return
-    const t = window.setTimeout(() => setStage('leaving'), 3200)
+    const hold = config.holdDuration && config.holdDuration > 0 ? config.holdDuration * 1000 : 3200
+    const t = window.setTimeout(() => setStage('leaving'), hold)
     return () => window.clearTimeout(t)
-  }, [stage])
+  }, [stage, config.holdDuration])
 
+  // While 'leaving', the overlay itself animates out (revealing the page
+  // underneath) using the chosen transition. We only flip to 'gone' / unmount
+  // once that reveal has finished, so the hand-off reads as one continuous
+  // motion instead of a hard cut.
   useEffect(() => {
     if (stage !== 'leaving') return
     const t = window.setTimeout(() => {
-      console.log('[envelope] transitioning to gone, calling onDone')
       setStage('gone')
       onDone()
-    }, demo ? 250 : 850)
+    }, demo ? 250 : exitDurationMs)
     return () => window.clearTimeout(t)
-  }, [stage, onDone, demo])
+  }, [stage, onDone, demo, exitDurationMs])
 
   // Lock body scroll while the intro is in front of the page.
   useEffect(() => {
@@ -261,8 +725,9 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
           className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden select-none"
           style={{ background: backgroundColor }}
           initial={{ opacity: 1 }}
+          animate={stage === 'leaving' ? exitSpec.exit : { opacity: 1 }}
+          transition={stage === 'leaving' ? exitSpec.transition : undefined}
           exit={exitSpec.exit}
-          transition={exitSpec.transition}
           onClick={open}
           role="dialog"
           aria-label="Sobre de invitación"
@@ -278,11 +743,13 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
               }}
             />
           )}
-          {showPetals && <PetalsLayer image={particleImage} color={particleColor} />}
-          {showSparkles && <SparkleLayer image={particleImage} color={particleColor} />}
-          {showConfetti && <ConfettiLayer image={particleImage} color={particleColor} />}
+          {showParticles && (
+            <ParticleLayer effect={particleEffect} images={particleImages} color={particleColor} />
+          )}
           <EnvelopeStage
             stage={stage}
+            transitionStyle={transitionStyle}
+            leaveDur={exitDurationMs / 1000}
             envelopeColor={envelopeColor}
             shaded={shaded}
             highlight={highlight}
@@ -341,6 +808,10 @@ export function EnvelopeIntro({ config, onDone, demo, invitation }: EnvelopeIntr
 
 interface StageProps {
   stage: Stage
+  /** Exit transition style — shapes how the card leaves so it matches the overlay. */
+  transitionStyle: TransitionStyle
+  /** Duration (seconds) of the leaving choreography, kept in sync with the overlay. */
+  leaveDur: number
   envelopeColor: string
   shaded: string
   highlight: string
@@ -357,6 +828,8 @@ interface StageProps {
 
 function EnvelopeStage({
   stage,
+  transitionStyle,
+  leaveDur,
   envelopeColor,
   shaded,
   highlight,
@@ -373,16 +846,19 @@ function EnvelopeStage({
   // Width is responsive; height scales proportionally to keep the envelope ratio.
   const open = stage === 'opening' || stage === 'leaving'
 
-  // Card slides up out of the envelope, then scales toward viewport center.
-  // In the leaving stage, it flies upward and zooms in (scale 2.2) while fading out,
-  // making it look like the invitation is expanding to become the full page.
+  // How the emerged card leaves, matched to the overlay transition so the two
+  // read as one motion. zoom/iris expand the card into the page; slide-up
+  // carries it upward with the overlay; fade/dissolve/curtain let it fade in
+  // place. The duration is kept in sync with the overlay via `leaveDur`.
+  const leavingCard: TargetAndTransition =
+    transitionStyle === 'zoom' || transitionStyle === 'iris'
+      ? { y: '-30%', scale: 2.4, opacity: 0 }
+      : transitionStyle === 'slide-up'
+      ? { y: '-160%', scale: 1.2, opacity: 0 }
+      : { y: '-58%', scale: 1.3, opacity: 0 }
+
   const cardAnim = stage === 'leaving'
-    ? {
-        y: '-120%',
-        scale: 2.2,
-        opacity: 0,
-        transition: { duration: 0.8, ease: EASE_SMOOTH },
-      }
+    ? { ...leavingCard, transition: { duration: leaveDur, ease: EASE_SMOOTH } }
     : open
     ? {
         y: '-58%',
@@ -394,7 +870,7 @@ function EnvelopeStage({
 
   // Envelope parts (back, lining, pocket, flap) slide down and fade out during transition.
   const envelopePartsAnim = stage === 'leaving'
-    ? { y: '120%', opacity: 0, transition: { duration: 0.8, ease: EASE_SMOOTH } }
+    ? { y: '120%', opacity: 0, transition: { duration: leaveDur, ease: EASE_SMOOTH } }
     : { y: '0%', opacity: 1 }
 
   const stageAnim = stage === 'leaving'
@@ -440,7 +916,7 @@ function EnvelopeStage({
         style={{ zIndex: 1, background: liningColor }}
         initial={{ opacity: 0, y: '0%' }}
         animate={stage === 'leaving'
-          ? { y: '120%', opacity: 0, transition: { duration: 0.8, ease: EASE_SMOOTH } }
+          ? { y: '120%', opacity: 0, transition: { duration: leaveDur, ease: EASE_SMOOTH } }
           : {
               opacity: open ? 1 : 0,
               y: '0%',
@@ -525,13 +1001,13 @@ function EnvelopeStage({
         }}
         initial={{ rotateX: 0, y: '0%', opacity: 1 }}
         animate={stage === 'leaving'
-          ? { y: '120%', opacity: 0, transition: { duration: 0.8, ease: EASE_SMOOTH } }
+          ? { y: '120%', opacity: 0, transition: { duration: leaveDur, ease: EASE_SMOOTH } }
           : open
           ? { rotateX: 180, y: '0%', opacity: 1 }
           : { rotateX: 0, y: '0%', opacity: 1 }
         }
         transition={stage === 'leaving'
-          ? { duration: 0.8, ease: EASE_SMOOTH }
+          ? { duration: leaveDur, ease: EASE_SMOOTH }
           : { duration: 0.85, ease: EASE_FLAP, delay: 0.05 }
         }
       >

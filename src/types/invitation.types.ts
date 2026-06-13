@@ -781,18 +781,50 @@ export interface EnvelopeIntroConfig {
    *  Sits over backgroundColor. */
   backgroundImage?: string
   /**
-   * Transition style played when the envelope opens / hands off to the
-   * invitation. 'classic' = the original flap-open + card-fly. Defaults to
-   * 'classic'.
+   * @deprecated Legacy combined selector that mixed particle effect + exit
+   * transition. Kept for backwards compatibility: when `particleEffect` /
+   * `transition` are absent, the runtime derives them from this value. New
+   * configs write `particleEffect` and `transition` instead.
    */
   openAnimation?: 'classic' | 'zoom-burst' | 'curtain' | 'dissolve' | 'sparkle' | 'petals' | 'confetti'
   /**
-   * Custom image/SVG URL used for the particles of particle-based open
-   * animations (sparkle / petals / confetti). When set, it replaces the
-   * built-in particle shape. Leave empty to use the default shapes.
+   * Particle effect that rains over the screen while the envelope opens.
+   * 'none' = no particle layer. Decoupled from the exit `transition`.
+   */
+  particleEffect?:
+    | 'none'
+    | 'sparkle'
+    | 'petals'
+    | 'confetti'
+    | 'rain'
+    | 'leaves'
+    | 'bokeh'
+    | 'fireflies'
+    | 'bubbles'
+    | 'hearts'
+    | 'snow'
+    | 'shooting-stars'
+    | 'embers'
+  /**
+   * Style of the overlay → invitation hand-off transition (independent from the
+   * particle effect). Defaults to 'fade'.
+   */
+  transition?: 'fade' | 'zoom' | 'iris' | 'curtain' | 'slide-up' | 'dissolve'
+  /** Duration of the exit transition in seconds. Defaults to ~0.7. */
+  transitionDuration?: number
+  /** Seconds the emerged card holds on screen before leaving. Defaults to 3.2. */
+  holdDuration?: number
+  /**
+   * Images/SVGs used for the particles; each particle picks one at random.
+   * Replaces the built-in shape. Empty = default shapes + `particleColor`.
+   */
+  particleImages?: string[]
+  /**
+   * @deprecated Single custom particle image. Use `particleImages`. Read as a
+   * fallback when `particleImages` is empty.
    */
   particleImage?: string
-  /** Tint color for the built-in particles (ignored when particleImage is set). */
+  /** Tint color for the built-in particles (ignored when images are set). */
   particleColor?: string
   /** Optional recipient name printed on the envelope front (e.g. "Arlenne González"). */
   recipientName?: string
