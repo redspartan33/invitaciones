@@ -39,6 +39,14 @@ interface GuestEntry {
   createdAt: string
 }
 
+function safeParse(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
 async function readListSafe(pathname: string): Promise<GuestEntry[]> {
   // Wrap get() so any SDK error (missing blob, transient SDK problem) returns
   // an empty list rather than 500'ing the whole handler. We do NOT distinguish
@@ -122,6 +130,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PUT') {
+      // Bulk import: an array body overwrites the list verbatim, preserving each
+      // entry's original id / createdAt (used by the data migration).
+      const payload = typeof req.body === 'string' ? safeParse(req.body) : req.body
+      if (Array.isArray(payload)) {
+        const entries = (payload as GuestEntry[])
+          .filter((e) => e && typeof e.id === 'string' && typeof e.name === 'string')
+          .map((e) => ({
+            id: e.id,
+            name: e.name,
+            message: typeof e.message === 'string' ? e.message : '',
+            createdAt: typeof e.createdAt === 'string' ? e.createdAt : new Date().toISOString(),
+          }))
+        await writeList(pathname, entries)
+        return res.status(200).json({ ok: true, count: entries.length })
+      }
       // Initialize empty file only if missing — don't clobber existing
       // confirmations when the editor re-saves the block config.
       const existing = await readListSafe(pathname)

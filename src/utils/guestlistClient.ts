@@ -16,6 +16,18 @@ export interface GuestEntry {
   createdAt: string
 }
 
+/**
+ * Build the public guestlist link for the CURRENT origin. The slug is the
+ * durable identifier; the origin is resolved at render time so a link that was
+ * published on an old domain (e.g. a *.vercel.app deploy) is always shown on
+ * the domain the app is currently served from. Prefer this over any stored
+ * absolute `guestListLink` for display/copy.
+ */
+export function guestListUrl(slug: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${origin}/?guestlist=${slug}`
+}
+
 const SUBMITTED_PREFIX = 'guestlist-submitted:'
 
 function submittedKey(slug: string) {

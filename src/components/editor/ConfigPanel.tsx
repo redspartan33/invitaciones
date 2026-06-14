@@ -18,6 +18,7 @@ import type {
 import { v4 as uuid } from 'uuid'
 import { LANGUAGE_LABELS } from '../../utils/translation'
 import { apiUrl } from '../../utils/apiBase'
+import { guestListUrl } from '../../utils/guestlistClient'
 import { detectBackgroundKind, resolveBackgroundSource } from '../../utils/pageBackground'
 import { processShareImage, processShareImageUrl } from '../../utils/processShareImage'
 import { PalettePanel } from './panels/PalettePanel'
@@ -402,9 +403,10 @@ function LinksRow() {
   const rsvpData = inv.blocks
     .map((b) => (b.type === 'rsvp-info' ? (b.data as RsvpInfoData) : null))
     .find((d) => !!d?.useRsvpForm && !!d?.guestListSlug)
-  const guestLink = rsvpData
-    ? rsvpData.guestListLink || `${origin}/?guestlist=${rsvpData.guestListSlug}`
-    : ''
+  // Always resolve the guest link from the CURRENT origin (via guestListUrl)
+  // rather than the stored absolute `guestListLink`, so invitations published
+  // on an old domain still surface the link on the domain we're served from.
+  const guestLink = rsvpData?.guestListSlug ? guestListUrl(rsvpData.guestListSlug) : ''
 
   return (
     <div className="space-y-3 rounded border border-ink-200 p-3">
