@@ -39,6 +39,7 @@ const token = process.env.BLOB_READ_WRITE_TOKEN
 const NEW_ORIGIN = (process.env.NEW_ORIGIN || '').replace(/\/+$/, '')
 const TARGET_API = (process.env.TARGET_API || 'https://api.lamartinasma.com').replace(/\/+$/, '')
 const APPLY = process.env.APPLY === '1' || process.env.APPLY === 'true'
+const REWRITE_SHARED = process.env.REWRITE_SHARED === '1' || process.env.REWRITE_SHARED === 'true'
 const ONLY_INV = (process.env.ONLY_INV || '').split(',').map((s) => s.trim()).filter(Boolean)
 
 if (!token) {
@@ -75,7 +76,20 @@ async function readBlob(pathname) {
   return await new Response(r.stream).text()
 }
 
-/** Rewrite every rsvp-info block's guestListLink onto NEW_ORIGIN (slug kept). */
+/** Swap the origin of an absolute URL onto NEW_ORIGIN, keeping path + query. */
+function swapOrigin(url) {
+  try {
+    const u = new URL(url)
+    return `${NEW_ORIGIN}${u.pathname}${u.search}`
+  } catch {
+    return url
+  }
+}
+
+/**
+ * Rewrite each rsvp-info block's guestListLink onto NEW_ORIGIN (slug kept), and
+ * — when REWRITE_SHARED is on — the invitation's top-level sharedLink too.
+ */
 function rewriteGuestLinks(inv) {
   let changed = 0
   for (const b of inv.blocks || []) {
@@ -85,6 +99,13 @@ function rewriteGuestLinks(inv) {
         b.data.guestListLink = next
         changed++
       }
+    }
+  }
+  if (REWRITE_SHARED && typeof inv.sharedLink === 'string' && inv.sharedLink) {
+    const next = swapOrigin(inv.sharedLink)
+    if (inv.sharedLink !== next) {
+      inv.sharedLink = next
+      changed++
     }
   }
   return changed
