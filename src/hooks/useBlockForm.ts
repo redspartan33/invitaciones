@@ -381,6 +381,81 @@ export const blockFormSchemas: Record<FormBlockType, BlockFormSchema> = {
       },
     ],
   },
+  price: {
+    sections: [
+      {
+        title: 'Precio',
+        fields: [
+          { name: 'label', label: 'Etiqueta', kind: 'text', helper: 'Ej. "Precio", "Desde".' },
+          { name: 'price', label: 'Precio', kind: 'text', helper: 'Incluye el símbolo, ej. "$1,299".' },
+          { name: 'compareAtPrice', label: 'Precio anterior (tachado)', kind: 'text' },
+          { name: 'badge', label: 'Insignia', kind: 'text', helper: 'Ej. "Oferta", "-30%".' },
+          { name: 'note', label: 'Nota', kind: 'text', helper: 'Ej. "Incluye envío".' },
+        ],
+      },
+    ],
+  },
+  features: {
+    sections: [
+      {
+        title: 'Encabezado',
+        fields: [{ name: 'title', label: 'Título', kind: 'text' }],
+      },
+    ],
+  },
+  cta: {
+    sections: [
+      {
+        title: 'Encabezado',
+        fields: [
+          { name: 'title', label: 'Título (opcional)', kind: 'text' },
+          { name: 'description', label: 'Descripción (opcional)', kind: 'textarea' },
+        ],
+      },
+      {
+        title: 'Formulario de interés',
+        fields: [
+          { name: 'formMessageLabel', label: 'Título del campo Mensaje', kind: 'text', helper: 'Solo aplica a botones con acción "Formulario".' },
+          { name: 'formMessagePlaceholder', label: 'Placeholder del campo Mensaje', kind: 'text' },
+        ],
+      },
+    ],
+  },
+  faq: {
+    sections: [
+      {
+        title: 'Encabezado',
+        fields: [{ name: 'title', label: 'Título', kind: 'text' }],
+      },
+    ],
+  },
+  reviews: {
+    sections: [
+      {
+        title: 'Encabezado',
+        fields: [{ name: 'title', label: 'Título', kind: 'text' }],
+      },
+    ],
+  },
+  speakers: {
+    sections: [
+      {
+        title: 'Encabezado',
+        fields: [
+          { name: 'title', label: 'Título', kind: 'text' },
+          {
+            name: 'columns',
+            label: 'Columnas',
+            kind: 'select',
+            options: [
+              { value: '2', label: '2' },
+              { value: '3', label: '3' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
   'menu-header': {
     sections: [
       {

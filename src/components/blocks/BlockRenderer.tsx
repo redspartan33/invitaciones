@@ -19,6 +19,12 @@ import { MenuHeaderBlock } from './MenuHeaderBlock'
 import { MenuSectionBlock } from './MenuSectionBlock'
 import { MenuNoteBlock } from './MenuNoteBlock'
 import { MenuFooterBlock } from './MenuFooterBlock'
+import { PriceBlock } from './PriceBlock'
+import { FeaturesBlock } from './FeaturesBlock'
+import { CtaBlock } from './CtaBlock'
+import { FaqBlock } from './FaqBlock'
+import { ReviewsBlock } from './ReviewsBlock'
+import { SpeakersBlock } from './SpeakersBlock'
 
 export function BlockRenderer({ block }: { block: InvitationBlock }) {
   const inner = renderInner(block)
@@ -53,6 +59,18 @@ function renderInner(block: InvitationBlock) {
       return <MapBlock block={block as InvitationBlock<'map'>} />
     case 'countdown':
       return <CountdownBlock block={block as InvitationBlock<'countdown'>} />
+    case 'price':
+      return <PriceBlock block={block as InvitationBlock<'price'>} />
+    case 'features':
+      return <FeaturesBlock block={block as InvitationBlock<'features'>} />
+    case 'cta':
+      return <CtaBlock block={block as InvitationBlock<'cta'>} />
+    case 'faq':
+      return <FaqBlock block={block as InvitationBlock<'faq'>} />
+    case 'reviews':
+      return <ReviewsBlock block={block as InvitationBlock<'reviews'>} />
+    case 'speakers':
+      return <SpeakersBlock block={block as InvitationBlock<'speakers'>} />
     case 'text':
       return <TextBlock block={block as InvitationBlock<'text'>} />
     case 'image':

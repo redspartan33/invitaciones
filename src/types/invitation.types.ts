@@ -1,4 +1,4 @@
-export type InvitationKind = 'invitation' | 'menu'
+export type InvitationKind = 'invitation' | 'menu' | 'anuncio' | 'evento'
 
 export type InvitationBlockType =
   | 'hero'
@@ -21,6 +21,19 @@ export type InvitationBlockType =
   | 'floating'
   // Live countdown to a target date/time.
   | 'countdown'
+  // Bloques compartidos por anuncios y eventos.
+  // Precio / oferta de un producto o servicio.
+  | 'price'
+  // Lista de características / especificaciones (label + valor).
+  | 'features'
+  // Botones de llamado a la acción (WhatsApp, link externo, formulario).
+  | 'cta'
+  // Preguntas frecuentes (acordeón).
+  | 'faq'
+  // Reseñas / testimonios (autor, calificación, cita).
+  | 'reviews'
+  // Cartel / invitados / speakers (tarjetas con foto, nombre y rol).
+  | 'speakers'
 
 export type MenuBlockType =
   | 'menu-header'
@@ -546,6 +559,110 @@ export interface MenuFooterData {
   website?: string
 }
 
+// ── Anuncio / Evento block data ─────────────────────────────────────────────
+
+/** Precio / oferta de un producto o servicio. Los importes son texto libre
+ *  (incluyen su propio símbolo de moneda), igual que `MenuItem.price`. */
+export interface PriceData {
+  /** Etiqueta sobre el precio, ej. "Precio" o "Desde". */
+  label?: string
+  /** Precio principal, ej. "$1,299". */
+  price: string
+  /** Precio anterior tachado (descuento). */
+  compareAtPrice?: string
+  /** Insignia destacada, ej. "Oferta", "-30%". */
+  badge?: string
+  /** Nota bajo el precio, ej. "Incluye envío". */
+  note?: string
+}
+
+export interface FeatureItem {
+  id: string
+  /** Nombre de la característica, ej. "Material". */
+  label: string
+  /** Valor de la característica, ej. "Aluminio". Opcional para usarla como viñeta. */
+  value?: string
+}
+
+export interface FeaturesData {
+  title?: string
+  items: FeatureItem[]
+}
+
+export type CtaActionKind = 'whatsapp' | 'link' | 'form'
+
+export interface CtaButton {
+  id: string
+  label: string
+  /** Qué hace el botón al tocarlo. */
+  action: CtaActionKind
+  /** WhatsApp: teléfono con código país (solo dígitos). Link: URL destino.
+   *  Form: se ignora (usa la lista de leads del bloque). */
+  value?: string
+  /** Mensaje predefinido para WhatsApp. */
+  message?: string
+  /** Estilo del botón. Defaults to 'primary'. */
+  variant?: 'primary' | 'secondary'
+}
+
+export interface CtaData {
+  title?: string
+  description?: string
+  buttons: CtaButton[]
+  /** Lead capture (acción 'form'): reutiliza la infraestructura de guestlist.
+   *  Slug generado para almacenar los interesados. */
+  leadListSlug?: string
+  /** URL pública para ver la lista de interesados. */
+  leadListLink?: string
+  /** Etiqueta del campo mensaje en el formulario de interés. */
+  formMessageLabel?: string
+  /** Placeholder del campo mensaje en el formulario de interés. */
+  formMessagePlaceholder?: string
+}
+
+export interface FaqItem {
+  id: string
+  question: string
+  answer: string
+}
+
+export interface FaqData {
+  title?: string
+  items: FaqItem[]
+}
+
+export interface ReviewItem {
+  id: string
+  author: string
+  /** Calificación de 1 a 5 estrellas. */
+  rating?: number
+  quote: string
+  /** Avatar opcional (URL o data: URL). */
+  avatar?: string
+}
+
+export interface ReviewsData {
+  title?: string
+  items: ReviewItem[]
+}
+
+export interface SpeakerItem {
+  id: string
+  name: string
+  /** Rol o cargo, ej. "Conferencista", "DJ". */
+  role?: string
+  bio?: string
+  /** Foto opcional (URL o data: URL). */
+  photo?: string
+}
+
+export interface SpeakersData {
+  title?: string
+  items: SpeakerItem[]
+  /** Columnas de la rejilla. Defaults to 3. */
+  columns?: 2 | 3
+}
+
 export type BlockDataMap = {
   hero: HeroData
   'event-details': EventDetailsData
@@ -562,6 +679,12 @@ export type BlockDataMap = {
   shape: ShapeElementData
   floating: FloatingData
   countdown: CountdownData
+  price: PriceData
+  features: FeaturesData
+  cta: CtaData
+  faq: FaqData
+  reviews: ReviewsData
+  speakers: SpeakersData
   'menu-header': MenuHeaderData
   'menu-section': MenuSectionData
   'menu-note': MenuNoteData

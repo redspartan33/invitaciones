@@ -53,6 +53,26 @@ src/
 
 Usamos directamente el iframe clásico de Google Maps (`https://www.google.com/maps?q=<address>&output=embed`) que no requiere API key ni geocoding cliente, así que funciona en redes que bloquean Nominatim. Si pegas tu propio `embedUrl` se usa en su lugar. Bajo el mapa hay un botón prominente "Abrir en Google Maps" como alternativa para abrir nativo. El selector **"Cómo mostrar"** del bloque mapa permite elegir entre **mostrar el mapa interactivo** o **solo un botón** que abre la ubicación en la app de mapas del celular (sin cargar el iframe).
 
+### Tipos de documento: invitación, evento, anuncio y menú
+
+El `kind` del documento (`Invitation.kind`) decide **qué catálogo de bloques** ofrece el editor (`blockCatalogFor` en [blockDefaults.ts](src/utils/blockDefaults.ts)) y con qué plantilla arranca. El panel admin tiene un botón por tipo (`+ Invitación`, `+ Evento`, `+ Anuncio`, `+ Menú`), pestañas de filtro y un `KindBadge` por tipo. El backend no distingue el `kind` (mismo almacenamiento JSON); solo la etiqueta de link-preview (`pickShareDescription` / título en [server/index.js](server/index.js)) lo usa para decir "Evento" / "Anuncio".
+
+- **Evento** (`kind = 'evento'`) — Página pública para **promocionar y difundir** un evento. Plantilla `createExampleEvento`: portada, detalles, cuenta regresiva, agenda (timeline), **cartel/invitados**, galería, FAQ, registro (RSVP) y pie. Reutiliza casi todos los bloques de invitación.
+- **Anuncio** (`kind = 'anuncio'`) — Página para **publicar un producto o servicio** (estilo listing/landing). Plantilla `createExampleAnuncio`: portada, galería, **precio**, **características**, **CTA**, **reseñas**, FAQ y pie.
+
+Ambos tipos usan el editor apilado (`stacked`) y el **bloque Flotante** está disponible en sus catálogos.
+
+### Bloques compartidos por anuncios y eventos
+
+Bloques nuevos, todos de la familia "invitación" (apilables o colocables en lienzo). Se editan con el schema-driven [DynamicBlockForm](src/components/forms/DynamicBlockForm.tsx) más un sub-form de items por bloque, igual que timeline/gallery.
+
+- **Precio / Oferta** (`price`) — Precio principal, precio anterior tachado, insignia (ej. "Oferta") y nota. Importes en texto libre (incluyen su símbolo). Ver [PriceBlock](src/components/blocks/PriceBlock.tsx). *(anuncios)*
+- **Características** (`features`) — Lista de `label + value` (especificaciones, o "qué incluye" en eventos). Editor [FeaturesItemsForm](src/components/forms/FeaturesItemsForm.tsx), render [FeaturesBlock](src/components/blocks/FeaturesBlock.tsx).
+- **Botón / CTA** (`cta`) — Uno o más botones con acción **WhatsApp** (deep-link wa.me), **link externo** (comprar) o **formulario de interés** (lead capture). El formulario reutiliza la infraestructura de guestlist: al elegir la acción "Formulario" se genera un `leadListSlug` y un link público (`/?guestlist=<slug>`) para ver los interesados; el modal envía nombre + contacto + mensaje vía `submitGuestEntry`. Editor [CtaButtonsForm](src/components/forms/CtaButtonsForm.tsx), render [CtaBlock](src/components/blocks/CtaBlock.tsx).
+- **Preguntas frecuentes** (`faq`) — Acordeón nativo (`<details>`) de pregunta/respuesta. Editor [FaqItemsForm](src/components/forms/FaqItemsForm.tsx), render [FaqBlock](src/components/blocks/FaqBlock.tsx).
+- **Reseñas** (`reviews`) — Testimonios con autor, calificación de estrellas, cita y avatar opcional. Editor [ReviewsItemsForm](src/components/forms/ReviewsItemsForm.tsx), render [ReviewsBlock](src/components/blocks/ReviewsBlock.tsx).
+- **Cartel / Invitados** (`speakers`) — Tarjetas en rejilla (2 o 3 columnas) con foto, nombre, rol y bio. Editor [SpeakersItemsForm](src/components/forms/SpeakersItemsForm.tsx), render [SpeakersBlock](src/components/blocks/SpeakersBlock.tsx). *(eventos)*
+
 ### Modos de invitación: secciones apiladas vs. lienzo libre
 
 Al crear una invitación, el botón **"+ Invitación"** del panel admin es un split-button:
@@ -172,6 +192,28 @@ El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 **Fuente única de verdad: el servidor (Vercel Blob)** — `src/utils/guestlistClient.ts` ya **no** persiste entradas en `localStorage`. Las confirmaciones se leen y se escriben siempre vía `/api/guestlists/<slug>`, y si el servidor falla se muestra un mensaje de error con botón "Reintentar" en lugar de guardar en local. Esto garantiza que dos dispositivos abriendo el mismo link vean exactamente la misma lista. Lo único que se sigue guardando en local es el marcador `guestlist-submitted:<slug>` para evitar que el mismo navegador confirme dos veces.
 
 **Lecturas frescas** — el endpoint GET usa `list({ prefix })` + `fetch(url, { cache: 'no-store' })` en vez de `get()`, evitando la caché del CDN de Vercel Blob después de un `put(allowOverwrite)`. Sin esto un dispositivo podía ver una lista cacheada mientras otro escribía una nueva entrada.
+
+**Origen del link resuelto en tiempo de render** — el link de invitados se construye siempre desde el **dominio actual** con el helper `guestListUrl(slug)` (`src/utils/guestlistClient.ts`), no desde el `guestListLink` absoluto que quedó congelado al publicar. Así una invitación publicada en un dominio viejo (p. ej. un deploy `*.vercel.app`) muestra el link en el dominio desde el que se sirve la app. El `guestListSlug` es el identificador durable; el origen es lo único que se recalcula. Lo usan tanto el [ConfigPanel](src/components/editor/ConfigPanel.tsx) como el [DynamicBlockForm](src/components/forms/DynamicBlockForm.tsx).
+
+**Importación masiva (`PUT` con array)** — además de inicializar una lista vacía, `PUT /api/guestlists/<slug>` acepta un **array** de entradas como body y lo escribe **verbatim**, preservando el `id` y el `createdAt` originales de cada confirmación (sin regenerarlos). Lo usa la migración para no perder los timestamps históricos. En ambos backends (Express y Vercel).
+
+#### Migración Vercel → servidor propio
+
+[`scripts/migrate-from-vercel.mjs`](scripts/migrate-from-vercel.mjs) copia **todas** las invitaciones (`inv/*.json`) y listas de invitados (`guests/*.json`) desde el Vercel Blob al servidor propio (`api.lamartinasma.com`) vía su API pública. Mientras migra cada invitación, **reescribe el `guestListLink`** de los bloques RSVP al nuevo origen público (manteniendo el slug). Las listas se importan con el `PUT` masivo, conservando ids y fechas.
+
+Es **dry-run por defecto** (no escribe nada hasta pasar `APPLY=1`):
+
+```bash
+# 1) ver qué haría, sin escribir
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxx NEW_ORIGIN=https://lamartinasma.com \
+  node scripts/migrate-from-vercel.mjs
+
+# 2) ejecutar de verdad
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxx NEW_ORIGIN=https://lamartinasma.com \
+  APPLY=1 node scripts/migrate-from-vercel.mjs
+```
+
+Variables: `BLOB_READ_WRITE_TOKEN` (token del Blob de Vercel, requerido), `NEW_ORIGIN` (dominio público nuevo para los links, requerido), `TARGET_API` (default `https://api.lamartinasma.com`), `APPLY` (`1` para escribir), `ONLY_INV` (ids separados por coma para limitar el alcance — útil para probar primero con `ecb13d12-…`).
 
 ### Favicon y Google Fonts (Detalles / Fuentes)
 
@@ -525,7 +567,8 @@ POST   /api/assets                       → { url } (sube data URI; devuelve UR
 GET    /api/asset/<folder>/<file>        → bytes del archivo
 GET    /api/guestlists/<slug>            → [GuestEntry, …]
 POST   /api/guestlists/<slug>            → { ok: true, entry }
-PUT    /api/guestlists/<slug>            → { ok: true }   (inicializa vacía)
+PUT    /api/guestlists/<slug>            → { ok: true }   (body vacío: inicializa vacía)
+PUT    /api/guestlists/<slug>  [Entry…]  → { ok: true, count }  (body array: importa verbatim, preserva id/createdAt)
 DELETE /api/guestlists/<slug>?entryId=…  → { ok: true }   (borra una entrada por id, idempotente)
 GET    /share/<slug>                     → HTML con og:title/og:image (preview WhatsApp)
 ```

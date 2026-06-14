@@ -5,7 +5,7 @@ import { EditorFootbar } from './EditorFootbar'
 import { EditorHeader } from './EditorHeader'
 import { GuideModal } from './GuideModal'
 import { INVITATION_PREFIX, useEditorStore } from '../../store/editorStore'
-import { createExampleInvitation, createExampleMenu } from '../../utils/blockDefaults'
+import { createExampleInvitation, createExampleMenu, createExampleAnuncio, createExampleEvento } from '../../utils/blockDefaults'
 import { createHannahMichaelMenu, createCocinotecaMenu } from '../../utils/menuTemplates'
 import { loadFromRegistry, saveToRegistry } from '../../utils/inviteRegistry'
 import type { CanvasAspect, Invitation, LayoutMode } from '../../types/invitation.types'
@@ -34,11 +34,15 @@ export function InvitationBuilder() {
           ? createHannahMichaelMenu
           : newParam === 'cocinoteca'
             ? createCocinotecaMenu
-            : () =>
-                createExampleInvitation({
-                  mode: modeParam ?? undefined,
-                  aspect: aspectParam ?? undefined,
-                })
+            : newParam === 'anuncio'
+              ? createExampleAnuncio
+              : newParam === 'evento'
+                ? createExampleEvento
+                : () =>
+                    createExampleInvitation({
+                      mode: modeParam ?? undefined,
+                      aspect: aspectParam ?? undefined,
+                    })
 
     async function boot() {
       if (editId) {

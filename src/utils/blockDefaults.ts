@@ -42,11 +42,57 @@ export const MENU_BLOCK_CATALOG: BlockTypeInfo[] = [
   { type: 'menu-footer', label: 'Pie del menú', description: 'Dirección, horarios, contacto', icon: '⌂' },
 ]
 
+// Bloques nuevos compartidos por anuncios y eventos.
+const PRICE_BLOCK: BlockTypeInfo = { type: 'price', label: 'Precio / Oferta', description: 'Precio, descuento e insignia', icon: '$' }
+const FEATURES_BLOCK: BlockTypeInfo = { type: 'features', label: 'Características', description: 'Lista de especificaciones o qué incluye', icon: '☑' }
+const CTA_BLOCK: BlockTypeInfo = { type: 'cta', label: 'Botón / CTA', description: 'WhatsApp, comprar o formulario de interés', icon: '➤' }
+const FAQ_BLOCK: BlockTypeInfo = { type: 'faq', label: 'Preguntas frecuentes', description: 'Acordeón de preguntas y respuestas', icon: '?' }
+const REVIEWS_BLOCK: BlockTypeInfo = { type: 'reviews', label: 'Reseñas', description: 'Testimonios con calificación', icon: '★' }
+const SPEAKERS_BLOCK: BlockTypeInfo = { type: 'speakers', label: 'Cartel / Invitados', description: 'Tarjetas con foto, nombre y rol', icon: '☺' }
+
+export const ANUNCIO_BLOCK_CATALOG: BlockTypeInfo[] = [
+  ...ELEMENT_BLOCK_CATALOG,
+  { type: 'hero', label: 'Portada', description: 'Título del producto o servicio', icon: '✦' },
+  PRICE_BLOCK,
+  { type: 'gallery', label: 'Galería', description: 'Fotos del producto', icon: '▦' },
+  { type: 'image-set', label: 'Set de imágenes', description: '1, 2 o 3 imágenes en columnas', icon: '◫' },
+  FEATURES_BLOCK,
+  CTA_BLOCK,
+  REVIEWS_BLOCK,
+  FAQ_BLOCK,
+  { type: 'countdown', label: 'Cuenta regresiva', description: 'La oferta termina en…', icon: '◷' },
+  { type: 'map', label: 'Mapa', description: 'Ubicación del servicio', icon: '◉' },
+  { type: 'floating', label: 'Flotante', description: 'Imagen y/o texto flotante con movimiento', icon: '✦' },
+  { type: 'footer', label: 'Pie / Contacto', description: 'Mensaje final y contacto', icon: '⌂' },
+]
+
+export const EVENTO_BLOCK_CATALOG: BlockTypeInfo[] = [
+  ...ELEMENT_BLOCK_CATALOG,
+  { type: 'hero', label: 'Portada', description: 'Título principal del evento', icon: '✦' },
+  { type: 'event-details', label: 'Detalles del evento', description: 'Fecha, hora y ubicación', icon: '◷' },
+  { type: 'countdown', label: 'Cuenta regresiva', description: 'Conteo en vivo a tu fecha', icon: '◷' },
+  { type: 'timeline', label: 'Agenda', description: 'Cronograma de actividades', icon: '☷' },
+  SPEAKERS_BLOCK,
+  { type: 'gallery', label: 'Galería', description: 'Galería de fotos', icon: '▦' },
+  { type: 'image-set', label: 'Set de imágenes', description: '1, 2 o 3 imágenes en columnas', icon: '◫' },
+  FEATURES_BLOCK,
+  FAQ_BLOCK,
+  REVIEWS_BLOCK,
+  { type: 'map', label: 'Mapa', description: 'Ubicación con mapa interactivo', icon: '◉' },
+  { type: 'rsvp-info', label: 'Registro', description: 'Confirmación / registro de asistentes', icon: '✉' },
+  CTA_BLOCK,
+  { type: 'floating', label: 'Flotante', description: 'Imagen y/o texto flotante con movimiento', icon: '✦' },
+  { type: 'footer', label: 'Pie / Contacto', description: 'Mensaje final y contacto', icon: '⌂' },
+]
+
 // Backwards compatibility: existing imports of BLOCK_CATALOG still work.
 export const BLOCK_CATALOG: BlockTypeInfo[] = INVITATION_BLOCK_CATALOG
 
 export function blockCatalogFor(kind: InvitationKind): BlockTypeInfo[] {
-  return kind === 'menu' ? MENU_BLOCK_CATALOG : INVITATION_BLOCK_CATALOG
+  if (kind === 'menu') return MENU_BLOCK_CATALOG
+  if (kind === 'anuncio') return ANUNCIO_BLOCK_CATALOG
+  if (kind === 'evento') return EVENTO_BLOCK_CATALOG
+  return INVITATION_BLOCK_CATALOG
 }
 
 export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] {
@@ -176,6 +222,52 @@ export function defaultBlockData<T extends BlockType>(type: T): BlockDataMap[T] 
       email: '',
       instagram: '',
       whatsapp: '',
+    },
+    price: {
+      label: 'Precio',
+      price: '$1,299',
+      compareAtPrice: '$1,599',
+      badge: 'Oferta',
+      note: 'Incluye envío a todo el país',
+    },
+    features: {
+      title: 'Características',
+      items: [
+        { id: uuid(), label: 'Material', value: 'Aluminio premium' },
+        { id: uuid(), label: 'Garantía', value: '12 meses' },
+        { id: uuid(), label: 'Envío', value: 'Gratis' },
+      ],
+    },
+    cta: {
+      title: '',
+      description: '',
+      buttons: [
+        { id: uuid(), label: 'Contactar por WhatsApp', action: 'whatsapp', value: '', message: 'Hola, me interesa tu anuncio.', variant: 'primary' },
+        { id: uuid(), label: 'Comprar ahora', action: 'link', value: '', variant: 'secondary' },
+      ],
+    },
+    faq: {
+      title: 'Preguntas frecuentes',
+      items: [
+        { id: uuid(), question: '¿Hacen envíos?', answer: 'Sí, enviamos a todo el país en 3 a 5 días hábiles.' },
+        { id: uuid(), question: '¿Aceptan devoluciones?', answer: 'Tienes 7 días para solicitar un cambio o devolución.' },
+      ],
+    },
+    reviews: {
+      title: 'Lo que dicen',
+      items: [
+        { id: uuid(), author: 'María G.', rating: 5, quote: 'Excelente calidad y atención. Totalmente recomendado.' },
+        { id: uuid(), author: 'Carlos R.', rating: 5, quote: 'Justo lo que buscaba y llegó muy rápido.' },
+      ],
+    },
+    speakers: {
+      title: 'Invitados',
+      columns: 3,
+      items: [
+        { id: uuid(), name: 'Ana López', role: 'Conferencista' },
+        { id: uuid(), name: 'Luis Pérez', role: 'Música en vivo' },
+        { id: uuid(), name: 'Sofía Díaz', role: 'Anfitriona' },
+      ],
     },
     'menu-header': {
       title: 'Mi Restaurante',
@@ -358,6 +450,78 @@ export function createExampleMenu(): Invitation {
       colorSecondary: '#ffffff',
       colorAccent: '#111827',
       fontFamily: 'serif',
+    },
+  }
+}
+
+export function createExampleAnuncio(): Invitation {
+  const now = new Date().toISOString()
+
+  const hero = createBlock('hero', 0) as InvitationBlock<'hero'>
+  hero.data = {
+    title: 'Nombre del producto',
+    subtitle: 'Una frase corta que vende',
+    alignment: 'center',
+    dateFormat: 'DD MMMM YYYY',
+    eventDate: '',
+    backgroundColor: '',
+    showDate: false,
+    showTitle: true,
+    showSubtitle: true,
+  }
+
+  const types: BlockType[] = ['gallery', 'price', 'features', 'cta', 'reviews', 'faq', 'footer']
+
+  return {
+    id: uuid(),
+    kind: 'anuncio',
+    title: 'Nuevo anuncio',
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+    layoutMode: 'stacked',
+    blocks: [hero, ...types.map((t, i) => createBlock(t, i + 1))],
+    globalSettings: {
+      colorPrimary: '#0f172a',
+      colorSecondary: '#ffffff',
+      colorAccent: '#2563eb',
+      fontFamily: 'sans-serif',
+    },
+  }
+}
+
+export function createExampleEvento(): Invitation {
+  const now = new Date().toISOString()
+
+  const hero = createBlock('hero', 0) as InvitationBlock<'hero'>
+  hero.data = {
+    title: 'Nombre del evento',
+    subtitle: 'Acompáñanos en una experiencia inolvidable',
+    alignment: 'center',
+    dateFormat: 'DD MMMM YYYY',
+    eventDate: '2026-09-12',
+    backgroundColor: '',
+    showDate: true,
+    showTitle: true,
+    showSubtitle: true,
+  }
+
+  const types: BlockType[] = ['event-details', 'countdown', 'timeline', 'speakers', 'gallery', 'faq', 'rsvp-info', 'footer']
+
+  return {
+    id: uuid(),
+    kind: 'evento',
+    title: 'Nuevo evento',
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+    layoutMode: 'stacked',
+    blocks: [hero, ...types.map((t, i) => createBlock(t, i + 1))],
+    globalSettings: {
+      colorPrimary: '#18181b',
+      colorSecondary: '#ffffff',
+      colorAccent: '#7c3aed',
+      fontFamily: 'sans-serif',
     },
   }
 }

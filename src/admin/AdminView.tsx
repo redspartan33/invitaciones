@@ -60,12 +60,21 @@ function downloadJson(filename: string, data: unknown) {
 }
 
 function inferKind(inv: Invitation): InvitationKind {
-  if (inv.kind === 'menu' || inv.kind === 'invitation') return inv.kind
+  if (inv.kind === 'menu' || inv.kind === 'invitation' || inv.kind === 'anuncio' || inv.kind === 'evento') {
+    return inv.kind
+  }
   // Older records without `kind`: infer from block types.
   return inv.blocks.some((b) => b.type.startsWith('menu-')) ? 'menu' : 'invitation'
 }
 
-type AdminFilter = 'all' | 'invitation' | 'menu'
+type AdminFilter = 'all' | 'invitation' | 'menu' | 'anuncio' | 'evento'
+
+const KIND_LABEL: Record<InvitationKind, { singular: string; plural: string }> = {
+  invitation: { singular: 'invitación', plural: 'invitaciones' },
+  menu: { singular: 'menú', plural: 'menús' },
+  anuncio: { singular: 'anuncio', plural: 'anuncios' },
+  evento: { singular: 'evento', plural: 'eventos' },
+}
 
 export interface NewInvitationOptions {
   mode?: LayoutMode
@@ -146,13 +155,9 @@ export function AdminView({
   }, [items, filter])
 
   const counts = useMemo(() => {
-    let menu = 0
-    let invitation = 0
-    for (const i of items) {
-      if (inferKind(i) === 'menu') menu++
-      else invitation++
-    }
-    return { all: items.length, menu, invitation }
+    const c = { all: items.length, menu: 0, invitation: 0, anuncio: 0, evento: 0 }
+    for (const i of items) c[inferKind(i)]++
+    return c
   }, [items])
 
   const onExport = () => {
@@ -180,10 +185,12 @@ export function AdminView({
               easy to tap; Exportar JSON drops to a small text link below the
               row to avoid crowding the primary actions. */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <NewInvitationButton
                 onPick={(opts) => onOpenEditor(undefined, 'invitation', undefined, opts)}
               />
+              <NewKindButton kind="evento" onPick={() => onOpenEditor(undefined, 'evento')} />
+              <NewKindButton kind="anuncio" onPick={() => onOpenEditor(undefined, 'anuncio')} />
               <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
             </div>
             <button
@@ -214,6 +221,8 @@ export function AdminView({
               [
                 { id: 'all' as AdminFilter, label: `Todos (${counts.all})` },
                 { id: 'invitation' as AdminFilter, label: `Invitaciones (${counts.invitation})` },
+                { id: 'evento' as AdminFilter, label: `Eventos (${counts.evento})` },
+                { id: 'anuncio' as AdminFilter, label: `Anuncios (${counts.anuncio})` },
                 { id: 'menu' as AdminFilter, label: `Menús (${counts.menu})` },
               ]
             ).map((f) => (
@@ -246,16 +255,20 @@ export function AdminView({
           <div className="rounded border border-dashed border-ink-300 bg-surface p-12 text-center">
             <p className="font-serif text-2xl text-ink-900">Aún no hay nada</p>
             <p className="mt-3 text-sm text-ink-500">Crea tu primera invitación o menú.</p>
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
               <NewInvitationButton
                 onPick={(opts) => onOpenEditor(undefined, 'invitation', undefined, opts)}
               />
+              <NewKindButton kind="evento" onPick={() => onOpenEditor(undefined, 'evento')} />
+              <NewKindButton kind="anuncio" onPick={() => onOpenEditor(undefined, 'anuncio')} />
+              <NewMenuButton onPick={(template) => onOpenEditor(undefined, 'menu', template)} />
             </div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded border border-dashed border-ink-300 bg-surface p-12 text-center">
-            <p className="text-sm text-ink-500">No hay {filter === 'menu' ? 'menús' : 'invitaciones'} aún.</p>
+            <p className="text-sm text-ink-500">
+              No hay {filter === 'all' ? 'documentos' : KIND_LABEL[filter as InvitationKind].plural} aún.
+            </p>
           </div>
         ) : (
           <ul className="space-y-3">
@@ -494,17 +507,32 @@ function NewMenuButton({ onPick }: { onPick: (template?: string) => void }) {
   )
 }
 
-function KindBadge({ kind }: { kind: InvitationKind }) {
-  if (kind === 'menu') {
-    return (
-      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-emerald-700">
-        Menú
-      </span>
-    )
-  }
+/** Simple "+ <kind>" button (no split/popover) for the kinds that start from a
+ *  single example document — eventos and anuncios. */
+function NewKindButton({ kind, onPick }: { kind: 'anuncio' | 'evento'; onPick: () => void }) {
+  const label = kind === 'evento' ? '+ Evento' : '+ Anuncio'
   return (
-    <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-violet-700">
-      Invitación
+    <button
+      onClick={onPick}
+      className="rounded border border-ink-900 bg-surface px-3 py-2 text-xs font-medium text-ink-900 hover:bg-ink-50 md:py-1.5"
+    >
+      {label}
+    </button>
+  )
+}
+
+const KIND_BADGE: Record<InvitationKind, { label: string; cls: string }> = {
+  menu: { label: 'Menú', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  invitation: { label: 'Invitación', cls: 'border-violet-200 bg-violet-50 text-violet-700' },
+  evento: { label: 'Evento', cls: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700' },
+  anuncio: { label: 'Anuncio', cls: 'border-blue-200 bg-blue-50 text-blue-700' },
+}
+
+function KindBadge({ kind }: { kind: InvitationKind }) {
+  const v = KIND_BADGE[kind] ?? KIND_BADGE.invitation
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider ${v.cls}`}>
+      {v.label}
     </span>
   )
 }

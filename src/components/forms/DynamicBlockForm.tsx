@@ -4,7 +4,7 @@ import { useEditorStore } from '../../store/editorStore'
 import type { InvitationBlock, TextSize } from '../../types/invitation.types'
 import { validateBlock } from '../../utils/blockValidation'
 import { resolveFieldOrder } from '../../utils/fieldOrder'
-import { initGuestList } from '../../utils/guestlistClient'
+import { initGuestList, guestListUrl } from '../../utils/guestlistClient'
 import { Field } from './Field'
 import { TimelineItemsForm } from './TimelineItemsForm'
 import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
@@ -12,6 +12,11 @@ import { GalleryImagesForm } from './GalleryImagesForm'
 import { ImageSetImagesForm } from './ImageSetImagesForm'
 import { MenuItemsForm } from './MenuItemsForm'
 import { MenuNavItemsForm } from './MenuNavItemsForm'
+import { FeaturesItemsForm } from './FeaturesItemsForm'
+import { FaqItemsForm } from './FaqItemsForm'
+import { ReviewsItemsForm } from './ReviewsItemsForm'
+import { SpeakersItemsForm } from './SpeakersItemsForm'
+import { CtaButtonsForm } from './CtaButtonsForm'
 import { DragHandle, SortableItem, SortableList } from './SortableItem'
 import { ENTRY_ANIMATION_GROUPS } from '../blocks/AnimatedBlock'
 import { LOOP_ANIMATION_GROUPS } from '../blocks/MotionLoop'
@@ -218,21 +223,24 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
           <h3 className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">Guestlist público</h3>
           <div className="rounded-3xl border border-ink-200 bg-surface px-4 py-4">
             <p className="text-sm text-ink-600">Copiar este link para compartir con tu cliente y ver quién ha confirmado.</p>
-            {Boolean((block.data as Record<string, unknown>)['guestListLink']) ? (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  readOnly
-                  value={String((block.data as Record<string, unknown>)['guestListLink'])}
-                  className="input-flat flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(String((block.data as Record<string, unknown>)['guestListLink']))}
-                  className="btn-primary whitespace-nowrap"
-                >
-                  Copiar link
-                </button>
-              </div>
+            {(block.data as Record<string, unknown>)['guestListSlug'] ? (
+              (() => {
+                // Resolve from the current origin (not the stored guestListLink)
+                // so a link published on an old domain shows the current one.
+                const link = guestListUrl(String((block.data as Record<string, unknown>)['guestListSlug']))
+                return (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input readOnly value={link} className="input-flat flex-1" />
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(link)}
+                      className="btn-primary whitespace-nowrap"
+                    >
+                      Copiar link
+                    </button>
+                  </div>
+                )
+              })()
             ) : (
               <div className="mt-2 text-sm text-ink-500">Generando link…</div>
             )}
@@ -246,6 +254,11 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
       {block.type === 'image-set' && <ImageSetImagesForm block={block as InvitationBlock<'image-set'>} />}
       {block.type === 'menu-section' && <MenuItemsForm block={block as InvitationBlock<'menu-section'>} />}
       {block.type === 'menu-header' && <MenuNavItemsForm block={block as InvitationBlock<'menu-header'>} />}
+      {block.type === 'features' && <FeaturesItemsForm block={block as InvitationBlock<'features'>} />}
+      {block.type === 'faq' && <FaqItemsForm block={block as InvitationBlock<'faq'>} />}
+      {block.type === 'reviews' && <ReviewsItemsForm block={block as InvitationBlock<'reviews'>} />}
+      {block.type === 'speakers' && <SpeakersItemsForm block={block as InvitationBlock<'speakers'>} />}
+      {block.type === 'cta' && <CtaButtonsForm block={block as InvitationBlock<'cta'>} />}
 
       {block.type === 'floating' && (
         <FloatingShadowSection block={block as InvitationBlock<'floating'>} />

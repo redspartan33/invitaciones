@@ -107,8 +107,9 @@ export default function App() {
           else {
             // `template` (e.g. 'hannah-michael', 'cocinoteca') wins over the
             // generic kind so the boot picks the right factory in
-            // InvitationBuilder.
-            params.set('new', template || (kind === 'menu' ? 'menu' : 'invitation'))
+            // InvitationBuilder. Otherwise the kind itself ('menu', 'anuncio',
+            // 'evento') selects the matching starter; default is 'invitation'.
+            params.set('new', template || kind || 'invitation')
             // Free-canvas vs classic stacked invitations: the boot reads these
             // to seed the right starter document.
             if (opts?.mode) params.set('mode', opts.mode)
