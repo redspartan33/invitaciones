@@ -7,9 +7,12 @@
  * each RSVP block's `guestListLink` so the guest link points at the new public
  * origin instead of the old *.vercel.app domain.
  *
- * Guest lists are imported VERBATIM (bulk `PUT` with an array body), so every
- * confirmation keeps its original `id` and `createdAt` — no timestamps are
- * regenerated.
+ * NON-DESTRUCTIVE:
+ *   - Guest lists are MERGED by id with whatever is already on the server — the
+ *     server's existing confirmations are never dropped, we only add entries
+ *     from Vercel whose id isn't already present. Original id/createdAt kept.
+ *   - Invitations are skipped when the server already has an equal-or-newer
+ *     version (by updatedAt), so a re-run never regresses newer work.
  *
  * SAFETY: dry-run by default. Nothing is written unless you pass APPLY=1.
  *
@@ -121,6 +124,14 @@ async function putJson(url, bodyObj) {
   return res.json().catch(() => ({}))
 }
 
+/** GET parsed JSON, or null on 404. Used to read the server's current state. */
+async function getJson(url) {
+  const res = await fetch(url)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`GET ${url} → HTTP ${res.status}`)
+  return res.json().catch(() => null)
+}
+
 async function migrateInvitations() {
   const blobs = await listAll('inv/')
   console.log(`Invitations on Vercel: ${blobs.length}`)
@@ -130,6 +141,13 @@ async function migrateInvitations() {
     if (ONLY_INV.length && !ONLY_INV.includes(id)) { skipped++; continue }
     try {
       const inv = JSON.parse(await readBlob(b.pathname))
+      // NON-DESTRUCTIVE: never regress a server invitation that is equal or newer.
+      const current = await getJson(`${TARGET_API}/api/invitations/${id}`)
+      if (current && current.updatedAt && inv.updatedAt && String(current.updatedAt) >= String(inv.updatedAt)) {
+        console.log(`  ⤳ skip inv ${id} (server ya tiene versión igual/más nueva: ${current.updatedAt})`)
+        skipped++
+        continue
+      }
       const linkChanges = rewriteGuestLinks(inv)
       if (APPLY) await putJson(`${TARGET_API}/api/invitations/${id}`, inv)
       console.log(`  ${APPLY ? '→' : '(dry)'} inv ${id}  (links rewritten: ${linkChanges})`)
@@ -150,13 +168,22 @@ async function migrateGuestLists() {
     const slug = b.pathname.replace(/^guests\//, '').replace(/\.json$/, '')
     try {
       const parsed = JSON.parse(await readBlob(b.pathname))
-      const entries = Array.isArray(parsed) ? parsed : []
-      totalEntries += entries.length
+      const vercelEntries = Array.isArray(parsed) ? parsed : []
+      // NON-DESTRUCTIVE: union with whatever is already on the server, deduped by
+      // id. The server's existing confirmations are NEVER dropped — we only add
+      // entries from Vercel whose id isn't already present.
+      const current = (await getJson(`${TARGET_API}/api/guestlists/${slug}`)) || []
+      const byId = new Map()
+      for (const e of current) if (e && e.id) byId.set(e.id, e)
+      let added = 0
+      for (const e of vercelEntries) if (e && e.id && !byId.has(e.id)) { byId.set(e.id, e); added++ }
+      const merged = [...byId.values()].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+      totalEntries += merged.length
       if (APPLY) {
-        const r = await putJson(`${TARGET_API}/api/guestlists/${slug}`, entries)
-        console.log(`  → guests ${slug}  (${r.count ?? entries.length} confirmaciones)`)
+        const r = await putJson(`${TARGET_API}/api/guestlists/${slug}`, merged)
+        console.log(`  → guests ${slug}  (server ${current.length} + vercel ${vercelEntries.length} → ${r.count ?? merged.length}; ${added} nuevas de vercel)`)
       } else {
-        console.log(`  (dry) guests ${slug}  (${entries.length} confirmaciones)`)
+        console.log(`  (dry) guests ${slug}  (server ${current.length} + vercel ${vercelEntries.length} → ${merged.length}; ${added} nuevas de vercel)`)
       }
       ok++
     } catch (e) {
