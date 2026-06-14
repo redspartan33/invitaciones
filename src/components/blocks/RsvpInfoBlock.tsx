@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { InvitationBlock, RsvpInfoData } from '../../types/invitation.types'
 import { formatDate } from '../../utils/blockValidation'
 import { resolveFieldOrder } from '../../utils/fieldOrder'
@@ -167,9 +168,9 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                 </button>
               </div>
             )}
-            {!locked && showForm && (
+            {!locked && showForm && createPortal(
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+                className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-6"
                 onClick={() => {
                   if (submitting) return
                   setShowForm(false)
@@ -274,7 +275,8 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                     </button>
                   </div>
                 </form>
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         ) : whatsappUrl ? (
