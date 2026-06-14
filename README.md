@@ -159,11 +159,15 @@ El sidebar derecho mantiene **ancho fijo de 380px** en desktop. El canvas centra
 El bloque RSVP tiene dos modos, elegibles desde el panel de configuración:
 
 - **WhatsApp (default)** — Botón que abre `https://wa.me/<phone>?text=<mensaje URL-encoded>` si defines un teléfono internacional (solo dígitos). Cae a `rsvpLink` clásico si no hay teléfono.
-- **Formulario de confirmación** — Toggle "Usar formulario en vez de WhatsApp". Al activarlo se genera automáticamente un link público único (`/?guestlist=<slug>`) atado a la invitación y se inicializa el archivo en Vercel Blob. El botón "Confirmar asistencia" abre un formulario inline pidiendo nombre + mensaje opcional. Al enviar (éxito o error) el formulario se cierra y se muestra el feedback correspondiente. La sección **Formulario** del config panel permite personalizar el **título** y el **placeholder** del campo Mensaje; el mismo título se usa como etiqueta sobre cada mensaje en la página de confirmados (resuelto vía `GET /api/guestlists/<slug>/meta`, que busca el bloque RSVP cuyo `guestListSlug` coincide).
+- **Formulario de confirmación** — Toggle "Usar formulario en vez de WhatsApp". Al activarlo se genera automáticamente un link público único (`/?guestlist=<slug>`) atado a la invitación y se inicializa el archivo en Vercel Blob. El botón "Confirmar asistencia" abre el formulario (nombre + mensaje opcional) **en un modal** centrado sobre un backdrop oscuro, en lugar de empujar el cuerpo de la invitación; se cierra con la ✕, el botón Cancelar, click fuera o tecla Escape. Al enviar (éxito o error) el modal se cierra y se muestra el feedback inline correspondiente. La sección **Formulario** del config panel permite personalizar el **título** y el **placeholder** del campo Mensaje; el mismo título se usa como etiqueta sobre cada mensaje en la página de confirmados (resuelto vía `GET /api/guestlists/<slug>/meta`, que busca el bloque RSVP cuyo `guestListSlug` coincide).
 
 **Una confirmación por dispositivo** — Tras enviar, se guarda un marcador en `localStorage` (`guestlist-submitted:<slug>` con `{ name, ts }`). En la vista pública (sin `?admin=`), si el marcador existe el botón y el formulario se ocultan permanentemente y solo se muestra el mensaje "¡Gracias, <nombre>! Tu confirmación quedó registrada. Solo se permite una confirmación por dispositivo." Este lock solo se aplica en público; en el editor (`?admin=...`) el flujo sigue disponible para previsualización del diseñador.
 
 **Link de invitados (`/?guestlist=<slug>`)** — Página pública compartible con el cliente que muestra: contador grande de confirmados, contador adicional de resultados al buscar, buscador por nombre/mensaje, lista con timestamps y botón "Actualizar" para refrescar. Se auto-refresca por evento `storage` cuando otra pestaña confirma y al volver a tener foco.
+
+**Eliminar un confirmado** — Cada tarjeta de la lista tiene un botón "Eliminar" que abre un modal de confirmación ("¿Eliminar la confirmación de \<nombre\>? Esta acción no se puede deshacer."). Al confirmar se llama `DELETE /api/guestlists/<slug>?entryId=<id>` (`deleteGuestEntry` en `src/utils/guestlistClient.ts`), se quita la entrada de la UI y los contadores se recalculan. El backend filtra por `id` y es idempotente (borrar un id inexistente igual responde `{ ok: true }`).
+
+**Contador "Número de acompañantes"** — Si en el config panel se cambió el **placeholder** del campo Mensaje exactamente a `Número de acompañantes` (comparación normalizada, sin acentos ni mayúsculas), la página de confirmados muestra un contador adicional titulado "Número de acompañantes" que **suma** las respuestas que son números enteros (`/^\d+$/`), ignorando las respuestas de texto. El placeholder se obtiene del mismo `GET /api/guestlists/<slug>/meta`.
 
 **Fuente única de verdad: el servidor (Vercel Blob)** — `src/utils/guestlistClient.ts` ya **no** persiste entradas en `localStorage`. Las confirmaciones se leen y se escriben siempre vía `/api/guestlists/<slug>`, y si el servidor falla se muestra un mensaje de error con botón "Reintentar" en lugar de guardar en local. Esto garantiza que dos dispositivos abriendo el mismo link vean exactamente la misma lista. Lo único que se sigue guardando en local es el marcador `guestlist-submitted:<slug>` para evitar que el mismo navegador confirme dos veces.
 
@@ -522,6 +526,7 @@ GET    /api/asset/<folder>/<file>        → bytes del archivo
 GET    /api/guestlists/<slug>            → [GuestEntry, …]
 POST   /api/guestlists/<slug>            → { ok: true, entry }
 PUT    /api/guestlists/<slug>            → { ok: true }   (inicializa vacía)
+DELETE /api/guestlists/<slug>?entryId=…  → { ok: true }   (borra una entrada por id, idempotente)
 GET    /share/<slug>                     → HTML con og:title/og:image (preview WhatsApp)
 ```
 

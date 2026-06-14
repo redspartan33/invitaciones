@@ -27,7 +27,7 @@ interface VercelResponse {
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Cache-Control', 'no-store')
 }
@@ -109,6 +109,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       current.push(entry)
       await writeList(pathname, current)
       return res.status(200).json({ ok: true, entry })
+    }
+
+    if (req.method === 'DELETE') {
+      const entryRaw = req.query.entryId
+      const entryId = (Array.isArray(entryRaw) ? entryRaw[0] : entryRaw || '').trim()
+      if (!entryId) return res.status(400).json({ error: 'Missing entryId' })
+      const current = await readListSafe(pathname)
+      const next = current.filter((e) => e && e.id !== entryId)
+      await writeList(pathname, next)
+      return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'PUT') {

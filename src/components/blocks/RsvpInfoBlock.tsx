@@ -63,6 +63,17 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
     setAlreadySubmitted(hasSubmitted(guestListSlug))
     setSubmittedName(getSubmittedName(guestListSlug))
   }, [guestListSlug])
+  useEffect(() => {
+    if (!showForm) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) {
+        setShowForm(false)
+        setSubmitError(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showForm, submitting])
   const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
   // In the editor we always show the controls so the designer can preview the
   // flow; only the public published view enforces the one-confirmation lock.
@@ -157,89 +168,113 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
               </div>
             )}
             {!locked && showForm && (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault()
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+                onClick={() => {
                   if (submitting) return
-                  if (!guestListSlug) {
-                    setSubmitError('No se pudo identificar la lista de invitados de esta invitación.')
-                    setShowForm(false)
-                    return
-                  }
-                  setSubmitting(true)
-                  setSubmitError(null)
-                  const result = await submitGuestEntry(guestListSlug, {
-                    name: guestName,
-                    message: guestMessage,
-                  })
-                  setSubmitting(false)
                   setShowForm(false)
-                  if (result.ok) {
-                    setSubmittedOk(true)
-                    setSubmittedName(guestName)
-                    if (!isEditorView) setAlreadySubmitted(true)
-                    setGuestName('')
-                    setGuestMessage('')
-                    try {
-                      window.localStorage.setItem(
-                        'guestlist-updated',
-                        JSON.stringify({ slug: guestListSlug, ts: Date.now() }),
-                      )
-                    } catch {
-                      // ignore
-                    }
-                  } else {
-                    const baseMessages = {
-                      'invalid-name': 'Por favor escribe tu nombre.',
-                      network: 'No hay conexión con el servidor. Verifica tu internet y vuelve a intentar.',
-                      server: 'El servidor rechazó la confirmación.',
-                    } as const
-                    const base = baseMessages[result.reason]
-                    setSubmitError(
-                      'detail' in result && result.detail
-                        ? `${base} (${result.detail})`
-                        : base,
-                    )
-                  }
+                  setSubmitError(null)
                 }}
-                className="mx-auto mt-4 max-w-lg rounded-3xl border border-ink-200 bg-white/95 p-6 shadow-sm shadow-ink-200/10 text-left"
               >
-                <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-ink-500">Confirmación</p>
-                <div className="space-y-4">
-                  <label className="label-flat">Nombre</label>
-                  <input
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    required
-                    placeholder="Nombre completo"
-                    className="input-flat w-full"
-                  />
-                  <label className="label-flat">{data.messageLabel?.trim() || 'Mensaje (opcional)'}</label>
-                  <textarea
-                    value={guestMessage}
-                    onChange={(e) => setGuestMessage(e.target.value)}
-                    placeholder={data.messagePlaceholder?.trim() || 'Escribe un mensaje breve...'}
-                    rows={5}
-                    className="input-flat w-full min-h-[140px] resize-none"
-                  />
-                </div>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
-                    {submitting ? 'Enviando…' : 'Enviar confirmación'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
+                <form
+                  onClick={(e) => e.stopPropagation()}
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (submitting) return
+                    if (!guestListSlug) {
+                      setSubmitError('No se pudo identificar la lista de invitados de esta invitación.')
                       setShowForm(false)
-                      setSubmitError(null)
-                    }}
-                    disabled={submitting}
-                    className="btn-flat w-full sm:w-auto"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
+                      return
+                    }
+                    setSubmitting(true)
+                    setSubmitError(null)
+                    const result = await submitGuestEntry(guestListSlug, {
+                      name: guestName,
+                      message: guestMessage,
+                    })
+                    setSubmitting(false)
+                    setShowForm(false)
+                    if (result.ok) {
+                      setSubmittedOk(true)
+                      setSubmittedName(guestName)
+                      if (!isEditorView) setAlreadySubmitted(true)
+                      setGuestName('')
+                      setGuestMessage('')
+                      try {
+                        window.localStorage.setItem(
+                          'guestlist-updated',
+                          JSON.stringify({ slug: guestListSlug, ts: Date.now() }),
+                        )
+                      } catch {
+                        // ignore
+                      }
+                    } else {
+                      const baseMessages = {
+                        'invalid-name': 'Por favor escribe tu nombre.',
+                        network: 'No hay conexión con el servidor. Verifica tu internet y vuelve a intentar.',
+                        server: 'El servidor rechazó la confirmación.',
+                      } as const
+                      const base = baseMessages[result.reason]
+                      setSubmitError(
+                        'detail' in result && result.detail
+                          ? `${base} (${result.detail})`
+                          : base,
+                      )
+                    }
+                  }}
+                  className="relative w-full max-w-lg rounded-3xl border border-ink-200 bg-white/95 p-6 shadow-xl shadow-ink-900/10 text-left anim-fade-in"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-ink-500">Confirmación</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForm(false)
+                        setSubmitError(null)
+                      }}
+                      disabled={submitting}
+                      aria-label="Cerrar"
+                      className="text-ink-400 hover:text-ink-900 text-xl leading-none"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="label-flat">Nombre</label>
+                    <input
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      required
+                      placeholder="Nombre completo"
+                      className="input-flat w-full"
+                    />
+                    <label className="label-flat">{data.messageLabel?.trim() || 'Mensaje (opcional)'}</label>
+                    <textarea
+                      value={guestMessage}
+                      onChange={(e) => setGuestMessage(e.target.value)}
+                      placeholder={data.messagePlaceholder?.trim() || 'Escribe un mensaje breve...'}
+                      rows={5}
+                      className="input-flat w-full min-h-[140px] resize-none"
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
+                      {submitting ? 'Enviando…' : 'Enviar confirmación'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForm(false)
+                        setSubmitError(null)
+                      }}
+                      disabled={submitting}
+                      className="btn-flat w-full sm:w-auto"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
             )}
           </div>
         ) : whatsappUrl ? (

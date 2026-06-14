@@ -110,6 +110,32 @@ export async function submitGuestEntry(
   return { ok: true, name }
 }
 
+export type DeleteResult =
+  | { ok: true }
+  | { ok: false; reason: 'network' | 'server'; detail?: string }
+
+/**
+ * Delete a single guest entry by id. Server-only — used from the confirmados
+ * list to remove a confirmation. Idempotent on the backend.
+ */
+export async function deleteGuestEntry(slug: string, id: string): Promise<DeleteResult> {
+  let res: Response
+  try {
+    res = await fetch(apiUrl(`/api/guestlists/${slug}?entryId=${encodeURIComponent(id)}`), {
+      method: 'DELETE',
+    })
+  } catch (e) {
+    console.error('[guestlist] delete network error', e)
+    return { ok: false, reason: 'network' }
+  }
+  if (!res.ok) {
+    const detail = await extractErrorDetail(res)
+    console.error('[guestlist] delete failed', res.status, detail)
+    return { ok: false, reason: 'server', detail: `HTTP ${res.status}${detail ? `: ${detail}` : ''}` }
+  }
+  return { ok: true }
+}
+
 export interface GuestListMeta {
   messageLabel: string
   messagePlaceholder: string
