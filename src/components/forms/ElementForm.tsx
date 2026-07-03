@@ -175,6 +175,8 @@ function TextForm({ block }: { block: InvitationBlock<'text'> }) {
 
 function ImageForm({ block }: { block: InvitationBlock<'image'> }) {
   const update = useEditorStore((s) => s.updateBlockData)
+  const updateStyle = useEditorStore((s) => s.updateBlockStyle)
+  const isCanvas = useEditorStore((s) => s.invitation.layoutMode === 'fixed-canvas')
   const d = block.data
   const set = (patch: Partial<ImageElementData>) => update(block.id, patch as Record<string, unknown>)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -262,6 +264,44 @@ function ImageForm({ block }: { block: InvitationBlock<'image'> }) {
         </div>
         <OpacityRow value={d.opacity ?? 100} onChange={(v) => set({ opacity: v })} />
       </Section>
+
+      {!isCanvas && (
+        <Section title="Bloque">
+          <div>
+            <label className="label-flat">Ancho</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Toggle active={!d.fullWidth} onClick={() => set({ fullWidth: false })}>
+                Normal
+              </Toggle>
+              <Toggle active={!!d.fullWidth} onClick={() => set({ fullWidth: true })}>
+                Completo
+              </Toggle>
+            </div>
+            <p className="mt-1 text-[11px] text-ink-400">
+              «Completo» extiende la imagen de borde a borde del bloque.
+            </p>
+          </div>
+
+          <ColorRow
+            label="Color de fondo"
+            value={block.style?.backgroundColor ?? ''}
+            onChange={(c) => updateStyle(block.id, { backgroundColor: c })}
+            clearable
+            onClear={() => updateStyle(block.id, { backgroundColor: '' })}
+          />
+
+          <PaddingRow
+            label="Espaciado superior"
+            value={block.style?.paddingTop}
+            onChange={(v) => updateStyle(block.id, { paddingTop: v })}
+          />
+          <PaddingRow
+            label="Espaciado inferior"
+            value={block.style?.paddingBottom}
+            onChange={(v) => updateStyle(block.id, { paddingBottom: v })}
+          />
+        </Section>
+      )}
 
       <EntryAnimationSelect block={block} />
       <LoopAnimationSelect block={block} />
@@ -395,6 +435,46 @@ function ColorRow({
             ×
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+function PaddingRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value?: number
+  onChange: (v: number | undefined) => void
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between label-flat">
+        <span>{label}</span>
+        <span className="text-[10px] font-mono text-ink-400">
+          {value !== undefined ? `${value}px` : 'Por defecto'}
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={0}
+          max={200}
+          value={value ?? 80}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="flex-1 accent-ink-900"
+        />
+        <input
+          type="number"
+          min={0}
+          max={500}
+          value={value !== undefined ? value : ''}
+          placeholder="Auto"
+          onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          className="input-flat w-16 text-center py-1 px-1.5"
+        />
       </div>
     </div>
   )

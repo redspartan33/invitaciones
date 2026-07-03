@@ -43,7 +43,7 @@ src/
 
 11. **Texto** — Caja de texto libre (fuente, tamaño, color, alineación, B/I/MAYÚS, interlineado, espaciado). Solo invitaciones.
 
-12. **Imagen / sticker** — Foto, ilustración o PNG flotante (ajuste cover/contain, esquinas redondeadas, opacidad). Solo invitaciones.
+12. **Imagen / sticker** — Foto, ilustración o PNG (ajuste cover/contain, esquinas redondeadas, opacidad). Como **elemento libre** se posiciona sobre el canvas; como **bloque apilado** (en cualquier tipo de documento que lo incluya) el panel añade una sección **Bloque** con: **Ancho** Normal (columna centrada) o **Completo** (borde a borde vía `bleed` en [BlockWrapper](src/components/blocks/BlockWrapper.tsx)), **Color de fondo** del bloque y **Espaciado** superior/inferior personalizado en px. `data.fullWidth` controla el sangrado; el color y el padding viven en `block.style`, así que se ven igual en el editor y el link publicado. Ver [ImageBlock](src/components/blocks/ImageBlock.tsx) y `ImageForm` en [ElementForm](src/components/forms/ElementForm.tsx).
 
 13. **Forma / línea** — Rectángulo, círculo o línea vectorial (relleno, borde, grosor, esquinas, opacidad). Solo invitaciones.
 

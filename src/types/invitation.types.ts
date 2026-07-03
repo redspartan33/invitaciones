@@ -368,6 +368,9 @@ export interface ImageElementData {
   radius?: number
   /** 0-100. Defaults to 100. */
   opacity?: number
+  /** When rendered as a stacked block (not a free/canvas element), stretch the
+   *  image edge-to-edge across the whole block instead of the centered column. */
+  fullWidth?: boolean
 }
 
 export interface ShapeElementData {

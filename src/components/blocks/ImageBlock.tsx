@@ -32,7 +32,7 @@ export function ImageBlock({ block, free }: { block: InvitationBlock<'image'>; f
 
   if (free) return img
   return (
-    <BlockWrapper style={block.style}>
+    <BlockWrapper style={block.style} bleed={d.fullWidth}>
       <div className="mx-auto max-w-full">{img}</div>
     </BlockWrapper>
   )

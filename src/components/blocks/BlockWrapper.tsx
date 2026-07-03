@@ -49,16 +49,21 @@ export function BlockWrapper({
   style,
   children,
   align = 'center',
+  bleed = false,
 }: {
   style?: BlockStyle
   children: ReactNode
   align?: 'left' | 'center' | 'right'
+  /** Stretch children edge-to-edge: drop the horizontal padding and the
+   *  centered max-width column (vertical padding and background are kept). */
+  bleed?: boolean
 }) {
   const suppressBg = useSuppressBlockBackgrounds()
   const hasCustomPadding = style?.paddingTop !== undefined || style?.paddingBottom !== undefined
+  const padX = bleed ? '' : 'px-5 md:px-8'
   const padding = hasCustomPadding
-    ? 'px-5 md:px-8'
-    : `${padMap[style?.paddingY ?? 'lg']} px-5 md:px-8`
+    ? padX
+    : `${padMap[style?.paddingY ?? 'lg']} ${padX}`
   const textSize = style?.textSize ?? 'md'
   const hasImage = !!style?.backgroundImage && !suppressBg
   const radiusPx = BORDER_RADIUS_PX[style?.borderRadius ?? 'none']
@@ -87,7 +92,7 @@ export function BlockWrapper({
   ;(css as Record<string, string>)['--block-radius'] = radiusPx
   return (
     <div className={`block-scale-active block-text-${textSize} ${padding}`} style={css}>
-      <div className="mx-auto max-w-2xl">{children}</div>
+      <div className={bleed ? 'w-full' : 'mx-auto max-w-2xl'}>{children}</div>
     </div>
   )
 }
