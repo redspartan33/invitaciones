@@ -37,6 +37,8 @@ interface GuestEntry {
   name: string
   message?: string
   createdAt: string
+  passId?: string
+  guests?: number
 }
 
 function safeParse(text: string): unknown {
@@ -98,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       const payload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {})
-      let parsed: { name?: string; message?: string }
+      let parsed: { name?: string; message?: string; passId?: string; guests?: number }
       try {
         parsed = JSON.parse(payload)
       } catch {
@@ -113,6 +115,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name,
         message: parsed.message || '',
         createdAt: new Date().toISOString(),
+        // Personal passes (optional): kept so the confirmados page doesn't
+        // depend only on the `[pase:<id>]` message prefix.
+        ...(typeof parsed.passId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(parsed.passId)
+          ? { passId: parsed.passId }
+          : {}),
+        ...(Number.isInteger(parsed.guests) && (parsed.guests as number) > 0
+          ? { guests: Math.min(parsed.guests as number, 50) }
+          : {}),
       }
       current.push(entry)
       await writeList(pathname, current)

@@ -406,7 +406,7 @@ function LinksRow() {
   // Always resolve the guest link from the CURRENT origin (via guestListUrl)
   // rather than the stored absolute `guestListLink`, so invitations published
   // on an old domain still surface the link on the domain we're served from.
-  const guestLink = rsvpData?.guestListSlug ? guestListUrl(rsvpData.guestListSlug) : ''
+  const guestLink = rsvpData?.guestListSlug ? guestListUrl(rsvpData.guestListSlug, inv.publicSlug) : ''
 
   return (
     <div className="space-y-3 rounded border border-ink-200 p-3">

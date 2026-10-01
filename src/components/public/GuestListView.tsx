@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deleteGuestEntry, loadGuestList, loadGuestListMeta, type GuestEntry } from '../../utils/guestlistClient'
+import { parseConfirmation, resolveInvitationSlugForGuestList, type PersonalPass } from '../../utils/personalPass'
+import { PersonalPassesPanel } from '../guestlist/PersonalPassesPanel'
 
 /** Lowercase, trimmed, accent-stripped — for tolerant placeholder matching. */
 function normalize(str: string): string {
@@ -19,6 +21,31 @@ export function GuestListView({ slug }: { slug: string }) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [passes, setPasses] = useState<PersonalPass[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
+  // Public slug of the invitation that owns this list — needed to build
+  // personal-pass links. Comes from `&inv=` when the editor shared the link,
+  // otherwise it's looked up among the published invitations.
+  const [invSlug, setInvSlug] = useState<string | undefined>(() => {
+    try {
+      const v = new URL(window.location.href).searchParams.get('inv') || undefined
+      return v && /^[A-Za-z0-9_-]{1,64}$/.test(v) ? v : undefined
+    } catch {
+      return undefined
+    }
+  })
+
+  useEffect(() => {
+    if (invSlug) return
+    let cancelled = false
+    resolveInvitationSlugForGuestList(slug).then((found) => {
+      if (!cancelled && found) setInvSlug(found)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
 
   useEffect(() => {
     let cancelled = false
@@ -33,6 +60,7 @@ export function GuestListView({ slug }: { slug: string }) {
   }, [slug])
 
   const loadEntries = async () => {
+    setRefreshKey((k) => k + 1)
     setEntries(undefined)
     setLoadError(null)
     const result = await loadGuestList(slug)
@@ -76,7 +104,10 @@ export function GuestListView({ slug }: { slug: string }) {
     if (!entries) return []
     const qq = q.trim().toLowerCase()
     if (!qq) return entries.slice().reverse()
-    return entries.filter((e) => e.name.toLowerCase().includes(qq) || (e.message || '').toLowerCase().includes(qq)).slice().reverse()
+    return entries
+      .filter((e) => e.name.toLowerCase().includes(qq) || parseConfirmation(e).message.toLowerCase().includes(qq))
+      .slice()
+      .reverse()
   }, [entries, q])
 
   const total = entries?.length ?? 0
@@ -92,6 +123,20 @@ export function GuestListView({ slug }: { slug: string }) {
       return /^\d+$/.test(msg) ? sum + parseInt(msg, 10) : sum
     }, 0)
   }, [isCompanionCount, entries])
+
+  // Seats confirmed through personal passes (the pass defines the count, not
+  // the guest), so the host can see how many people are actually coming.
+  const passById = useMemo(() => new Map(passes.map((p) => [p.id, p])), [passes])
+  const passSeatsTotal = useMemo(() => {
+    if (!entries) return 0
+    const seen = new Set<string>()
+    return entries.reduce((sum, e) => {
+      const { passId } = parseConfirmation(e)
+      if (!passId || seen.has(passId)) return sum
+      seen.add(passId)
+      return sum + (passById.get(passId)?.guests ?? e.guests ?? 0)
+    }, 0)
+  }, [entries, passById])
 
   const confirmingEntry = entries?.find((e) => e.id === confirmingId)
 
@@ -140,12 +185,29 @@ export function GuestListView({ slug }: { slug: string }) {
               <span className="text-4xl font-semibold tabular-nums text-ink-900">{companionTotal}</span>
             </div>
           )}
+          {passSeatsTotal > 0 && entries && (
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">Lugares por pase</span>
+              <span className="text-4xl font-semibold tabular-nums text-ink-900">{passSeatsTotal}</span>
+            </div>
+          )}
           {isSearching && entries && (
             <div className="flex flex-col">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">Resultados</span>
               <span className="text-4xl font-semibold tabular-nums text-ink-900">{filtered.length}</span>
             </div>
           )}
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-ink-200 bg-white p-4">
+          <PersonalPassesPanel
+            guestListSlug={slug}
+            invSlug={invSlug}
+            entries={entries}
+            refreshKey={refreshKey}
+            onPassesChange={setPasses}
+            missingInvHint="La invitación debe estar publicada para generar pases personalizados."
+          />
         </div>
 
         <div className="mt-4">
@@ -173,10 +235,21 @@ export function GuestListView({ slug }: { slug: string }) {
           {entries && entries.length > 0 && filtered.length === 0 && isSearching && (
             <div className="text-sm text-ink-500">Sin resultados para “{q}”.</div>
           )}
-          {filtered.map((e) => (
+          {filtered.map((e) => {
+            const { passId, message } = parseConfirmation(e)
+            const pass = passId ? passById.get(passId) : undefined
+            const passSeats = pass?.guests ?? e.guests
+            return (
             <div key={e.id} className="rounded-2xl border border-ink-200 bg-white p-4">
               <div className="flex items-baseline justify-between gap-2">
-                <div className="font-medium">{e.name}</div>
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="font-medium">{e.name}</span>
+                  {passId && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-emerald-800">
+                      Pase{passSeats ? ` · ${passSeats === 1 ? '1 lugar' : `${passSeats} lugares`}` : ''}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-baseline gap-3">
                   <div className="text-xs text-ink-500">{new Date(e.createdAt).toLocaleString()}</div>
                   <button
@@ -192,18 +265,19 @@ export function GuestListView({ slug }: { slug: string }) {
                   </button>
                 </div>
               </div>
-              {e.message && (
+              {message && (
                 <div className="mt-2">
-                  {messageLabel && (
+                  {messageLabel && !passId && (
                     <div className="text-[10px] font-semibold uppercase tracking-widest text-ink-500">
                       {messageLabel}
                     </div>
                   )}
-                  <div className="text-sm text-ink-700">{e.message}</div>
+                  <div className="text-sm text-ink-700">{message}</div>
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

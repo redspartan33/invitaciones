@@ -5,6 +5,7 @@ import { PageBackgroundLayer } from './components/public/PageBackgroundLayer'
 import { GuestListView } from './components/public/GuestListView'
 import { MetricsView } from './components/public/MetricsView'
 import { LandingPage } from './components/public/LandingPage'
+import { PersonalPassProvider } from './components/blocks/PersonalPassContext'
 import { PublicSkeleton, readKindCache, writeKindCache } from './components/public/skeletons'
 import { AdminView, ForbiddenView } from './admin/AdminView'
 import { ADMIN_TOKEN, isAdminUrl } from './admin/adminAuth'
@@ -15,7 +16,7 @@ type Route =
   | { kind: 'forbidden' }
   | { kind: 'admin' }
   | { kind: 'editor' }
-  | { kind: 'public-id'; id: string }
+  | { kind: 'public-id'; id: string; pass: string | null }
   | { kind: 'public-guestlist'; slug: string }
   | { kind: 'public-metrics'; slug: string }
 
@@ -26,7 +27,7 @@ function resolveRoute(url: URL): Route {
   const metrics = url.searchParams.get('metrics') || undefined
   if (metrics) return { kind: 'public-metrics', slug: metrics }
   const inv = url.searchParams.get('id') || url.searchParams.get('inv') || undefined
-  if (inv) return { kind: 'public-id', id: inv }
+  if (inv) return { kind: 'public-id', id: inv, pass: url.searchParams.get('pase') }
 
   if (isAdminUrl(url)) {
     if (url.searchParams.get('edit') || url.searchParams.get('new')) return { kind: 'editor' }
@@ -79,13 +80,13 @@ export default function App() {
     }
     if (!publicInvitation) return <ForbiddenView />
     return (
-      <>
+      <PersonalPassProvider token={route.pass}>
         {/* Render the page background at root level so it sits outside every
             stacking context and its fixed/absolute positioning reaches the
             actual viewport — not the clipped area of a relative ancestor. */}
         <PageBackgroundLayer bg={publicInvitation.globalSettings.pageBackground} />
         <PublicInvitationView invitation={publicInvitation} />
-      </>
+      </PersonalPassProvider>
     )
   }
 

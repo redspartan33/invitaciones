@@ -6,6 +6,7 @@ import { validateBlock } from '../../utils/blockValidation'
 import { resolveFieldOrder } from '../../utils/fieldOrder'
 import { initGuestList, guestListUrl } from '../../utils/guestlistClient'
 import { Field } from './Field'
+import { PersonalPassesPanel } from '../guestlist/PersonalPassesPanel'
 import { TimelineItemsForm } from './TimelineItemsForm'
 import { GiftRegistryItemsForm } from './GiftRegistryItemsForm'
 import { GalleryImagesForm } from './GalleryImagesForm'
@@ -32,6 +33,8 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
   const schema = useBlockForm(block.type)
   const updateBlockData = useEditorStore((s) => s.updateBlockData)
   const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle)
+  const publicSlug = useEditorStore((s) => s.invitation.publicSlug)
+  const isPublished = useEditorStore((s) => s.invitation.status === 'published')
   const validation = validateBlock(block)
   const hasCustomPadding = block.style?.paddingTop !== undefined || block.style?.paddingBottom !== undefined
 
@@ -227,18 +230,28 @@ export function DynamicBlockForm({ block }: { block: InvitationBlock }) {
               (() => {
                 // Resolve from the current origin (not the stored guestListLink)
                 // so a link published on an old domain shows the current one.
-                const link = guestListUrl(String((block.data as Record<string, unknown>)['guestListSlug']))
+                const glSlug = String((block.data as Record<string, unknown>)['guestListSlug'])
+                const link = guestListUrl(glSlug, publicSlug)
                 return (
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <input readOnly value={link} className="input-flat flex-1" />
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard.writeText(link)}
-                      className="btn-primary whitespace-nowrap"
-                    >
-                      Copiar link
-                    </button>
-                  </div>
+                  <>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <input readOnly value={link} className="input-flat flex-1" />
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(link)}
+                        className="btn-primary whitespace-nowrap"
+                      >
+                        Copiar link
+                      </button>
+                    </div>
+                    <div className="mt-4 border-t border-ink-200 pt-4">
+                      <PersonalPassesPanel
+                        guestListSlug={glSlug}
+                        invSlug={isPublished ? publicSlug : undefined}
+                        missingInvHint="Publica la invitación (con el formulario activo) para generar pases personalizados."
+                      />
+                    </div>
+                  </>
                 )
               })()
             ) : (

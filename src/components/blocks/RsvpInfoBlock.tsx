@@ -5,6 +5,8 @@ import { formatDate } from '../../utils/blockValidation'
 import { resolveFieldOrder } from '../../utils/fieldOrder'
 import { getSubmittedName, hasSubmitted, submitGuestEntry } from '../../utils/guestlistClient'
 import { BlockWrapper } from './BlockWrapper'
+import { usePersonalPass } from './PersonalPassContext'
+import { PersonalPassConfirmation } from './PersonalPassConfirmation'
 import { TextEl } from './TextEl'
 
 export const RSVP_FIELD_ORDER = [
@@ -39,6 +41,7 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
   const [submitting, setSubmitting] = useState(false)
   const [submittedOk, setSubmittedOk] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const passState = usePersonalPass()
 
   const getGuestListSlug = () => {
     if (data.guestListSlug) return data.guestListSlug
@@ -123,8 +126,15 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
         <div className="flex flex-col items-center" style={{ gap: 'var(--item-gap)' }}>
           {order.map((f) => renderField(f))}
         </div>
-        {data.useRsvpForm ? (
+        {passState.status === 'loading' || passState.status === 'ready' ? (
+          <PersonalPassConfirmation state={passState} isEditorView={isEditorView} />
+        ) : data.useRsvpForm ? (
           <div className="mt-6 space-y-4">
+            {passState.status === 'invalid' && (
+              <p className="mx-auto max-w-md text-xs opacity-70">
+                Este pase personalizado ya no está disponible. Puedes confirmar con el formulario.
+              </p>
+            )}
             {locked && (
               <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-medium">

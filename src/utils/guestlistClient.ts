@@ -14,6 +14,10 @@ export interface GuestEntry {
   name: string
   message?: string
   createdAt: string
+  /** Set when the confirmation came from a personal pass (if the backend keeps it). */
+  passId?: string
+  /** Number of seats on the personal pass (if the backend keeps it). */
+  guests?: number
 }
 
 /**
@@ -23,9 +27,12 @@ export interface GuestEntry {
  * the domain the app is currently served from. Prefer this over any stored
  * absolute `guestListLink` for display/copy.
  */
-export function guestListUrl(slug: string): string {
+export function guestListUrl(slug: string, invSlug?: string): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `${origin}/?guestlist=${slug}`
+  // `inv` lets the guest-list page build personal-pass links without having
+  // to search every invitation for the one that owns this list.
+  const inv = invSlug && /^[A-Za-z0-9_-]{1,64}$/.test(invSlug) ? `&inv=${invSlug}` : ''
+  return `${origin}/?guestlist=${slug}${inv}`
 }
 
 const SUBMITTED_PREFIX = 'guestlist-submitted:'
@@ -98,7 +105,8 @@ async function extractErrorDetail(res: Response): Promise<string | undefined> {
  */
 export async function submitGuestEntry(
   slug: string,
-  payload: { name: string; message?: string },
+  payload: { name: string; message?: string; passId?: string; guests?: number },
+  options: { markDevice?: boolean } = {},
 ): Promise<SubmitResult> {
   const name = payload.name?.trim()
   if (!name) return { ok: false, reason: 'invalid-name' }
@@ -107,7 +115,12 @@ export async function submitGuestEntry(
     res = await fetch(apiUrl(`/api/guestlists/${slug}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, message: payload.message ?? '' }),
+      body: JSON.stringify({
+        name,
+        message: payload.message ?? '',
+        ...(payload.passId ? { passId: payload.passId } : {}),
+        ...(typeof payload.guests === 'number' ? { guests: payload.guests } : {}),
+      }),
     })
   } catch (e) {
     console.error('[guestlist] submit network error', e)
@@ -118,7 +131,7 @@ export async function submitGuestEntry(
     console.error('[guestlist] submit failed', res.status, detail)
     return { ok: false, reason: 'server', detail: `HTTP ${res.status}${detail ? `: ${detail}` : ''}` }
   }
-  markSubmitted(slug, name)
+  if (options.markDevice !== false) markSubmitted(slug, name)
   return { ok: true, name }
 }
 
