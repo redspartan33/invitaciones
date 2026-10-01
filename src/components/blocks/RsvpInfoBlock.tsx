@@ -6,7 +6,7 @@ import { resolveFieldOrder } from '../../utils/fieldOrder'
 import { getSubmittedName, hasSubmitted, submitGuestEntry } from '../../utils/guestlistClient'
 import { BlockWrapper } from './BlockWrapper'
 import { usePersonalPass } from './PersonalPassContext'
-import { PersonalPassConfirmation } from './PersonalPassConfirmation'
+import { confirmPass } from '../../utils/personalPass'
 import { TextEl } from './TextEl'
 
 export const RSVP_FIELD_ORDER = [
@@ -79,9 +79,18 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
     return () => window.removeEventListener('keydown', onKey)
   }, [showForm, submitting])
   const isEditorView = typeof window !== 'undefined' && new URL(window.location.href).searchParams.has('admin')
+  // Personal pass (`?pase=`): same card, same button, same modal — only the
+  // form inside the modal changes (name and seats are fixed by the host).
+  const pass = passState.status === 'ready' ? passState.pass : undefined
+  const passLoading = passState.status === 'loading'
+  const passMode = !!pass || passLoading
+  const passGuestListSlug = passState.status === 'ready' ? passState.guestListSlug : undefined
   // In the editor we always show the controls so the designer can preview the
   // flow; only the public published view enforces the one-confirmation lock.
-  const locked = alreadySubmitted && !isEditorView
+  const locked = passMode
+    ? passState.status === 'ready' && passState.alreadyConfirmed && !isEditorView
+    : alreadySubmitted && !isEditorView
+  const lockedName = pass ? pass.name : submittedName
   const order = resolveFieldOrder([...RSVP_FIELD_ORDER], block.style?.fieldOrder)
   const renderField = (field: string) => {
     switch (field) {
@@ -126,9 +135,7 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
         <div className="flex flex-col items-center" style={{ gap: 'var(--item-gap)' }}>
           {order.map((f) => renderField(f))}
         </div>
-        {passState.status === 'loading' || passState.status === 'ready' ? (
-          <PersonalPassConfirmation state={passState} isEditorView={isEditorView} />
-        ) : data.useRsvpForm ? (
+        {data.useRsvpForm || passMode ? (
           <div className="mt-6 space-y-4">
             {passState.status === 'invalid' && (
               <p className="mx-auto max-w-md text-xs opacity-70">
@@ -138,10 +145,12 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
             {locked && (
               <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-medium">
-                  {submittedName ? `¡Gracias, ${submittedName}!` : '¡Gracias!'} Tu confirmación quedó registrada.
+                  {lockedName ? `¡Gracias, ${lockedName}!` : '¡Gracias!'} Tu confirmación quedó registrada.
                 </p>
                 <p className="mt-1 text-xs opacity-80">
-                  Solo se permite una confirmación por dispositivo.
+                  {passMode
+                    ? 'Este pase ya fue confirmado.'
+                    : 'Solo se permite una confirmación por dispositivo.'}
                 </p>
               </div>
             )}
@@ -153,14 +162,17 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                   setSubmitError(null)
                   setShowForm(true)
                 }}
-                className="invitation-btn"
+                disabled={passLoading}
+                className="invitation-btn disabled:opacity-60"
               >
                 {buttonLabel}
               </button>
             )}
             {!locked && submittedOk && !showForm && (
               <div className="mx-auto mt-4 max-w-lg rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                <p className="font-medium">¡Gracias! Tu confirmación quedó registrada.</p>
+                <p className="font-medium">
+                  {pass ? `¡Gracias, ${pass.name}!` : '¡Gracias!'} Tu confirmación quedó registrada.
+                </p>
               </div>
             )}
             {!locked && submitError && !showForm && (
@@ -192,6 +204,24 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                   onSubmit={async (e) => {
                     e.preventDefault()
                     if (submitting) return
+                    if (pass && passGuestListSlug) {
+                      setSubmitting(true)
+                      setSubmitError(null)
+                      const res = await confirmPass(passGuestListSlug, pass, guestMessage)
+                      setSubmitting(false)
+                      setShowForm(false)
+                      if (res.ok) {
+                        setSubmittedOk(true)
+                        setGuestMessage('')
+                      } else {
+                        setSubmitError(
+                          res.reason === 'network'
+                            ? 'No hay conexión con el servidor. Verifica tu internet y vuelve a intentar.'
+                            : 'El servidor rechazó la confirmación.',
+                        )
+                      }
+                      return
+                    }
                     if (!guestListSlug) {
                       setSubmitError('No se pudo identificar la lista de invitados de esta invitación.')
                       setShowForm(false)
@@ -251,26 +281,45 @@ export function RsvpInfoBlock({ block }: { block: InvitationBlock<'rsvp-info'> }
                     </button>
                   </div>
                   <div className="space-y-4">
-                    <label className="label-flat">Nombre</label>
-                    <input
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      required
-                      placeholder="Nombre completo"
-                      className="input-flat w-full"
-                    />
-                    <label className="label-flat">{data.messageLabel?.trim() || 'Mensaje (opcional)'}</label>
+                    {pass ? (
+                      <div className="rounded-2xl border border-ink-200 bg-ink-50 px-4 py-3">
+                        <p className="label-flat !mb-1">Pase personalizado</p>
+                        <p className="text-lg font-medium text-ink-900">{pass.name}</p>
+                        <p className="text-sm text-ink-600">
+                          {pass.guests === 1 ? '1 lugar reservado' : `${pass.guests} lugares reservados`}
+                        </p>
+                        {pass.note && (
+                          <p className="mt-2 whitespace-pre-line text-sm italic text-ink-700">“{pass.note}”</p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <label className="label-flat">Nombre</label>
+                        <input
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          required
+                          placeholder="Nombre completo"
+                          className="input-flat w-full"
+                        />
+                      </>
+                    )}
+                    <label className="label-flat">{pass ? 'Mensaje (opcional)' : data.messageLabel?.trim() || 'Mensaje (opcional)'}</label>
                     <textarea
                       value={guestMessage}
                       onChange={(e) => setGuestMessage(e.target.value)}
-                      placeholder={data.messagePlaceholder?.trim() || 'Escribe un mensaje breve...'}
-                      rows={5}
+                      placeholder={
+                        pass
+                          ? 'Escribe unas palabras para los anfitriones…'
+                          : data.messagePlaceholder?.trim() || 'Escribe un mensaje breve...'
+                      }
+                      rows={pass ? 3 : 5}
                       className="input-flat w-full min-h-[140px] resize-none"
                     />
                   </div>
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                     <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
-                      {submitting ? 'Enviando…' : 'Enviar confirmación'}
+                      {submitting ? 'Enviando…' : pass ? 'Confirmar' : 'Enviar confirmación'}
                     </button>
                     <button
                       type="button"

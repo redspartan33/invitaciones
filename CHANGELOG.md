@@ -3,7 +3,7 @@
 ## Pases personalizados (2026-10-01)
 
 - Botón **"+ Crear pase personalizado"** en la página de invitados y en el editor (bloque RSVP → Guestlist público): nombre, número de invitados y mensaje opcional.
-- Link único `?inv=<slug>&pase=<lista>.<id>` que replica la invitación y muestra una tarjeta de confirmación personalizada (mensaje opcional + botón Confirmar).
+- Link único `?inv=<slug>&pase=<lista>.<id>` que replica la invitación tal cual; el botón de confirmación abre el mismo modal de siempre, con nombre y lugares fijos, mensaje opcional y botón Confirmar.
 - La lista de invitados marca las confirmaciones por pase, suma "Lugares por pase" y muestra el estado de cada pase. Funciona con el backend actual (sin cambios en `invitaciones-api`).
 
 ## v1 — Menus & Invitaciones estable (2026-05-23)
